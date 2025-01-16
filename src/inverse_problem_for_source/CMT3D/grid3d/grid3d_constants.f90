@@ -1,5 +1,7 @@
 module grid3d_constants
 
+  implicit none
+
   ! mathematical constant pi
   real, parameter :: PI = 3.14159265
 

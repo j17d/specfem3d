@@ -10,8 +10,8 @@ contains
     character(len=*),intent(in) :: par_file
     ! cmt_file
     integer :: yr,mo,jda,ho,mi
-    real*8 :: sec,t_cmt,hdur,elat,elon,depth
-    real*8 :: moment_tensor(NM)
+    double precision :: sec,t_cmt,hdur,elat,elon,depth
+    double precision :: moment_tensor(NM)
     real :: mw
 
     integer :: ios

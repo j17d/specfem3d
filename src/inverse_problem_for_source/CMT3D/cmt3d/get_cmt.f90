@@ -5,13 +5,13 @@ subroutine get_cmt(cmt_file,yr,mo,jda,ho,mi,sec, &
 
   implicit none
 
-  character(len=*) :: cmt_file
+  character(len=*), intent(in) :: cmt_file
   integer :: yr,jda,ho,mi
-  real*8 :: sec,t_cmt,hdur,elat,elon,depth
-  real*8 :: moment_tensor(6)
+  double precision :: sec,t_cmt,hdur,elat,elon,depth
+  double precision :: moment_tensor(6)
 
   integer :: i,ios,lstr,mo,da
-  real*8 :: mb,ms
+  double precision :: mb,ms
   character(len=24) :: reg
   character(len=5) :: datasource
   character(len=150) :: string
