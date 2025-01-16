@@ -400,7 +400,7 @@ contains
 
     ! scaling requires vs in km/s
     ! unit scaling factor: given in m/s -> km/s
-    real(kind=CUSTOM_REAL) :: unit_scale = 1.0_CUSTOM_REAL / 1000.0_CUSTOM_REAL
+    real(kind=CUSTOM_REAL), parameter :: unit_scale = 1.0_CUSTOM_REAL / 1000.0_CUSTOM_REAL
 
     ! Vs (in km/s)
     vs = vs_in * unit_scale
@@ -442,7 +442,7 @@ contains
 
     ! scaling requires vp in km/s
     ! unit scaling factor: given in m/s -> km/s
-    real(kind=CUSTOM_REAL) :: unit_scale = 1.0_CUSTOM_REAL / 1000.0_CUSTOM_REAL
+    real(kind=CUSTOM_REAL), parameter :: unit_scale = 1.0_CUSTOM_REAL / 1000.0_CUSTOM_REAL
 
     ! Vp (in km/s)
     vp = vp_in * unit_scale

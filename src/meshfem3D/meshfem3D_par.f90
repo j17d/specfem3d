@@ -28,6 +28,8 @@
 
 module constants_meshfem
 
+  implicit none
+
   include "constants_meshfem3D.h"
 
 end module constants_meshfem

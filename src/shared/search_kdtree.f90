@@ -37,6 +37,8 @@ module kdtree_search
 
   use constants, only: IMAIN
 
+  implicit none
+
   private
 
   ! single tree node
@@ -1410,4 +1412,4 @@ contains
 
   end subroutine get_distance_ellip
 
-end module
+end module kdtree_search

@@ -31,6 +31,8 @@ module module_partition
   use shared_parameters, only: NGNOD
   use module_qsort
 
+  implicit none
+
   integer                                                  :: nE
   integer,             dimension(:),  allocatable          :: ipart
 

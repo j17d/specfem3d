@@ -31,6 +31,7 @@ module module_database
   use shared_parameters, only: NGNOD, NGNOD2D, LOCAL_PATH, MSL => MAX_STRING_LEN
   use fault_scotch
 
+  implicit none
   integer                                     :: nE_loc
   integer, dimension(:),  allocatable         :: loc2glob_elmnt
   integer, dimension(:),  allocatable         :: glob2loc_elmnt

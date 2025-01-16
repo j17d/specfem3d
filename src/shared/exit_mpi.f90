@@ -75,7 +75,7 @@
 
   implicit none
 
-  character(len=*) :: error_msg
+  character(len=*), intent(in) :: error_msg
 
   ! write error message to screen
   write(*,*) error_msg(1:len(error_msg))

@@ -29,6 +29,8 @@ module combine_vtk_par
 
     use constants, only: CUSTOM_REAL
 
+    implicit none
+
     ! global point data
     real(kind=CUSTOM_REAL),dimension(:),allocatable :: total_dat
 

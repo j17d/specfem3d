@@ -84,7 +84,9 @@
                              IS_EXTRAPOLATION_MODE
   logical :: covered(26)
   double precision :: x_min, x_max, y_min, y_max, z_min, z_max
-  double precision :: dx, dy, dz, x_mid, y_mid, z_mid, ratio_small = 1.0e-6
+  double precision :: dx, dy, dz, x_mid, y_mid, z_mid
+  double precision, parameter :: ratio_small = 1.0d-6
+
   open(unit=IFILE_WAVEFIELD_DISCONTINUITY, &
        file=trim(FNAME_WAVEFIELD_DISCONTINUITY_BOX), &
        form='formatted', action='read')

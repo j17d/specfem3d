@@ -29,7 +29,7 @@ program combine_signal_files_into_a_single_one
   integer(HID_T) :: dspace_id
 
   integer(HSIZE_T), dimension(3) :: dims ! Dataset dimensions
-  integer :: rank = 3                    ! Dataset rank
+  integer, parameter :: rank = 3                    ! Dataset rank
 
   integer :: error  ! Error flag
 

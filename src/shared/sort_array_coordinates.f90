@@ -189,7 +189,7 @@
     A(i) = A(j)
     A(j) = tmp
 
-    end subroutine
+    end subroutine dswap
 
     subroutine iswap(A, i, j)
 
@@ -203,7 +203,7 @@
     A(i) = A(j)
     A(j) = tmp
 
-    end subroutine
+    end subroutine iswap
 
 ! this directive avoids triggering a random bug in Intel ifort v13 (in the compiler, not in SPECFEM),
 ! fixed in later versions of Intel ifort, which also ignore this directive because it was discontinued

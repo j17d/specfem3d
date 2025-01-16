@@ -34,6 +34,8 @@
 
   module salton_trough_par
 
+  implicit none
+
   !  Salton Sea Gocad voxet
   integer, parameter :: GOCAD_ST_NU = 638, GOCAD_ST_NV = 219, GOCAD_ST_NW = 76
   double precision, parameter :: &

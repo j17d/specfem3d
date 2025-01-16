@@ -31,10 +31,12 @@ module part_decompose_mesh_hdf5
   use constants, only: MAX_STRING_LEN,NGNOD2D_FOUR_CORNERS,NGNOD_EIGHT_CORNERS
 
 #ifdef USE_HDF5
-
   use manager_hdf5
+#endif
 
   implicit none
+
+#ifdef USE_HDF5
 
 contains
   !--------------------------------------------------
@@ -135,11 +137,11 @@ contains
   ! name for material data group
   character(len=14), parameter :: gname_material   = "material_props" ! Group name for material properties
   ! for attribute count_def_mat and count_undef_mat
-  character(len=13)              :: m_aname = "count_def_mat"
-  character(len=15)              :: u_aname = "count_undef_mat"
+  character(len=13), parameter :: m_aname = "count_def_mat"
+  character(len=15), parameter :: u_aname = "count_undef_mat"
   ! for dataset mat_prop, undef_mat_prop
-  character(len=40)              :: mdsetname = "mat_prop"
-  character(len=40)              :: udsetname = "undef_mat_prop"
+  character(len=40), parameter :: mdsetname = "mat_prop"
+  character(len=40), parameter :: udsetname = "undef_mat_prop"
 
   ! prepare groups in hdf5 file
   ! material data group
@@ -618,7 +620,10 @@ contains
   ! for ispec_local
   integer, dimension(:), allocatable :: ispec_local
 
-  integer :: o = 0
+  integer:: off
+
+  ! initializes
+  off = 0
 
   if (num_phase == 1) then
     ! counts number of spectral elements in this partition
@@ -640,7 +645,7 @@ contains
     allocate(ispec_local(offset_nelems(iproc)))
 
     ! node id offset
-    o = sum(offset_nnodes(0:iproc-1))
+    off = sum(offset_nnodes(0:iproc-1))
 
     ! prepare a temporal array to be recorded in hdf5
     ! element corner indices
@@ -665,26 +670,26 @@ contains
         ! elm_conn_xdmf
         if (NGNOD == 8) then
           elm_conn_xdmf(1,count) = 9 ! cell type id xdmf
-          elm_conn_xdmf(2,count) = loc_nodes(0)+o!+1 elm id starts 0
-          elm_conn_xdmf(3,count) = loc_nodes(1)+o
-          elm_conn_xdmf(4,count) = loc_nodes(2)+o
-          elm_conn_xdmf(5,count) = loc_nodes(3)+o
-          elm_conn_xdmf(6,count) = loc_nodes(4)+o
-          elm_conn_xdmf(7,count) = loc_nodes(5)+o
-          elm_conn_xdmf(8,count) = loc_nodes(6)+o
-          elm_conn_xdmf(9,count) = loc_nodes(7)+o
+          elm_conn_xdmf(2,count) = loc_nodes(0)+off !+1 elm id starts 0
+          elm_conn_xdmf(3,count) = loc_nodes(1)+off
+          elm_conn_xdmf(4,count) = loc_nodes(2)+off
+          elm_conn_xdmf(5,count) = loc_nodes(3)+off
+          elm_conn_xdmf(6,count) = loc_nodes(4)+off
+          elm_conn_xdmf(7,count) = loc_nodes(5)+off
+          elm_conn_xdmf(8,count) = loc_nodes(6)+off
+          elm_conn_xdmf(9,count) = loc_nodes(7)+off
         else ! NGNOD = 27
          ! NGNOD = 27 array will not be used, only the 8 corner nodes
          ! are necessary for checkmesh visualization
           elm_conn_xdmf(1,count)  = 9 !50 ! cell type id xdmf
-          elm_conn_xdmf(2,count)  = loc_nodes(0)+o
-          elm_conn_xdmf(3,count)  = loc_nodes(1)+o
-          elm_conn_xdmf(4,count)  = loc_nodes(2)+o
-          elm_conn_xdmf(5,count)  = loc_nodes(3)+o
-          elm_conn_xdmf(6,count)  = loc_nodes(4)+o
-          elm_conn_xdmf(7,count)  = loc_nodes(5)+o
-          elm_conn_xdmf(8,count)  = loc_nodes(6)+o
-          elm_conn_xdmf(9,count)  = loc_nodes(7)+o
+          elm_conn_xdmf(2,count)  = loc_nodes(0)+off
+          elm_conn_xdmf(3,count)  = loc_nodes(1)+off
+          elm_conn_xdmf(4,count)  = loc_nodes(2)+off
+          elm_conn_xdmf(5,count)  = loc_nodes(3)+off
+          elm_conn_xdmf(6,count)  = loc_nodes(4)+off
+          elm_conn_xdmf(7,count)  = loc_nodes(5)+off
+          elm_conn_xdmf(8,count)  = loc_nodes(6)+off
+          elm_conn_xdmf(9,count)  = loc_nodes(7)+off
 !          elm_conn_xdmf(10,count) = loc_nodes(8)
 !          elm_conn_xdmf(11,count) = loc_nodes(9)
 !          elm_conn_xdmf(12,count) = loc_nodes(10)
@@ -985,7 +990,7 @@ contains
   integer                     :: loc_nspec2D_moho
 
   ! for loc_nspec_2d_homo attribute
-  character(len=8)               :: aname = "loc_moho"
+  character(len=8), parameter :: aname = "loc_moho"
   integer         , dimension(2) :: moho_attr
 
   ! homo_elements dataset

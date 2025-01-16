@@ -3047,7 +3047,7 @@ contains
     real(kind=CUSTOM_REAL), dimension(:), intent(inout) ::  buffer_to_send, buffer_to_recv
     ! local
     integer :: irank, igll, ishift
-    integer :: itag = 0
+    integer, parameter :: itag = 0
 
     do irank = 0, NPROC-1
        if (struct_comm(irank)%ns > 0) then
@@ -3199,7 +3199,7 @@ contains
     double precision                                              :: gammaxl,gammayl,gammazl
     double precision                                              :: coef_norm
     integer                                                       :: ispec, ispec_irreg, iglob, i, j, k, l
-    integer                                                       :: ispec_to_debug = 100
+    integer, parameter                                            :: ispec_to_debug = 100
 
     if (DEBUG_MODE) write(IIDD,*)
 

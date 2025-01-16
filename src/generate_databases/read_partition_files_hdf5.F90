@@ -44,7 +44,7 @@
   integer :: i,count,ier
 
   ! group names
-  character(len=14) :: material_gname = "material_props"
+  character(len=14), parameter :: material_gname = "material_props"
   character(len=11) :: gname_proc
   character(len=64) :: group_name
   character(len=30) :: dsetname, attrname

@@ -169,7 +169,7 @@
     A(i) = A(j)
     A(j) = tmp
 
-    end subroutine
+    end subroutine dswap
 
     subroutine iswap(A, i, j)
 
@@ -183,7 +183,7 @@
     A(i) = A(j)
     A(j) = tmp
 
-    end subroutine
+    end subroutine iswap
 
     subroutine heap_sort_siftdown(start, bottom)
 

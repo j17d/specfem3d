@@ -4,6 +4,8 @@ module grid3d_variables
 
   ! GRID3D.PAR
 
+  implicit none
+
   ! derivative files
   character(len=150) :: cmt_file, new_cmt_file
   real :: dmoment
