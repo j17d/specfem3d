@@ -583,6 +583,8 @@
 
   if (NPROC == 1 .and. NUMBER_OF_SIMULTANEOUS_RUNS > 1 ) then
     num_device = mygroup
+  else if (NPROC > 1 .and. NUMBER_OF_SIMULTANEOUS_RUNS > 1 ) then
+    num_device = myrank + mygroup * NPROC
   else
     num_device = myrank
   endif
