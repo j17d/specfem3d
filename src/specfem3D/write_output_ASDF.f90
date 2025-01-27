@@ -26,7 +26,7 @@
 !=====================================================================
 
 
-  subroutine write_output_ASDF(all_seismograms,nrec_store,istore)
+  subroutine write_output_asdf(all_seismograms,nrec_store,istore)
 
 ! writes out seismogram in ASDF format
 
@@ -146,7 +146,7 @@
   ! deallocate the container
   call close_asdf_data()
 
-  end subroutine write_output_ASDF
+  end subroutine write_output_asdf
 
 !
 !-------------------------------------------------------------------------------------------------
@@ -1514,9 +1514,9 @@
   use constants, only: IIN,myrank
 
   implicit none
-  character(len=*) :: filestring
-  character(len=*) :: filename
-  integer,intent(out) :: filesize
+  character(len=*), intent(inout) :: filestring
+  character(len=*), intent(in) :: filename
+  integer, intent(out) :: filesize
 
   ! local parameters
   integer :: ier

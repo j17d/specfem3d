@@ -32,10 +32,10 @@
   use constants, only: MAX_STRING_LEN
   implicit none
 
-  integer :: value_to_read
-  character(len=*) :: name
+  integer, intent(inout) :: value_to_read
+  character(len=*), intent(in) :: name
   character(len=MAX_STRING_LEN) :: string_read
-  integer :: ier
+  integer, intent(inout) :: ier
 
   call param_read(string_read, len(string_read), name, len(name), ier)
   if (ier /= 0) return
@@ -50,10 +50,10 @@
   use constants, only: MAX_STRING_LEN
   implicit none
 
-  double precision :: value_to_read
-  character(len=*) :: name
+  double precision, intent(inout) :: value_to_read
+  character(len=*), intent(in) :: name
   character(len=MAX_STRING_LEN) :: string_read
-  integer :: ier
+  integer, intent(inout) :: ier
 
   call param_read(string_read, len(string_read), name, len(name), ier)
   if (ier /= 0) return
@@ -68,10 +68,10 @@
   use constants, only: MAX_STRING_LEN
   implicit none
 
-  logical :: value_to_read
-  character(len=*) :: name
+  logical, intent(inout) :: value_to_read
+  character(len=*), intent(in) :: name
   character(len=MAX_STRING_LEN) :: string_read
-  integer :: ier
+  integer, intent(inout) :: ier
 
   call param_read(string_read, len(string_read), name, len(name), ier)
   if (ier /= 0) return
@@ -86,10 +86,10 @@
   use constants, only: MAX_STRING_LEN
   implicit none
 
-  character(len=*) :: value_to_read
-  character(len=*) :: name
+  character(len=*), intent(inout) :: value_to_read
+  character(len=*), intent(in) :: name
   character(len=MAX_STRING_LEN) :: string_read
-  integer :: ier
+  integer, intent(inout) :: ier
 
   call param_read(string_read, len(string_read), name, len(name), ier)
   if (ier /= 0) return

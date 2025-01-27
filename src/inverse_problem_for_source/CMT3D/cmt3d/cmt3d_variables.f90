@@ -23,14 +23,14 @@ module cmt3d_variables
   ! inversion schemes
   logical :: station_correction
   logical :: zero_trace_inversion, double_couple_inversion
-  real*8 :: lambda
+  double precision :: lambda
   ! misc
   logical :: write_new_syn
 
 
   ! other parameters used globally
   ! collect all pars in an array
-  real*8,dimension(NPARMAX) :: cmt_par,dcmt_par,new_cmt_par
+  double precision,dimension(NPARMAX) :: cmt_par,dcmt_par,new_cmt_par
 
   ! number of files and windows
   integer :: nfiles,nwins(NRECMAX),nwin_total
@@ -41,7 +41,7 @@ module cmt3d_variables
   character(len=150) :: data_file, syn_file
 
   ! scales of cmt pars
-  real*8 :: SCALE_PAR(NPARMAX)
+  double precision :: SCALE_PAR(NPARMAX)
 
 end module cmt3d_variables
 

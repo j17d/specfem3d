@@ -112,12 +112,12 @@
 
   ! material
   ! for attribute count_def_mat and count_undef_mat
-  character(len=13)              :: m_aname = "count_def_mat"
-  character(len=15)              :: u_aname = "count_undef_mat"
+  character(len=13), parameter :: m_aname = "count_def_mat"
+  character(len=15), parameter :: u_aname = "count_undef_mat"
 
   ! for dataset mat_prop, undef_mat_prop
-  character(len=40)              :: mdsetname = "mat_prop"
-  character(len=40)              :: udsetname = "undef_mat_prop"
+  character(len=40), parameter :: mdsetname = "mat_prop"
+  character(len=40), parameter :: udsetname = "undef_mat_prop"
 
   ! for node coords
   integer, dimension(nglob)               :: glob2loc_nodes_this_proc ! dummy

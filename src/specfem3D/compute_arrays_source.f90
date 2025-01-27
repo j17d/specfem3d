@@ -237,7 +237,7 @@
       filename = trim(adj_source_file) // '_' // comp(icomp)
 
       ! reads full trace (NSTEP)
-      call read_adjoint_sources_ASDF(filename, adj_source_asdf, it_start, it_end)
+      call read_adjoint_sources_asdf(filename, adj_source_asdf, it_start, it_end)
 
       ! debug - check whether we read the correct block
       !if (icomp == 1) print *, junk, adj_source_asdf(itime-it_start+1,icomp)

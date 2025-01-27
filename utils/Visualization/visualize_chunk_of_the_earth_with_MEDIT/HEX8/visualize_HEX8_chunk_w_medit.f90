@@ -4,7 +4,7 @@ PROGRAM visualize_HEX8_chunk_w_medit
 
   integer            :: np, nhex, nquad, ios, i, nsph, nq1, nq2, nq3, nq4, nq5, nq6
   integer            :: s1, s2, s3, s4, s5, s6, s7, s8, sf1, sf2, sf3, sf4
-  real*8             :: p1, p2, p3
+  double precision   :: p1, p2, p3
 
   open(unit=10,file='nodes_coords_file',status='unknown',iostat=ios)
   open(unit=11,file='mesh_file',status='unknown',iostat=ios)

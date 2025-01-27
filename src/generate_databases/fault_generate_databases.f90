@@ -347,7 +347,7 @@ contains
     Kelvin_Voigt_eta(fdb%ispec2) = fdb%eta
   endif
 
- end subroutine
+ end subroutine setup_Kelvin_Voigt_eta
 
 !===============================================================================================================
 

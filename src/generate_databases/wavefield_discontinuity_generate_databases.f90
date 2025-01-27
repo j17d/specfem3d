@@ -27,7 +27,10 @@
 
 
 module wavefield_discontinuity_db
+
   use constants, only: CUSTOM_REAL
+
+  implicit none
 
   !! boundary of wavefield discontinuity, read from database file
   integer :: nb_wd

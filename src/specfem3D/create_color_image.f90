@@ -29,6 +29,8 @@
 
   use constants, only: CUSTOM_REAL
 
+  implicit none
+
   ! ----------------------------------------------
   ! USER PARAMETER
   ! non linear display to enhance small amplitudes in color images
@@ -136,7 +138,7 @@
   logical,dimension(:),allocatable:: ispec_is_image_surface,iglob_is_image_surface
   integer :: num_iglob_image_surface
   integer :: countval,locval(1),irank
-  integer :: zoom_factor = 2
+  integer :: zoom_factor
   logical :: zoom
   integer, dimension(1,0:NPROC-1) :: tmp_pixel_per_proc
 
@@ -271,6 +273,7 @@
   endif
 
   ! ...and not too small
+  zoom_factor = 2
   zoom = .false.
   if (NX_IMAGE_color < 600 .or. NZ_IMAGE_color < 600) then
     ! increases it
@@ -1153,10 +1156,10 @@
   integer :: i,ii,jj,incr
   logical :: done_color
   ! tomo colormap
-  real, dimension(4,9) :: tomo_keyrgb = reshape( (/ 0.0,0.1,0.0,0.0,     0.2,0.8,0.0,0.0,    0.3,1.0,0.7,0.0, &
-                                                    0.48,0.92,0.92,0.92, 0.5,0.92,0.92,0.92, 0.52,0.92,0.92,0.92, &
-                                                    0.7,0.0,0.6,0.7,     0.8,0.0,0.0,0.8,    1.0,0.0,0.0,0.1 /), &
-                                                 (/4,9/) )
+  real, dimension(4,9), parameter :: tomo_keyrgb = &
+    reshape( (/ 0.0,0.1,0.0,0.0,     0.2,0.8,0.0,0.0,    0.3,1.0,0.7,0.0, &
+                0.48,0.92,0.92,0.92, 0.5,0.92,0.92,0.92, 0.52,0.92,0.92,0.92, &
+                0.7,0.0,0.6,0.7,     0.8,0.0,0.0,0.8,    1.0,0.0,0.0,0.1 /), (/4,9/) )
 
   ! initializes
   val = val_in

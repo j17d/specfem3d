@@ -148,8 +148,8 @@ contains
 
     character(len=*),intent(in) :: syn_file, data_file
     real,intent(in) :: data_weight, tstart, tend
-    real*8, intent(out),dimension(:,:) :: A1
-    real*8, intent(out),dimension(:) :: b1
+    double precision, intent(out),dimension(:,:) :: A1
+    double precision, intent(out),dimension(:) :: b1
     integer, intent(in) :: npar
 
     real :: t0, dt, t0_1, dt1
@@ -245,13 +245,13 @@ contains
   subroutine get_f_df(npar,A,b,m,lam,mstart,fij,f0)
 
     integer,intent(in) :: npar
-    real*8,intent(in) :: A(:,:),b(:)
-    real*8,intent(in) :: m(:),mstart(:)
-    real*8,intent(in) :: lam(:)
+    double precision,intent(in) :: A(:,:),b(:)
+    double precision,intent(in) :: m(:),mstart(:)
+    double precision,intent(in) :: lam(:)
 
-    real*8,intent(out) :: fij(:,:),f0(:)
+    double precision,intent(out) :: fij(:,:),f0(:)
 
-    real*8 :: dc1_dm(NM),dc2_dm(NM),dc2_dmi_dmj(NM,NM)
+    double precision :: dc1_dm(NM),dc2_dm(NM),dc2_dmi_dmj(NM,NM)
     integer :: i,j
 
     ! U_j's
@@ -303,7 +303,7 @@ contains
     character(len=*),intent(in):: data_file, syn_file
     integer,intent(out) :: npts
     real, intent(out) :: b, dt
-    real*8, intent(in) :: dm(:)
+    double precision, intent(in) :: dm(:)
 
     real,dimension(NDATAMAX,NPARMAX) :: dsyn_sngl
     real, dimension(NDATAMAX) :: time

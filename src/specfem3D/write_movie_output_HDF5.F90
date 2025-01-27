@@ -115,9 +115,9 @@ contains
 
   integer :: nfaces_actual
   integer :: i,j,k,c
-  integer :: factor_face_aug = (NGLLX-1)*(NGLLY-1)
-  integer :: npoint_per_face = NGLLX*NGLLY
-  integer :: npoint_corner = 4
+  integer, parameter :: factor_face_aug = (NGLLX-1)*(NGLLY-1)
+  integer, parameter :: npoint_per_face = NGLLX*NGLLY
+  integer, parameter :: npoint_corner = 4
 
   nfaces_actual = size(arr_in)/(NGLLX*NGLLY) ! expecting NGLLX == NGLLY == NGLLZ
 
@@ -179,7 +179,9 @@ contains
   implicit none
 
   ! local parameters
-  integer :: ier, nfaces_actual, nfaces_aug=(NGLLX-1)*(NGLLY-1),nnodes_per_face_aug = 4
+  integer :: ier, nfaces_actual
+  integer, parameter :: nfaces_aug = (NGLLX-1)*(NGLLY-1)
+  integer, parameter :: nnodes_per_face_aug = 4
   integer :: len_array_aug, len_array_aug_proc
   character(len=64) :: dset_name, group_name
   real(kind=CUSTOM_REAL) :: aug_factor
@@ -1827,7 +1829,7 @@ contains
   real(kind=CUSTOM_REAL), dimension(:), allocatable :: xstore_tmp, ystore_tmp, zstore_tmp
   integer :: nelm_tmp,nglo_tmp,ielm_sta,ielm_end,iglo_sta,iglo_end
   integer :: node_id_off, node_id_off_inter
-  integer :: nelms_factor = (NGLLX-1)*(NGLLY-1)*(NGLLZ-1) ! divide one spectral element to
+  integer, parameter :: nelms_factor = (NGLLX-1)*(NGLLY-1)*(NGLLZ-1) ! divide one spectral element to
   ! small rectangles for visualization purpose
   integer, dimension(1) :: tmp_1d_arr
   ! dummy array

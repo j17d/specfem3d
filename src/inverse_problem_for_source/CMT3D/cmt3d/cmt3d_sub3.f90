@@ -12,13 +12,13 @@ module cmt3d_sub3
   subroutine  write_new_cmtsolution(cmt_file,new_cmt_file,new_par_all)
 
     character(len=*),intent(in) :: cmt_file,new_cmt_file
-    real*8,intent(inout) :: new_par_all(NPARMAX)
+    double precision,intent(inout) :: new_par_all(NPARMAX)
 
     integer, parameter :: NSIG_DIGIT = 6
     character(len=150) :: pde_time,event_name,out_cmt
-    real*8 :: exponent
+    double precision :: exponent
     integer :: i, nn, exp_largest, iflag
-    real*8 :: epsilon, s1, d1, r1, s2, d2, r2, mw, m0, m00
+    double precision :: epsilon, s1, d1, r1, s2, d2, r2, mw, m0, m00
 
     open(21,file = cmt_file, status = 'old')
     read(21,'(a)') pde_time
@@ -94,14 +94,13 @@ module cmt3d_sub3
     implicit none
 
     integer,intent(in) :: n
-    real*8,intent(inout) :: A(:,:),b(:)
-    real*8,intent(out) :: x(:)
+    double precision,intent(inout) :: A(:,:),b(:)
+    double precision,intent(out) :: x(:)
     logical,intent(out) :: singular
 
     integer :: i,j,k,pivot_row
-    real*8 :: pivot,temp(n),temp1,l(n)
-    real*8 ,parameter :: EPS = 1.0e-12
-
+    double precision :: pivot,temp(n),temp1,l(n)
+    double precision ,parameter :: EPS = 1.0d-12
 
     ! perform Gaussian ellimination
 

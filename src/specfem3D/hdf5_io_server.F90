@@ -1732,7 +1732,9 @@ contains
 
   implicit none
 
-  integer :: n_type = 0
+  integer :: n_type
+
+  n_type = 0
 
   if (SAVE_SEISMOGRAMS_DISPLACEMENT) n_type = n_type+1
   if (SAVE_SEISMOGRAMS_VELOCITY)     n_type = n_type+1

@@ -33,11 +33,11 @@
 
   implicit none
 
-  logical :: ignore_junk
-  integer :: iunit
-  integer :: value_to_read
-  integer :: ier
-  character(len=*) :: name
+  logical, intent(in) :: ignore_junk
+  integer, intent(in) :: iunit
+  integer, intent(inout) :: value_to_read
+  integer, intent(inout) :: ier
+  character(len=*), intent(in) :: name
   character(len=MAX_STRING_LEN) :: string_read
 
   call unused_string(name)
@@ -58,11 +58,11 @@
 
   implicit none
 
-  logical :: ignore_junk
-  integer :: iunit
-  double precision :: value_to_read
-  integer :: ier
-  character(len=*) :: name
+  logical, intent(in) :: ignore_junk
+  integer, intent(in) :: iunit
+  double precision, intent(inout) :: value_to_read
+  integer, intent(inout) :: ier
+  character(len=*), intent(in) :: name
   character(len=MAX_STRING_LEN) :: string_read
 
   call unused_string(name)
@@ -83,11 +83,11 @@
 
   implicit none
 
-  logical :: ignore_junk
-  logical :: value_to_read
-  integer :: iunit
-  integer :: ier
-  character(len=*) :: name
+  logical, intent(in) :: ignore_junk
+  logical, intent(inout) :: value_to_read
+  integer, intent(in) :: iunit
+  integer, intent(inout) :: ier
+  character(len=*), intent(in) :: name
   character(len=MAX_STRING_LEN) :: string_read
 
   call unused_string(name)
@@ -108,11 +108,11 @@
 
   implicit none
 
-  logical :: ignore_junk
-  integer :: iunit
-  character(len=*) :: value_to_read
-  integer :: ier
-  character(len=*) :: name
+  logical, intent(in) :: ignore_junk
+  integer, intent(in) :: iunit
+  character(len=*), intent(inout) :: value_to_read
+  integer, intent(inout) :: ier
+  character(len=*), intent(in) :: name
   character(len=MAX_STRING_LEN) :: string_read
 
   call unused_string(name)
@@ -134,11 +134,11 @@
 
   implicit none
 
-  logical :: ignore_junk
-  integer :: iunit
-  integer :: value_to_read
-  integer :: ier
-  character(len=*) :: name
+  logical, intent(in) :: ignore_junk
+  integer, intent(in) :: iunit
+  integer, intent(inout) :: value_to_read
+  integer, intent(inout) :: ier
+  character(len=*), intent(in) :: name
   ! local parameters
   character(len=MAX_STRING_LEN) :: string_read
   character(len=MAX_STRING_LEN) :: value_read
@@ -186,7 +186,7 @@
   logical :: ignore_junk
   integer :: iunit
   integer :: ier
-  character(len=*) :: name
+  character(len=*), intent(in) :: name
   ! local parameters
   character(len=MAX_STRING_LEN) :: string_read
 
@@ -490,8 +490,9 @@
     is_numeric = .true.
   endif
 
-  end function
+  end function is_numeric
 
+!--------------------
 
   logical function is_digit_alpha(char)
 
@@ -507,7 +508,7 @@
     is_digit_alpha = .true.
   endif
 
-  end function
+  end function is_digit_alpha
 
 
 !--------------------
@@ -632,7 +633,7 @@
 ! dummy subroutine to avoid warnings about variable not used in other subroutines
   subroutine unused_string(s)
 
-  character(len=*) s
+  character(len=*), intent(in) :: s
 
   if (len(s) == 1) continue
 

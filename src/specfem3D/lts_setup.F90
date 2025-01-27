@@ -1426,13 +1426,15 @@
 
   ! sorting routine
   subroutine Bubble_Sort(a,len)
+    implicit none
     integer :: len
     integer, INTENT(inout), DIMENSION(len) :: a
 
     integer :: temp
     INTEGER :: i, j
-    LOGICAL :: swapped = .true.
+    LOGICAL :: swapped
 
+    swapped = .true.
     DO j = len-1, 1, -1
       swapped = .false.
       DO i = 1, j
@@ -1453,6 +1455,7 @@
 
   ! comparison function for sorting integers
   integer function cmp_function(a1, a2)
+    implicit none
     integer a1, a2
     cmp_function = a1 - a2
   end function cmp_function

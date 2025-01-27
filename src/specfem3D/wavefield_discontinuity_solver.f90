@@ -29,7 +29,10 @@
 !! scheme
 !! Tianshi Liu, 2023.5
 module wavefield_discontinuity_solver
+
   use constants, only: CUSTOM_REAL
+
+  implicit none
 
   !! ispec_to_elem_wd(NSPEC_AB)
   !! ispec_to_elem_wd(ispec) = ispec_wd (0 if element not belong to boundary)

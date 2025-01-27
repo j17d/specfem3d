@@ -50,7 +50,7 @@
   ! timing
   double precision, external :: wtime
 #ifdef VTK_VIS
-  logical :: do_restart = .false.
+  logical, parameter :: do_restart = .false.
 #endif
 
   ! hdf5 i/o server

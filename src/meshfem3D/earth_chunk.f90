@@ -2689,8 +2689,9 @@
 
   implicit none
 
-  integer k
-  double precision z(*),zc
+  integer, intent(inout) :: k
+  double precision, intent(inout) :: z(*)
+  double precision, intent(in) :: zc
 
   if (k == 0) then
      k = k + 1
@@ -2712,8 +2713,9 @@
 
   implicit none
 
-  integer :: k
-  double precision :: z(*),zc
+  integer, intent(inout) :: k
+  double precision, intent(inout) :: z(*)
+  double precision, intent(in) :: zc
   logical :: NoInter
 
   if (k == 0) then

@@ -31,6 +31,8 @@ module module_mesh
   use shared_parameters, only: NGNOD,NGNOD2D,ATTENUATION,PML_CONDITIONS
   use fault_scotch
 
+  implicit none
+
   ! elements
   integer                                                    :: nspec, nspec_glob
   integer,               dimension(:,:),        allocatable  :: elmnts, elmnts_glob

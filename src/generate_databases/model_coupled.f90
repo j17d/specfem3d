@@ -42,6 +42,8 @@
 
   module model_coupled_par
 
+  implicit none
+
   ! VM VM my model for DSM coupling
   double precision, dimension (:,:), allocatable :: vpv_1D,vsv_1D,density_1D
   double precision, dimension (:), allocatable :: zlayer

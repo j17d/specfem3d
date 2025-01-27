@@ -7,15 +7,15 @@ module cmt3d_constants
   implicit none
 
 ! mathematical constantS
-  real*8, parameter :: PI = 3.141592653589793d0
+  double precision, parameter :: PI = 3.141592653589793d0
 
 ! scale of cmt pars (latitude,longitude,depth and moment
 !          centroid time and half duration)
-  real*8, parameter :: SCALE_DELTA = 0.001 ! degree
-  real*8, parameter :: SCALE_DEPTH = 1.0  ! km
-  real*8, parameter :: SCALE_MOMENT = 1.0e+22 ! dyns*cm
-  real*8, parameter :: SCALE_CTIME = 1.0  ! seconds
-  real*8, parameter :: SCALE_HDUR = 1.0 ! seconds
+  double precision, parameter :: SCALE_DELTA = 0.001 ! degree
+  double precision, parameter :: SCALE_DEPTH = 1.0  ! km
+  double precision, parameter :: SCALE_MOMENT = 1.0e+22 ! dyns*cm
+  double precision, parameter :: SCALE_CTIME = 1.0  ! seconds
+  double precision, parameter :: SCALE_HDUR = 1.0 ! seconds
 
 ! maximum number of parameters
   integer, parameter  :: NPARMAX = 11
@@ -36,8 +36,8 @@ module cmt3d_constants
   integer, parameter :: NML = 9
 
 ! small numbers
-  real*8, parameter :: EPS2 = 1.0d-2
-  real*8, parameter :: EPS5 = 1.0d-5
+  double precision, parameter :: EPS2 = 1.0d-2
+  double precision, parameter :: EPS5 = 1.0d-5
   real, parameter :: SMALL = -huge(1.0)
 
 ! io unit for parameter files

@@ -658,7 +658,7 @@ contains
   subroutine ftinv(npow,s,zzign,dt,r)
 !------------------------------------------------------------------
 
-      !implicit real*8(a-h,o-z)
+      !implicit double precision(a-h,o-z)
       !dimension r(4096*4)
       !complex s(4096*4)
 
@@ -682,7 +682,7 @@ contains
   subroutine rspec(s,np2)
 !------------------------------------------------------------------
 
-      !implicit real*8(a-h,o-z)
+      !implicit double precision(a-h,o-z)
       !complex s(4096*4)
 
       complex*16 :: s(NDIM)
@@ -705,7 +705,7 @@ contains
   subroutine remo(ny,nm,nd)
 !------------------------------------------------------------------
 
-      !implicit real*8(a-h,o-z)
+      !implicit double precision(a-h,o-z)
       !dimension m(12)
       !data m/0,31,59,90,120,151,181,212,243,273,304,334/
 
@@ -748,7 +748,7 @@ contains
 !  tsturm for the tapers and use them in Slepians eq 18 to get the
 !  bandwidth retention factors (i.e. the eigenvalues) Thomson's
 !  normalisation is used with no attention to sign.
-      !implicit real*8(a-h,o-z)
+      !implicit double precision(a-h,o-z)
       !dimension a(*),w(*),v(ndim,*)
       !parameter (pi=3.14159265358979d0,r2=1.414213562373095d0)
 
@@ -852,7 +852,7 @@ contains
 !  subroutine root then direct recursion is used to get the eigenvector
 !  as this is always stable.  Note  ipar=0 for even tapers   =1 for odd
 !  tapers
-      !implicit real*8(a-h,o-z)
+      !implicit double precision(a-h,o-z)
       !parameter (epsi=1.d-15,epsi1=5.d-15)
       !dimension a(*),b(*),ev(*),w(*),r(ndim,*)
 
@@ -921,7 +921,7 @@ contains
   subroutine root(u,el,elam,a,bb,w,n,ik)
 !------------------------------------------------------------------
 
-      !implicit real*8(a-h,o-z)
+      !implicit double precision(a-h,o-z)
       !parameter (epsi = 1.d-15, epsi1 = 5.d-15)
       !dimension a(*),bb(*),w(*)
 

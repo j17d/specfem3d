@@ -44,6 +44,7 @@
 ! ADD YOUR MODEL HERE
 !
 !---
+  implicit none
   integer, parameter :: dummy_size = 1
 
   ! only here to illustrate an example

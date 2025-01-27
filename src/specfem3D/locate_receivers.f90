@@ -47,7 +47,7 @@
   implicit none
 
   ! input receiver file name
-  character(len=*) :: rec_filename
+  character(len=*), intent(in) :: rec_filename
 
   ! receivers
   double precision,intent(in) :: utm_x_source,utm_y_source

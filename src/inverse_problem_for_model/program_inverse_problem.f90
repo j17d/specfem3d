@@ -29,6 +29,8 @@
 
  program inverse_problem
 
+  implicit none
+
   ! MPI initialization
   call init_mpi()
 

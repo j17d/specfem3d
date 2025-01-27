@@ -41,6 +41,8 @@
 
 module user_noise_distribution
 
+  implicit none
+
 !daniel: TODO -- setting USE_PIERO_DISTRIBUTION = .true. will produce errors
 !            when using with the default example in "example/noise_tomography/"
 !            i left it here so that Max can run his example without changing this every time...

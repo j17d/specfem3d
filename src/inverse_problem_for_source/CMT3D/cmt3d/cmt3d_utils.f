@@ -3,11 +3,11 @@ c and outputs the strike-dip-rake of the best-fitting
 c double couple, and their moment. 
 
 	 subroutine mij(m,epsilon,s1,d1,r1,s2,d2,r2,m0,m00,iflag)
-	 implicit  REAL*8(A-H,O-Z)
+	 implicit  double precision(A-H,O-Z)
 
 	 dimension a(3,3),d(3),v(3,3),ae(3),an(3)
 	 dimension ae1(3),an1(3),an2(3),ae2(3)
-	 real*8  m(6), m0, m00
+  double precision  m(6), m0, m00
 	 common/mpa/ft,fd,fl,ft1,fd1,fl1,azt,aiht,azp,aihp,az0,aih0,
      *d,clvd
 
@@ -173,7 +173,7 @@ c	write(*,*) 'az,ih,for 0-axis:  ',az0,aih0
         end
 
       subroutine jacobi(a,n,np,d,v,nrot)
-      implicit  REAL*8(A-H,O-Z)
+      implicit  double precision(A-H,O-Z)
       parameter (nmax=100)
       dimension a(np,np),d(np),v(np,np),b(nmax),z(nmax)
       do 12 ip=1,n
@@ -264,7 +264,7 @@ c	write(*,*) 'az,ih,for 0-axis:  ',az0,aih0
       end
 
 	subroutine tdl(an,bn,ft,fd,fl)
-	implicit  REAL*8(A-H,O-Z)
+	implicit  double precision(A-H,O-Z)
 	dimension an(3),bn(3)
 	xn=an(1)
 	yn=an(2)
@@ -343,7 +343,7 @@ cwrite(*,*) 'fl  ',fl
 	end
 
 	subroutine azih(aa,az,aih)
-	implicit  REAL*8(A-H,O-Z)
+	implicit  double precision(A-H,O-Z)
 	dimension aa(3)
 	con=57.2957795
 	gx=aa(1)
@@ -379,9 +379,9 @@ c
 c       this subroutine converts eqk fault parameters to moment tensors
 c       for definitions see hiroo''s class notes
 c       
-	real*8 sphif,sdlt,slmda,moment
-	real*8 mrr,mtt,mpp,mrt,mrp,mtp
-	real*8 pi,phif,dlt,lmda
+  double precision sphif,sdlt,slmda,moment
+  double precision mrr,mtt,mpp,mrt,mrp,mtp
+  double precision pi,phif,dlt,lmda
 c       
 	pi=3.1415926
 	phif=sphif*pi/180

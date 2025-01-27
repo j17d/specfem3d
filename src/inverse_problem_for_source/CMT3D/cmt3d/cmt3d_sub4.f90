@@ -12,12 +12,12 @@ contains
     ! DIRECTION = 1/-1: entering/leaving with cmt par read from /write to cmtsolution file
     ! in terms of Mij, dep, lon and lat
 
-    real*8, intent(inout) :: cmt_par(NPARMAX)
-    real*8, intent(in) :: elat0, elon0
+    double precision, intent(inout) :: cmt_par(NPARMAX)
+    double precision, intent(in) :: elat0, elon0
     integer,intent(in)  :: npar,DIRECTION
 
-    real*8 :: th, phi, loc(3), gl(3), moment(3,3), elon,elat,edep
-    real*8 :: rmat(3,3)
+    double precision :: th, phi, loc(3), gl(3), moment(3,3), elon,elat,edep
+    double precision :: rmat(3,3)
 
     ! check input arguments
     if (DIRECTION /= 1 .and. DIRECTION /= -1) stop 'Error DIRECTION (1 or -1)'
@@ -83,11 +83,11 @@ contains
 
   subroutine calc_rot_matrix(elon,elat,rmat)
 
-    real*8,intent(in) :: elon, elat
-    real*8,intent(out) :: rmat(3,3)
-    real*8 :: th,phi
+    double precision,intent(in) :: elon, elat
+    double precision,intent(out) :: rmat(3,3)
+    double precision :: th,phi
 
-    th=(90-elat)*PI/180
+    th = (90-elat)*PI/180
     phi = elon*PI/180
 
     rmat(1,1)=dsin(th)*dcos(phi)

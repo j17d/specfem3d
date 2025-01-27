@@ -594,7 +594,7 @@ contains
     real(kind=dp), intent(out) :: gcarc, dist, baz
 
     real(kind=dp) :: slat, slon, rlat, rlon, den, num, cosarc
-    real(kind=dp) :: r=6371000._dp
+    real(kind=dp), parameter :: r = 6371000._dp
 
     !*** Pass in radian
     slat = deg2rad * slati
