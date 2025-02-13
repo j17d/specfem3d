@@ -39,9 +39,15 @@
 
   use constants, only: NGLLX,NGLLY,NGLLZ,FOUR_THIRDS,IMAIN,MAX_STRING_LEN,IIN
 
-  use generate_databases_par, only: ATTENUATION
+  use generate_databases_par, only: ANISOTROPY, ATTENUATION
 
-  use create_regions_mesh_ext_par, only: rhostore,kappastore,mustore,rho_vp,rho_vs,qkappa_attenuation_store,qmu_attenuation_store
+  use create_regions_mesh_ext_par, only: rhostore,kappastore,mustore,rho_vp,rho_vs,qkappa_attenuation_store,qmu_attenuation_store, &
+                                         c11store,c12store,c13store,c14store,c15store,c16store, &
+                                         c22store,c23store,c24store,c25store,c26store, &
+                                         c33store,c34store,c35store,c36store, &
+                                         c44store,c45store,c46store, &
+                                         c55store,c56store, &
+                                         c66store
 
   use shared_parameters, only: ADIOS_FOR_MESH,HDF5_ENABLED
 
@@ -172,6 +178,283 @@
   ! products rho*vp and rho*vs (used to speed up absorbing boundaries contributions)
   rho_vp(:,:,:,:) = rhostore(:,:,:,:) * vp_read(:,:,:,:)
   rho_vs(:,:,:,:) = rhostore(:,:,:,:) * vs_read(:,:,:,:)
+
+  if (ANISOTROPY) then
+    
+    ! c11
+    if (myrank == 0) write(IMAIN,*) '     reading in: c11.bin'
+
+    filename = prname_lp(1:len_trim(prname_lp))//'c11.bin'
+    open(unit=IIN,file=trim(filename),status='old',action='read',form='unformatted',iostat=ier)
+    if (ier /= 0) then
+      print *,'Error opening file: ',trim(filename)
+      stop 'Error reading c11.bin file'
+    endif
+
+    read(IIN) c11store
+    close(IIN)
+
+    ! c12
+    if (myrank == 0) write(IMAIN,*) '     reading in: c12.bin'
+
+    filename = prname_lp(1:len_trim(prname_lp))//'c12.bin'
+    open(unit=IIN,file=trim(filename),status='old',action='read',form='unformatted',iostat=ier)
+    if (ier /= 0) then
+      print *,'Error opening file: ',trim(filename)
+      stop 'Error reading c12.bin file'
+    endif
+
+    read(IIN) c12store
+    close(IIN)
+
+    ! c13
+    if (myrank == 0) write(IMAIN,*) '     reading in: c13.bin'
+
+    filename = prname_lp(1:len_trim(prname_lp))//'c13.bin'
+    open(unit=IIN,file=trim(filename),status='old',action='read',form='unformatted',iostat=ier)
+    if (ier /= 0) then
+      print *,'Error opening file: ',trim(filename)
+      stop 'Error reading c13.bin file'
+    endif
+
+    read(IIN) c13store
+    close(IIN)
+
+    ! c14
+    if (myrank == 0) write(IMAIN,*) '     reading in: c14.bin'
+
+    filename = prname_lp(1:len_trim(prname_lp))//'c14.bin'
+    open(unit=IIN,file=trim(filename),status='old',action='read',form='unformatted',iostat=ier)
+    if (ier /= 0) then
+      print *,'Error opening file: ',trim(filename)
+      stop 'Error reading c14.bin file'
+    endif
+
+    read(IIN) c14store
+    close(IIN)
+
+    ! c15
+    if (myrank == 0) write(IMAIN,*) '     reading in: c15.bin'
+
+    filename = prname_lp(1:len_trim(prname_lp))//'c15.bin'
+    open(unit=IIN,file=trim(filename),status='old',action='read',form='unformatted',iostat=ier)
+    if (ier /= 0) then
+      print *,'Error opening file: ',trim(filename)
+      stop 'Error reading c15.bin file'
+    endif
+
+    read(IIN) c15store
+    close(IIN)
+
+    ! c16
+    if (myrank == 0) write(IMAIN,*) '     reading in: c16.bin'
+
+    filename = prname_lp(1:len_trim(prname_lp))//'c16.bin'
+    open(unit=IIN,file=trim(filename),status='old',action='read',form='unformatted',iostat=ier)
+    if (ier /= 0) then
+      print *,'Error opening file: ',trim(filename)
+      stop 'Error reading c16.bin file'
+    endif
+
+    read(IIN) c16store
+    close(IIN)
+
+    ! c22
+    if (myrank == 0) write(IMAIN,*) '     reading in: c22.bin'
+
+    filename = prname_lp(1:len_trim(prname_lp))//'c22.bin'
+    open(unit=IIN,file=trim(filename),status='old',action='read',form='unformatted',iostat=ier)
+    if (ier /= 0) then
+      print *,'Error opening file: ',trim(filename)
+      stop 'Error reading c22.bin file'
+    endif
+
+    read(IIN) c22store
+    close(IIN)
+
+    ! c23
+    if (myrank == 0) write(IMAIN,*) '     reading in: c23.bin'
+
+    filename = prname_lp(1:len_trim(prname_lp))//'c23.bin'
+    open(unit=IIN,file=trim(filename),status='old',action='read',form='unformatted',iostat=ier)
+    if (ier /= 0) then
+      print *,'Error opening file: ',trim(filename)
+      stop 'Error reading c23.bin file'
+    endif
+
+    read(IIN) c23store
+    close(IIN)
+    
+    ! c24
+    if (myrank == 0) write(IMAIN,*) '     reading in: c24.bin'
+
+    filename = prname_lp(1:len_trim(prname_lp))//'c24.bin'
+    open(unit=IIN,file=trim(filename),status='old',action='read',form='unformatted',iostat=ier)
+    if (ier /= 0) then
+      print *,'Error opening file: ',trim(filename)
+      stop 'Error reading c24.bin file'
+    endif
+
+    read(IIN) c24store
+    close(IIN)
+
+    ! c25
+    if (myrank == 0) write(IMAIN,*) '     reading in: c25.bin'
+
+    filename = prname_lp(1:len_trim(prname_lp))//'c25.bin'
+    open(unit=IIN,file=trim(filename),status='old',action='read',form='unformatted',iostat=ier)
+    if (ier /= 0) then
+      print *,'Error opening file: ',trim(filename)
+      stop 'Error reading c25.bin file'
+    endif
+
+    read(IIN) c25store
+    close(IIN)
+
+    ! c26
+    if (myrank == 0) write(IMAIN,*) '     reading in: c26.bin'
+
+    filename = prname_lp(1:len_trim(prname_lp))//'c26.bin'
+    open(unit=IIN,file=trim(filename),status='old',action='read',form='unformatted',iostat=ier)
+    if (ier /= 0) then
+      print *,'Error opening file: ',trim(filename)
+      stop 'Error reading c26.bin file'
+    endif
+
+    read(IIN) c26store
+    close(IIN)
+
+    ! c33
+    if (myrank == 0) write(IMAIN,*) '     reading in: c33.bin'
+
+    filename = prname_lp(1:len_trim(prname_lp))//'c33.bin'
+    open(unit=IIN,file=trim(filename),status='old',action='read',form='unformatted',iostat=ier)
+    if (ier /= 0) then
+      print *,'Error opening file: ',trim(filename)
+      stop 'Error reading c33.bin file'
+    endif
+
+    read(IIN) c33store
+    close(IIN)
+
+    ! c34
+    if (myrank == 0) write(IMAIN,*) '     reading in: c34.bin'
+
+    filename = prname_lp(1:len_trim(prname_lp))//'c34.bin'
+    open(unit=IIN,file=trim(filename),status='old',action='read',form='unformatted',iostat=ier)
+    if (ier /= 0) then
+      print *,'Error opening file: ',trim(filename)
+      stop 'Error reading c34.bin file'
+    endif
+
+    read(IIN) c34store
+    close(IIN)
+    
+    ! c35
+    if (myrank == 0) write(IMAIN,*) '     reading in: c35.bin'
+
+    filename = prname_lp(1:len_trim(prname_lp))//'c35.bin'
+    open(unit=IIN,file=trim(filename),status='old',action='read',form='unformatted',iostat=ier)
+    if (ier /= 0) then
+      print *,'Error opening file: ',trim(filename)
+      stop 'Error reading c35.bin file'
+    endif
+
+    read(IIN) c35store
+    close(IIN)
+
+    ! c36
+    if (myrank == 0) write(IMAIN,*) '     reading in: c36.bin'
+
+    filename = prname_lp(1:len_trim(prname_lp))//'c36.bin'
+    open(unit=IIN,file=trim(filename),status='old',action='read',form='unformatted',iostat=ier)
+    if (ier /= 0) then
+      print *,'Error opening file: ',trim(filename)
+      stop 'Error reading c36.bin file'
+    endif
+
+    read(IIN) c36store
+    close(IIN)
+
+    ! c44
+    if (myrank == 0) write(IMAIN,*) '     reading in: c44.bin'
+
+    filename = prname_lp(1:len_trim(prname_lp))//'c44.bin'
+    open(unit=IIN,file=trim(filename),status='old',action='read',form='unformatted',iostat=ier)
+    if (ier /= 0) then
+      print *,'Error opening file: ',trim(filename)
+      stop 'Error reading c44.bin file'
+    endif
+
+    read(IIN) c44store
+    close(IIN)
+
+    ! c45
+    if (myrank == 0) write(IMAIN,*) '     reading in: c45.bin'
+
+    filename = prname_lp(1:len_trim(prname_lp))//'c45.bin'
+    open(unit=IIN,file=trim(filename),status='old',action='read',form='unformatted',iostat=ier)
+    if (ier /= 0) then
+      print *,'Error opening file: ',trim(filename)
+      stop 'Error reading c45.bin file'
+    endif
+
+    read(IIN) c45store
+    close(IIN)
+
+    ! c46
+    if (myrank == 0) write(IMAIN,*) '     reading in: c46.bin'
+
+    filename = prname_lp(1:len_trim(prname_lp))//'c46.bin'
+    open(unit=IIN,file=trim(filename),status='old',action='read',form='unformatted',iostat=ier)
+    if (ier /= 0) then
+      print *,'Error opening file: ',trim(filename)
+      stop 'Error reading c46.bin file'
+    endif
+
+    read(IIN) c46store
+    close(IIN)
+
+    ! c55
+    if (myrank == 0) write(IMAIN,*) '     reading in: c55.bin'
+
+    filename = prname_lp(1:len_trim(prname_lp))//'c55.bin'
+    open(unit=IIN,file=trim(filename),status='old',action='read',form='unformatted',iostat=ier)
+    if (ier /= 0) then
+      print *,'Error opening file: ',trim(filename)
+      stop 'Error reading c55.bin file'
+    endif
+
+    read(IIN) c55store
+    close(IIN)
+
+    ! c56
+    if (myrank == 0) write(IMAIN,*) '     reading in: c56.bin'
+
+    filename = prname_lp(1:len_trim(prname_lp))//'c56.bin'
+    open(unit=IIN,file=trim(filename),status='old',action='read',form='unformatted',iostat=ier)
+    if (ier /= 0) then
+      print *,'Error opening file: ',trim(filename)
+      stop 'Error reading c56.bin file'
+    endif
+
+    read(IIN) c56store
+    close(IIN)
+
+    ! c66
+    if (myrank == 0) write(IMAIN,*) '     reading in: c66.bin'
+
+    filename = prname_lp(1:len_trim(prname_lp))//'c66.bin'
+    open(unit=IIN,file=trim(filename),status='old',action='read',form='unformatted',iostat=ier)
+    if (ier /= 0) then
+      print *,'Error opening file: ',trim(filename)
+      stop 'Error reading c66.bin file'
+    endif
+
+    read(IIN) c66store
+    close(IIN)
+
+  endif
 
   ! gets attenuation arrays from files
   if (ATTENUATION) then
