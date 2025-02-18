@@ -274,6 +274,8 @@
           call update_displ_Newmark()
         endif
 
+        if(COUPLE_WITH_INJECTION_TECHNIQUE) call fetch_injection_wavefield()
+
         ! computes acoustic domain (first)
         if (ACOUSTIC_SIMULATION) call compute_forces_acoustic_forward_calling()
         ! computes elastic domain
