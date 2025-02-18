@@ -404,8 +404,8 @@
   use shared_parameters, only: COUPLE_WITH_INJECTION_TECHNIQUE,UNDO_ATTENUATION_AND_OR_PML
 
   ! wavefield injection
-  use specfem_par, only: NGLOB_AB
-  use specfem_par_elastic, only: accel
+  ! use specfem_par, only: NGLOB_AB
+  ! use specfem_par_elastic, only: accel
   ! boundary injection wavefield parts for saving together with b_absorb_field
   use specfem_par_coupling, only: b_boundary_injection_field
 
@@ -441,13 +441,14 @@
     !       this is slowing down the simulation a bit.
     !
     ! transfers acceleration to the CPU
-    call transfer_accel_from_device(NDIM*NGLOB_AB,accel, Mesh_pointer)
+    ! call transfer_accel_from_device(NDIM*NGLOB_AB,accel, Mesh_pointer)
 
-    ! adds boundary contribution from injected wavefield
-    call compute_coupled_injection_contribution_el(NGLOB_AB,accel,iphase,it)
+    ! ! adds boundary contribution from injected wavefield
+    ! call compute_coupled_injection_contribution_el(NGLOB_AB,accel,iphase,it)
 
-    ! transfers updated acceleration field back to the GPU
-    call transfer_accel_to_device(NDIM*NGLOB_AB,accel, Mesh_pointer)
+    ! ! transfers updated acceleration field back to the GPU
+    ! call transfer_accel_to_device(NDIM*NGLOB_AB,accel, Mesh_pointer)
+    call compute_coupled_injection_contribution_el_GPU(iphase,Mesh_pointer)
   endif
 
   if (UNDO_ATTENUATION_AND_OR_PML) then
@@ -510,9 +511,13 @@
   use specfem_par_elastic, only: ispec_is_elastic,rho_vp,rho_vs
 
   ! boundary coupling
-  use shared_parameters, only: COUPLE_WITH_INJECTION_TECHNIQUE,INJECTION_TECHNIQUE_TYPE,RECIPROCITY_AND_KH_INTEGRAL
+  !use shared_parameters, only: COUPLE_WITH_INJECTION_TECHNIQUE,INJECTION_TECHNIQUE_TYPE,RECIPROCITY_AND_KH_INTEGRAL
+  use shared_parameters, only: COUPLE_WITH_INJECTION_TECHNIQUE,INJECTION_TECHNIQUE_TYPE
+  ! use specfem_par_coupling, only: it_dsm, &
+  !   Veloc_dsm_boundary, Tract_dsm_boundary, Veloc_axisem, Tract_axisem, Tract_axisem_time, &
+  !   Veloc_specfem, Tract_specfem
   use specfem_par_coupling, only: it_dsm, &
-    Veloc_dsm_boundary, Tract_dsm_boundary, Veloc_axisem, Tract_axisem, Tract_axisem_time, &
+    Veloc_dsm_boundary, Tract_dsm_boundary, Veloc_axisem, Tract_axisem, &
     Veloc_specfem, Tract_specfem
   ! FK3D calculation
   use specfem_par_coupling, only: ipt_table, NP_RESAMP, Veloc_FK, Tract_FK
@@ -611,26 +616,27 @@
 
   ! gets velocity & stress for boundary points
   select case(INJECTION_TECHNIQUE_TYPE)
-  case (INJECTION_TECHNIQUE_IS_DSM)
-    ! DSM coupling
-    if (old_DSM_coupling_from_Vadim) then
-      if (mod(it_dsm,Ntime_step_dsm+1) == 0 .or. it == 1) then
-        call read_dsm_file(Veloc_dsm_boundary,Tract_dsm_boundary,num_abs_boundary_faces,it_dsm)
-      endif
-    else
-      !! MODIFS DE NOBU 2D
-    endif
+  !NQDU don't need 
+  ! case (INJECTION_TECHNIQUE_IS_DSM)
+  !   ! DSM coupling
+  !   if (old_DSM_coupling_from_Vadim) then
+  !     if (mod(it_dsm,Ntime_step_dsm+1) == 0 .or. it == 1) then
+  !       call read_dsm_file(Veloc_dsm_boundary,Tract_dsm_boundary,num_abs_boundary_faces,it_dsm)
+  !     endif
+  !   else
+  !     !! MODIFS DE NOBU 2D
+  !   endif
 
-  case (INJECTION_TECHNIQUE_IS_AXISEM)
-    ! AxiSEM coupling
-    call read_axisem_file(Veloc_axisem,Tract_axisem,num_abs_boundary_faces*NGLLSQUARE)
+  ! case (INJECTION_TECHNIQUE_IS_AXISEM)
+  !   ! AxiSEM coupling
+  !   call read_axisem_file(Veloc_axisem,Tract_axisem,num_abs_boundary_faces*NGLLSQUARE)
 
-    !! CD CD add this
-    if (RECIPROCITY_AND_KH_INTEGRAL) Tract_axisem_time(:,:,it) = Tract_axisem(:,:)
+  !   !! CD CD add this
+  !   if (RECIPROCITY_AND_KH_INTEGRAL) Tract_axisem_time(:,:,it) = Tract_axisem(:,:)
 
-  case (INJECTION_TECHNIQUE_IS_SPECFEM)
-    ! SPECFEM coupling
-    call read_specfem_file(Veloc_specfem,Tract_specfem,num_abs_boundary_faces*NGLLSQUARE,it)
+  ! case (INJECTION_TECHNIQUE_IS_SPECFEM)
+  !   ! SPECFEM coupling
+  !   call read_specfem_file(Veloc_specfem,Tract_specfem,num_abs_boundary_faces*NGLLSQUARE,it)
 
   case (INJECTION_TECHNIQUE_IS_FK)
     ! FK coupling
@@ -682,6 +688,8 @@
         case (INJECTION_TECHNIQUE_IS_DSM)                 !! To verify for NOBU version
           ! DSM coupling
           ! velocity
+          it_dsm = it_dsm - 1
+
           vx = - Veloc_dsm_boundary(1,it_dsm,igll,iface)
           vy = - Veloc_dsm_boundary(2,it_dsm,igll,iface)
           vz = - Veloc_dsm_boundary(3,it_dsm,igll,iface)
@@ -689,6 +697,8 @@
           tx = - Tract_dsm_boundary(1,it_dsm,igll,iface)
           ty = - Tract_dsm_boundary(2,it_dsm,igll,iface)
           tz = - Tract_dsm_boundary(3,it_dsm,igll,iface)
+
+          it_dsm = it_dsm + 1
 
         case (INJECTION_TECHNIQUE_IS_AXISEM)
           ! AxiSEM coupling
@@ -774,81 +784,54 @@
 
   end subroutine compute_coupled_injection_contribution_el
 
+
+
+!=============================================================================
+!
+! NQDU added
+! For coupling with external code, GPU version
+!
 !=============================================================================
 
-  subroutine read_dsm_file(Veloc_dsm_boundary,Tract_dsm_boundary,num_abs_boundary_faces,it_dsm)
+  subroutine compute_coupled_injection_contribution_el_GPU(iphase,Mesh_pointer)
 
   use constants
 
-  implicit none
+  use specfem_par, only: SAVE_STACEY,SIMULATION_TYPE
 
-  integer igll,it_dsm
-  integer iface,num_abs_boundary_faces,i,j
-  real(kind=CUSTOM_REAL) :: Veloc_dsm_boundary(3,Ntime_step_dsm,NGLLSQUARE,num_abs_boundary_faces)
-  real(kind=CUSTOM_REAL) :: Tract_dsm_boundary(3,Ntime_step_dsm,NGLLSQUARE,num_abs_boundary_faces)
+  use specfem_par, only:  num_abs_boundary_faces
 
-  real(kind=CUSTOM_REAL) :: dsm_boundary_tmp(3,Ntime_step_dsm,NGLLX,NGLLY)
+  ! boundary coupling
+  use shared_parameters, only: COUPLE_WITH_INJECTION_TECHNIQUE
+  ! FK3D calculation
 
-  it_dsm = 1
-
-  do iface = 1,num_abs_boundary_faces
-    igll = 0
-    do j = 1,NGLLY
-      do i = 1,NGLLX
-        igll = igll + 1
-        read(IIN_veloc_dsm) dsm_boundary_tmp(:,:,i,j)
-        Veloc_dsm_boundary(:,:,igll,iface) = dsm_boundary_tmp(:,:,i,j)
-        read(IIN_tract_dsm) dsm_boundary_tmp(:,:,i,j)
-        Tract_dsm_boundary(:,:,igll,iface) = dsm_boundary_tmp(:,:,i,j)
-      enddo
-    enddo
-  enddo
-
-  end subroutine read_dsm_file
-
-!=============================================================================
-
-  subroutine read_axisem_file(Veloc_axisem,Tract_axisem,nb)
-
-  use constants
+  use specfem_par_coupling, only: b_boundary_injection_field
 
   implicit none
 
-  integer :: nb
-  real(kind=CUSTOM_REAL) :: Veloc_axisem(3,nb)
-  real(kind=CUSTOM_REAL) :: Tract_axisem(3,nb)
+  ! communication overlap
+  integer,intent(in) :: iphase
 
-  read(IIN_veloc_dsm) Veloc_axisem, Tract_axisem
+  ! GPU_MODE variables
+  integer(kind=8),intent(in) :: Mesh_pointer
 
-  end subroutine read_axisem_file
 
-!=============================================================================
+  ! safety checks
+  if (.not. COUPLE_WITH_INJECTION_TECHNIQUE) return
 
-  subroutine read_specfem_file(Veloc_specfem,Tract_specfem,nb,it)
+  ! only add these contributions in first pass
+  if (iphase /= 1) return
 
-  use constants, only: myrank,CUSTOM_REAL,NDIM,IIN_veloc_dsm
+  ! checks if anything to do
+  if (num_abs_boundary_faces == 0) return
 
-  implicit none
+  ! only for forward wavefield
+  if (SIMULATION_TYPE /= 1) return
 
-  integer, intent(in) :: nb
-  real(kind=CUSTOM_REAL), intent(out) :: Veloc_specfem(NDIM,nb)
-  real(kind=CUSTOM_REAL), intent(out) :: Tract_specfem(NDIM,nb)
-  integer,intent(in) :: it
+  ! compute contribution in device
+  call compute_coupled_injection_contribution_el_device(Mesh_pointer,b_boundary_injection_field,&
+                                                        SAVE_STACEY)
 
-  ! local parameters
-  integer :: ier
 
-  ! reads velocity & traction
-  !read(IIN_veloc_dsm,iostat=ier) Veloc_specfem, Tract_specfem
-  ! w/ direct access
-  read(IIN_veloc_dsm,rec=it,iostat=ier) Veloc_specfem, Tract_specfem
-
-  ! check
-  if (ier /= 0) then
-    print *,'Error: rank ',myrank,'failed to read in wavefield (veloc & traction) at time step it = ',it
-    print *,'       Please check that the wavefield injection files proc***_sol_specfem.bin exists.'
-    call exit_MPI(myrank,'Error reading injection wavefield file')
-  endif
-
-  end subroutine read_specfem_file
+  end subroutine compute_coupled_injection_contribution_el_GPU
 

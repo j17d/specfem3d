@@ -803,6 +803,12 @@ typedef struct mesh_ {
   realw* d_accel_wd;
   realw* d_traction_wd;
 
+  // coupling with injection wavefield on interface
+  int is_couple_with_injection;
+  realw *d_veloc_inj, *d_tract_inj;
+  realw *d_b_boundary_injection_field;
+  realw *d_b_boundary_injection_potential;
+
   // for option NB_RUNS_FOR_ACOUSTIC_GPU
   int* run_number_of_the_source;
 

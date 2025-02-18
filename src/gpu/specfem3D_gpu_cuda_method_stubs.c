@@ -654,6 +654,12 @@ void FC_FUNC_(prepare_wavefield_discontinuity_device,
                              realw* face_normal_wd,
                              realw* face_jacobian2Dw_wd) {}
 
+void FC_FUNC_(transfer_injection_field_to_device,
+              TRANSFER_INJECTION_FIELD_TO_DEVICE)(
+                         int* size_face,
+                         realw* veloc_inj,realw* traction_inj,
+                         long* Mesh_pointer) {}
+
 void FC_FUNC_(prepare_cleanup_device,
               PREPARE_CLEANUP_DEVICE)(long* Mesh_pointer,
                                       int* ACOUSTIC_SIMULATION,
@@ -757,6 +763,17 @@ void FC_FUNC_(transfer_wavefield_discontinuity_to_device,
                          int* size_point, int* size_face,
                          realw* displ_wd, realw* accel_wd,
                          realw* traction_wd, long* Mesh_pointer) {}
+
+void FC_FUNC_(compute_coupled_injection_contribution_ac_device,
+              COMPUTE_COUPLED_INJECTION_CONTRIBUTION_AC_DEVICE) (long *Mesh_pointer,
+                                                      realw* b_boundary_injection_potential,
+                                                       int* SAVE_STACEY_f) {}
+
+void FC_FUNC_(compute_coupled_injection_contribution_el_device,
+              COMPUTE_COUPLED_INJECTION_CONTRIBUTION_EL_DEVICE)
+              (long* Mesh_pointer,
+               realw* b_boundary_injection_field,
+               int *SAVE_STACEY_f) {}
 
 void FC_FUNC_(transfer_b_rmemory_to_device,
               TRANSFER_B_RMEMORY_TO_DEVICE)(long* Mesh_pointer,
