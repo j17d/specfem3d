@@ -303,3 +303,97 @@ void FC_FUNC_(compute_stacey_viscoelastic_undoatt_cuda,
   GPU_ERROR_CHECKING("after compute_stacey_elastic_undoatt_kernel");
 }
 
+
+
+extern EXTERN_LANG
+void FC_FUNC_(compute_coupled_injection_contribution_el_device,
+              COMPUTE_COUPLED_INJECTION_CONTRIBUTION_EL_DEVICE)
+              (long* Mesh_pointer,
+               realw* b_boundary_injection_field,
+               int *SAVE_STACEY_f) {
+
+  TRACE("compute_coupled_injection_contribution_el_device");
+
+  Mesh* mp = (Mesh*)(*Mesh_pointer); //get mesh pointer out of fortran integer container
+  int SAVE_STACEY = *SAVE_STACEY_f;
+
+  // checks if anything to do
+  if (mp->d_num_abs_boundary_faces == 0) return;
+
+  // way 1
+  // > NGLLSQUARE==NGLL2==25, but we handle this inside kernel
+  //int blocksize = 32;
+
+  // way 2: seems sligthly faster
+  // > NGLLSQUARE==NGLL2==25, no further check inside kernel
+  int blocksize = NGLL2;
+
+  int num_blocks_x, num_blocks_y;
+  get_blocks_xy(mp->d_num_abs_boundary_faces,&num_blocks_x,&num_blocks_y);
+
+  dim3 grid(num_blocks_x,num_blocks_y);
+  dim3 threads(blocksize,1,1);
+
+  GPU_ERROR_CHECKING("between cudamemcpy and compute_stacey_elastic_injection_kernel");
+
+  if (mp->simulation_type == 1){
+    // combined forward/backward fields
+#ifdef USE_CUDA
+    if (run_cuda){
+      compute_stacey_elastic_injection_kernel<<<grid,threads,0,mp->compute_stream>>>(
+                                                                           mp->d_veloc_inj,
+                                                                           mp->d_tract_inj,
+                                                                           mp->d_accel,
+                                                                           mp->d_abs_boundary_ispec,
+                                                                           mp->d_abs_boundary_ijk,
+                                                                           mp->d_abs_boundary_normal,
+                                                                           mp->d_abs_boundary_jacobian2Dw,
+                                                                           mp->d_ibool,
+                                                                           mp->d_rho_vp,
+                                                                           mp->d_rho_vs,
+                                                                           mp->d_ispec_is_elastic,
+                                                                           mp->simulation_type,
+                                                                           SAVE_STACEY,
+                                                                           mp->d_num_abs_boundary_faces,
+                                                                           mp->d_b_boundary_injection_field);
+    }
+#endif
+#ifdef USE_HIP
+    if (run_hip){
+      hipLaunchKernelGGL(compute_stacey_elastic_injection_kernel, dim3(grid), dim3(threads), 0, mp->compute_stream,
+                                                                           mp->d_veloc_inj,
+                                                                           mp->d_tract_inj,
+                                                                           mp->d_accel,
+                                                                           mp->d_abs_boundary_ispec,
+                                                                           mp->d_abs_boundary_ijk,
+                                                                           mp->d_abs_boundary_normal,
+                                                                           mp->d_abs_boundary_jacobian2Dw,
+                                                                           mp->d_ibool,
+                                                                           mp->d_rho_vp,
+                                                                           mp->d_rho_vs,
+                                                                           mp->d_ispec_is_elastic,
+                                                                           mp->simulation_type,
+                                                                           SAVE_STACEY,
+                                                                           mp->d_num_abs_boundary_faces,
+                                                                           mp->d_b_boundary_injection_field);
+    }
+#endif
+
+  }
+
+  GPU_ERROR_CHECKING("compute_stacey_elastic_injection_kernel");
+
+  if (SAVE_STACEY) {
+    // explicitly wait until compute stream is done
+    // (cudaMemcpy implicitly synchronizes all other cuda operations)
+    gpuStreamSynchronize(mp->compute_stream);
+
+    // copies absorb_field values to CPU
+    size_t size = mp->d_num_abs_boundary_faces * NGLL2 * NDIM;
+    gpuMemcpy_tohost_realw(b_boundary_injection_field,mp->d_b_boundary_injection_field,size);
+    // writing is done in fortran routine
+  }
+
+  GPU_ERROR_CHECKING("after compute_stacey_elastic_injection_kernel");
+}
+

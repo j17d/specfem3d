@@ -107,6 +107,7 @@ void FC_FUNC_(prepare_constants_device,
                                         int* h_NB_RUNS_ACOUSTIC_GPU,
                                         int* FAULT_SIMULATION,
                                         int* IS_WAVEFIELD_DISCONTINUITY,
+                                        int* IS_COUPLE_WITH_INJECTION,
                                         int* UNDO_ATTENUATION_AND_OR_PML,
                                         int* PML_CONDITIONS) {
 
@@ -423,6 +424,16 @@ void FC_FUNC_(prepare_constants_device,
 
   // prescribed wavefield discontinuity
   mp->is_wavefield_discontinuity = *IS_WAVEFIELD_DISCONTINUITY;
+
+  // nqdu added
+  // couple with injection
+  mp->is_couple_with_injection = *IS_COUPLE_WITH_INJECTION;
+  if(mp->is_couple_with_injection) {
+    gpuMalloc_realw((void**)&(mp->d_veloc_inj),NDIM*NGLL2*(mp->d_num_abs_boundary_faces));
+    gpuMalloc_realw((void**)&(mp->d_tract_inj),NDIM*NGLL2*(mp->d_num_abs_boundary_faces));
+    gpuMalloc_realw((void**)&(mp->d_b_boundary_injection_field),NDIM*NGLL2*(mp->d_num_abs_boundary_faces));
+    gpuMalloc_realw((void**)&(mp->d_b_boundary_injection_potential),NGLL2*(mp->d_num_abs_boundary_faces));
+  }
 
   GPU_ERROR_CHECKING("prepare_constants_device");
 }
@@ -1591,6 +1602,7 @@ void FC_FUNC_(prepare_wavefield_discontinuity_device,
   gpuMalloc_realw((void**)&(mp->d_traction_wd),size);
 }
 
+
 /* ----------------------------------------------------------------------------------------------- */
 
 // cleanup
@@ -1877,6 +1889,31 @@ TRACE("prepare_cleanup_device");
     }
     if (*NOISE_TOMOGRAPHY == 3) gpuFree(mp->d_sigma_kl);
   }
+
+  // fix bug wavefield discontinuity
+  if(mp->is_wavefield_discontinuity) {
+    gpuFree(mp->d_displ_wd);
+    gpuFree(mp->d_accel_wd);
+    gpuFree(mp->d_accel_wd);
+    gpuFree(mp->d_traction_wd);
+    gpuFree(mp->d_ispec_to_elem_wd);
+    gpuFree(mp->d_boundary_to_iglob_wd);
+    gpuFree(mp->d_mass_in_wd);
+    gpuFree(mp->d_face_ispec_wd);
+    gpuFree(mp->d_face_ijk_wd);
+    gpuFree(mp->d_face_normal_wd);
+    gpuFree(mp->d_face_jacobian2Dw_wd);
+    gpuFree(mp->d_ibool_wd);
+  }
+
+  // couple with injection
+  if(mp->is_couple_with_injection) {
+    gpuFree(mp->d_veloc_inj);
+    gpuFree(mp->d_tract_inj);
+    gpuFree(mp->d_b_boundary_injection_field);
+    gpuFree(mp->d_b_boundary_injection_potential);
+  }
+
 
   // releases previous contexts
   gpuReset();
