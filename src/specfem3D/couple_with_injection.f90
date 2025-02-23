@@ -1955,6 +1955,7 @@ end subroutine fk_propagator_ac
      end select
   !!------------------------------------------------------------------------------------------------------
   enddo
+  close(85)
 
   if (allocated(ilayer_fk_input)) then
 
