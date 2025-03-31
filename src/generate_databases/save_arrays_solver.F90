@@ -457,8 +457,9 @@
 
   ! local parameters
   real(kind=CUSTOM_REAL), dimension(:,:,:,:), allocatable :: v_tmp
+  real(kind=CUSTOM_REAL), dimension(:), allocatable :: tmp_elem
   integer,dimension(:),allocatable :: v_tmp_i
-  integer :: ier,i,j
+  integer :: ier,i,j,ispec,ispec_irreg
   integer, dimension(:), allocatable :: iglob_tmp
   integer :: inum, num_points
   character(len=MAX_STRING_LEN) :: filename
@@ -686,6 +687,48 @@
   call write_VTK_data_gll_cr(nspec,nglob_unique, &
                              xstore_unique,ystore_unique,zstore_unique,ibool, &
                              qkappa_attenuation_store,filename)
+
+
+  ! outputs jacobian
+  if (SAVE_MESH_FILES_ADDITIONAL) then
+    v_tmp(:,:,:,:) = 0.0_CUSTOM_REAL
+    ! minimum jacobian per element
+    allocate(tmp_elem(nspec), stat=ier)
+    if (ier /= 0) stop 'Error allocating temporary tmp_elem array'
+    tmp_elem(:) = 0.0_CUSTOM_REAL
+    do ispec = 1,nspec
+      ispec_irreg = irregular_element_number(ispec)
+      ! irregular_element_number is 0 only if the element is regular
+      if (ispec_irreg /= 0) then
+        ! irregular element
+        v_tmp(:,:,:,ispec) = jacobianstore(:,:,:,ispec_irreg)
+        ! minimum jacobian
+        tmp_elem(ispec) = minval(jacobianstore(:,:,:,ispec_irreg))
+      else
+        ! regular element
+        v_tmp(:,:,:,ispec) = jacobian_regular
+        ! minimum jacobian
+        tmp_elem(ispec) = jacobian_regular
+      endif
+    enddo
+    ! bin file output
+    !open(unit=IOUT,file=prname(1:len_trim(prname))//'jacobian.bin',status='unknown',form='unformatted',iostat=ier)
+    !if (ier /= 0) stop 'error opening file jacobian.bin'
+    !write(IOUT) v_tmp
+    !close(IOUT)
+    ! VTK file output
+    !filename = prname(1:len_trim(prname))//'jacobian'
+    !call write_VTK_data_gll_cr(nspec,nglob_unique, &
+    !                           xstore_unique,ystore_unique,zstore_unique,ibool, &
+    !                           v_tmp,filename)
+    ! VTU file output - minimum jacobian values per element
+    filename = prname(1:len_trim(prname))//'jacobian_min'
+    call write_VTU_data_elem_cr_binary(nspec,nglob_unique, &
+                                       xstore_unique,ystore_unique,zstore_unique,ibool, &
+                                       tmp_elem,filename)
+    ! free memory
+    deallocate(tmp_elem)
+  endif
 
   ! frees temporary array
   deallocate(v_tmp)
