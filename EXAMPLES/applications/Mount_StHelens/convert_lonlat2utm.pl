@@ -87,8 +87,14 @@ sub geo2utm {
   #my($PI=pi);
   my($degrad)=pi/180.;
   my($raddeg)=180.0/pi;
-  my($semimaj)=6378206.4;
-  my($semimin)=6356583.8;
+
+  # Clarke 1866
+  #my($semimaj)=6378206.4;
+  #my($semimin)=6356583.8;
+  # WGS84 (World Geodetic System 1984)
+  my($semimaj)=6378137.0;
+  my($semimin)=6356752.314245;
+
   my($scfa)=0.9996;
 
 #! some extracts about UTM:
