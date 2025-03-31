@@ -69,14 +69,28 @@ DEGREE_TO_RAD = PI / 180.0
 mesh_scale_factor = 1.0
 mesh_origin = [0.0,0.0,0.0]
 
+# vertical exaggeration factor
+vertical_exaggeration = None
+
 ## sea-level plane
 use_sea_level_plane = True
 
 ## transparent sea-level plane
 use_transparent_sea_level_plane = False
 
+# shallow coast lines can lead to z-buffering issues with the sea-level plane.
+# as a work-around, one can try to add a boolean modifier to cut the plane with the main mesh object.
+# this might however lead to other issues... left here to give a try.
+add_sea_level_plane_modifier = False
+
+# shifts point above/below sea-level slightly up/down to get a sharper and steeper coastline for sea-level plane
+sea_level_separation = None
+
 # baseline shift for buildings (to move above SPECFEM mesh)
 shift_building_baseline = 0.0  # 0.0==no-shift default, or e.g. --shift-building-baseline=0.0005
+
+# location labels (white or black)
+location_labels_color = (0.05,0.05,0.05,1)  # white (0.9,0.9,0.9,1), black (0.05,0.05,0.05,1)
 
 # rendering output
 suppress_renderer_output = False
@@ -486,6 +500,40 @@ def setup_color_table(colormap, data_min, data_max):
             [0.5, 0.0,  0.0 ],  # X+ : darkred
         ]
 
+    elif colormap == 14:
+        # custom shakeUSGSblack
+        # starts with darker gray than the default USGS
+        print("  color map: shakeUSGSblack")
+        colors_rgb = [
+            [0.15, 0.15, 0.15], # black
+            [0.3,  0.3,  0.35],
+            [0.77, 0.81, 1.0 ], # II-III : light purple
+            [0.5,  1.0,  0.98], # IV: turquoise
+            [0.5,  1.0,  0.54], # V : green
+            [1.0,  0.98, 0.0 ], # VI : yellow
+            [1.0,  0.77, 0.0 ], # VII : orange
+            [0.99, 0.52, 0.0 ], # VIII: darkorange
+            [0.98, 0.0,  0.0 ],  # IX : red
+            [0.5, 0.0,  0.0 ],  # X+ : darkred
+        ]
+
+    elif colormap == 15:
+        # custom shake
+        # starts with dark colors than more light
+        print("  color map: shakeDark")
+        colors_rgb = [
+            [0.15, 0.15, 0.15], # black
+            [0.3,  0.3,  0.35], #
+            [0.5,  0.5,  0.7],  # II-III
+            [0.75, 0.75, 0.75], # IV
+            [1.0,  1.0,  1.0],  # V       white
+            [1.0,  0.98, 0.0 ], # VI      yellow
+            [1.0,  0.77, 0.0 ], # VII     orange
+            [0.99, 0.52, 0.0 ], # VIII    darkorange
+            [0.98, 0.0,  0.0 ], # IX      red
+            [0.7, 0.0,  0.0 ],  # X+      darkred
+        ]
+
     else:
         print("Warning: colormap with type {} is not supported, exiting...".format(colormap))
         sys.exit(1)
@@ -513,6 +561,7 @@ def setup_color_table(colormap, data_min, data_max):
 
 def convert_vtk_to_obj(vtk_file: str="", colormap: int=0, color_max=None) -> str:
     global mesh_scale_factor,mesh_origin
+    global vertical_exaggeration,sea_level_separation
 
     # Path to your .vtu file
     print("converting vtk file: ",vtk_file)
@@ -611,6 +660,14 @@ def convert_vtk_to_obj(vtk_file: str="", colormap: int=0, color_max=None) -> str
     print("  scale factor :",mesh_scale_factor)
     print("")
 
+    if vertical_exaggeration != None:
+        print("  using vertical exaggeration factor: ",vertical_exaggeration)
+        print("")
+
+    if sea_level_separation != None:
+        print("  using sea-level separation shift: ",sea_level_separation)
+        print("")
+
     # creates an array to store scaled points
     scaled_points = vtk.vtkPoints()
 
@@ -618,8 +675,20 @@ def convert_vtk_to_obj(vtk_file: str="", colormap: int=0, color_max=None) -> str
     for i in range(num_points):
         # translation by origin
         point = np.array(points.GetPoint(i)) - mesh_origin
+
         # uniform scaling
         scaled_point = point * mesh_scale_factor
+
+        # vertical exaggeration
+        if vertical_exaggeration != None:
+            scaled_point[2] = scaled_point[2] * vertical_exaggeration
+
+        # shift points above/below sea-level
+        if sea_level_separation != None:
+            # shift points above
+            if scaled_point[2] > 0.0: scaled_point[2] += sea_level_separation
+            if scaled_point[2] < 0.0: scaled_point[2] -= sea_level_separation
+
         # stores updated points
         scaled_points.InsertNextPoint(scaled_point)
 
@@ -1501,7 +1570,7 @@ def add_plane() -> None:
     """
     adds a plane at sea-level
     """
-    global use_sea_level_plane,use_transparent_sea_level_plane
+    global use_sea_level_plane,use_transparent_sea_level_plane,add_sea_level_plane_modifier
     global close_up_view
 
     # checks if anything to do
@@ -1538,6 +1607,31 @@ def add_plane() -> None:
             mat.diffuse_color = (0.8, 0.8, 0.8, 1)  # similar as background color to have an infinite background
         else:
             mat.diffuse_color = (0.135, 0.135, 0.135, 1)  # gray for better contrast
+
+    # adds the Boolean modifier
+    if add_sea_level_plane_modifier:
+        print("    adding sea-level plane - modifier using difference")
+        boolean_modifier = plane_object.modifiers.new(name="Boolean", type='BOOLEAN')
+
+        # Set the operation type
+        boolean_modifier.operation = 'DIFFERENCE'
+
+        # Set the operand object if provided
+        mesh_object = bpy.data.objects['output']
+        if mesh_object:
+            boolean_modifier.object = mesh_object
+        else:
+            print("    Warning: mesh object 'output' not found.")
+
+        # Set the solver type
+        boolean_modifier.solver = 'FAST'   # 'FAST' or 'EXACT'
+
+        # some further optimizations for the exact solver
+        if boolean_modifier.solver == 'EXACT':
+            #boolean_modifier.use_self = True           # self-intersection
+            #boolean_modifier.use_hole_tolerant = True  # better results when more tolerant, but slower
+            pass
+        print("    modifier added")
 
     plane_object.data.materials.append(mat)
 
@@ -1606,7 +1700,8 @@ def add_location_labels(locations_file: str="") -> None:
     """
     adds locations defined in file 
     """
-    global centered_view
+    global centered_view,use_white_location_labels
+    global location_labels_color
 
     # checks if anything to do
     if len(locations_file) == 0: return
@@ -1735,7 +1830,7 @@ def add_location_labels(locations_file: str="") -> None:
         # Set text material
         text_material = bpy.data.materials.new(name="TextMaterial")
         text_material.use_nodes = True
-        text_material.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (0.05, 0.05, 0.05, 1)
+        text_material.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = location_labels_color
         text_material.node_tree.nodes["Principled BSDF"].inputs["Alpha"].default_value = 1   # transparency
         text_material.node_tree.nodes["Principled BSDF"].inputs["Specular"].default_value = 0  # Reduce shine
         text_material.shadow_method = 'NONE'  # Blender 3.x
@@ -2207,10 +2302,10 @@ def plot_with_blender(vtk_file: str="", image_title: str="", colormap: int=0, co
 
 
 def usage() -> None:
-    print("usage: ./plot_with_blender.py [--vtk_file=file] [--title=my_mesh_name] [--colormap=val] [--color-max=val]")
+    print("usage: ./plot_with_blender.py [--vtk_file=file] [--title=my_mesh_name] [--colormap=val] [--color-max=val] [--vertical-exaggeration=val]")
     print("                              [--buildings=file] [--shift-buildings=val]")
     print("                              [--locations=file] [--utm-zone=ZoneNumber]")
-    print("                              [--no-sea-level] [--transparent-sea-level]")
+    print("                              [--no-sea-level] [--transparent-sea-level] [--sea-level-separation=val]")
     print("                              [--centered] [--closeup] [--small] [--anim]")
     print("                              [--with-cycles/--no-cycles] [--suppress]")
     print("                              [--help]")
@@ -2222,13 +2317,16 @@ def usage() -> None:
     print("                                                10==shakeGreen /11==shakeRed  /12==shakeUSGS /13==shakeUSGSgray")
     print("                                                 (default is shakeUSGSgray for shakemaps)")
     print("     --color-max               - fixes maximum value of colormap for moviedata to val, e.g., 1.e-7)")
+    print("     --vertical-exaggeration   - factor to scales vertical dimension")
     print("")
     print("     --buildings               - mesh file (.ply) with buildings to visualize for the area")
     print("     --shift-buildings         - moves buildings up, e.g., a factor 0.0005 (default is no shift==0.0)")
     print("     --locations               - file with location labels (using a format: #name #lat #lon)")
+    print("     --white-labels            - use white text for location labels")
     print("     --utm_zone                - use specified UTM zone number (1-60) with (+) for Northern (-) for Southern hemisphere (e.g., -58)")
     print("     --no-sea-level            - turns off sea-level plane")
     print("     --transparent-sea-level   - turns on transparency for sea-level plane")
+    print("     --sea-level-separation    - shift factor to move up/down points at sea-level for better sea-level separation")
     print("")
     print("     --centered                - centered camera view (looking from top straight down)")
     print("     --closeup                 - sets camera view closer to center of model")
@@ -2247,6 +2345,8 @@ if __name__ == '__main__':
     image_title = ""
     color_max = None
     colormap = -1
+    vertical_exaggeration = None
+    sea_level_separation_shift = None
     buildings_file = ""
     locations_file = ""
     animation = False
@@ -2293,6 +2393,8 @@ if __name__ == '__main__':
             use_sea_level_plane = False
         elif "--transparent-sea-level" in arg:
             use_transparent_sea_level_plane = True
+        elif "--sea-level-separation=" in arg:
+            sea_level_separation = float(arg.split('=')[1])
         elif "--vtk_file=" in arg:
             vtk_file = arg.split('=')[1]
         elif "--background-dark" in arg:
@@ -2303,12 +2405,15 @@ if __name__ == '__main__':
             world_background_color = (0,0,0,1)           # black world background
         elif "--locations=" in arg:
             locations_file = arg.split('=')[1]
+        elif "--white-labels" in arg:
+            location_labels_color = (0.9,0.9,0.9,1)      # white location labels
         elif "--utm_zone=" in arg:
-            str_val = arg.split('=')[1]
-            utm_zone = int(str_val)
+            utm_zone = int(arg.split('=')[1])
             if abs(utm_zone) < 1 or utm_zone > 60:
                 print(f"Invalid UTM zone entered: {utm_zone} - Please use zones from +/- [1,60]")
                 sys.exit(1)
+        elif "--vertical-exaggeration=" in arg:
+            vertical_exaggeration = float(arg.split('=')[1])
         elif i >= 8:
             print("argument not recognized: ",arg)
 

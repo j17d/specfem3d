@@ -237,8 +237,14 @@ def geo2utm(lon,lat,zone):
     PI      = math.pi
     degrad  = PI/180.0
     raddeg  = 180.0/PI
-    semimaj = 6378206.4
-    semimin = 6356583.8
+
+    # Clarke 1866
+    #semimaj = 6378206.4
+    #semimin = 6356583.8
+    # WGS84 (World Geodetic System 1984) - default
+    semimaj = 6378137.0
+    semimin = 6356752.314245
+
     scfa    = 0.9996
 
     # some extracts about UTM:
@@ -1196,16 +1202,26 @@ def netCDF_2_tomo(input_file,UTM_zone=None,mesh_area=None,maximum_depth=None):
     if 'geospatial_lat_min' in global_vars:
         model_lat_min = model_data.geospatial_lat_min
         model_lat_max = model_data.geospatial_lat_max
+        if isinstance(model_lat_min,str): model_lat_min = float(model_lat_min)
+        if isinstance(model_lat_max,str): model_lat_max = float(model_lat_max)
+
         if model_data.geospatial_lat_resolution:
             model_dlat = model_data.geospatial_lat_resolution
+            if isinstance(model_dlat,str): model_dlat = float(model_dlat)
 
         model_lon_min = model_data.geospatial_lon_min
         model_lon_max = model_data.geospatial_lon_max
+        if isinstance(model_lon_min,str): model_lon_min = float(model_lon_min)
+        if isinstance(model_lon_max,str): model_lon_max = float(model_lon_max)
+
         if model_data.geospatial_lon_resolution:
             model_dlon = model_data.geospatial_lon_resolution
+            if isinstance(model_dlon,str): model_dlon = float(model_dlon)
 
         model_depth_min = model_data.geospatial_vertical_min
         model_depth_max = model_data.geospatial_vertical_max
+        if isinstance(model_depth_min,str): model_depth_min = float(model_depth_min)
+        if isinstance(model_depth_max,str): model_depth_max = float(model_depth_max)
 
         print("  model range:")
         print("    lon   min/max = {} / {}".format(model_lon_min,model_lon_max))
@@ -1608,11 +1624,11 @@ def netCDF_2_tomo(input_file,UTM_zone=None,mesh_area=None,maximum_depth=None):
 
         # file output requires density in kg/m^3
         # determines scaling factor
-        if model_data.variables[var_name_rho].units in ["g.cm-3","g/cm3"]:
+        if model_data.variables[var_name_rho].units in ["g.cm-3","g/cm3","g/cm^3"]:
             # given in g/cm^3 -> kg/m^3
             # rho [kg/m^3] = rho * 1000 [g/cm^3]
             unit_scale = 1000
-        elif model_data.variables[var_name_rho].units in ["kg.cm-3","kg/cm3"]:
+        elif model_data.variables[var_name_rho].units in ["kg.cm-3","kg/cm3","kg/cm^3"]:
             # given in kg/cm^3 -> kg/m^3
             # rho [kg/m^3] = rho * 1000000 [kg/cm^3]
             unit_scale = 1000000
