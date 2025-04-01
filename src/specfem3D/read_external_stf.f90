@@ -25,7 +25,7 @@
 !
 !=====================================================================
 
-  subroutine read_external_source_time_function(isource,user_source_time_function,external_source_time_function_filename)
+  subroutine read_external_stf(isource,user_source_time_function,external_stf_filename)
 
 ! reads in an external source time function file
 
@@ -41,7 +41,7 @@
   !! when .not. USE_EXTERNAL_SOURCE_FILE they are equal to 1,1.
   real(kind=CUSTOM_REAL), dimension(NSTEP_STF, NSOURCES_STF), intent(inout) :: user_source_time_function
 
-  character(len=MAX_STRING_LEN),intent(in) :: external_source_time_function_filename
+  character(len=MAX_STRING_LEN),intent(in) :: external_stf_filename
 
   ! local variables below
   integer :: i,ier,str_len
@@ -69,17 +69,17 @@
 
   ! check file ending
   ! ".bin" for binary source time function files
-  str_len = len_trim(external_source_time_function_filename)
+  str_len = len_trim(external_stf_filename)
   if (str_len > 4) then
-    if (external_source_time_function_filename(str_len-3:str_len) == ".bin") then
+    if (external_stf_filename(str_len-3:str_len) == ".bin") then
       ! binary source time function file
       ! format: can only have numbers, no comment lines
       !         also, it must have the exact NSTEP length (and values) for the simulation as no further checks will be done
       !
       ! open binary file
-      open(IO_STF,file=trim(external_source_time_function_filename),form='unformatted',status='old',action='read',iostat=ier)
+      open(IO_STF,file=trim(external_stf_filename),form='unformatted',status='old',action='read',iostat=ier)
       if (ier /= 0) then
-        print *,'Error: could not open external binary source file: ',trim(external_source_time_function_filename)
+        print *,'Error: could not open external binary source file: ',trim(external_stf_filename)
         print *,'       for source index: ',isource
         stop 'Error opening external binary source time function file'
       endif
@@ -108,9 +108,9 @@
   !         stf_valueNSTEP
   !
   ! opens specified file
-  open(IO_STF,file=trim(external_source_time_function_filename),status='old',action='read',iostat=ier)
+  open(IO_STF,file=trim(external_stf_filename),status='old',action='read',iostat=ier)
   if (ier /= 0) then
-    print *,'Error: could not open external ASCII source file: ',trim(external_source_time_function_filename)
+    print *,'Error: could not open external ASCII source file: ',trim(external_stf_filename)
     print *,'       for source index: ',isource
     stop 'Error opening external ASCII source time function file'
   endif
@@ -126,7 +126,7 @@
       ! skip empty/comment lines
       if (len_trim(line) == 0) cycle
       if (line(1:1) == '#' .or. line(1:1) == '!') cycle
-      ! stop 'error in format of external_source_time_function_filename, no comments are allowed in it'
+      ! stop 'error in format of external_stf_filename, no comments are allowed in it'
 
       ! increases counter
       i = i + 1
@@ -136,16 +136,16 @@
 
   ! checks
   if (i < 1) then
-    print *,'Error: External ASCII source time function file ',trim(trim(external_source_time_function_filename)), &
+    print *,'Error: External ASCII source time function file ',trim(trim(external_stf_filename)), &
             'has no valid data;'
     print *,'       the number of time steps is < 1. Please check the file...'
-    stop 'Error: the number of time steps in external_source_time_function_filename is < 1'
+    stop 'Error: the number of time steps in external_stf_filename is < 1'
   endif
 
   if (i > NSTEP_STF) then
     print *
     print *,'****************************************************************************************'
-    print *,'Warning: ',trim(external_source_time_function_filename), &
+    print *,'Warning: ',trim(external_stf_filename), &
             ' contains ',i,' time steps'
     print *,'         only the first NSTEP_STF = ',NSTEP_STF,' will be read, all the others will be ignored.'
     print *,'****************************************************************************************'
@@ -154,7 +154,7 @@
 
   ! checks number of time steps read
   if (i < NSTEP_STF) then
-    print *,'Problem when reading external ASCII source time file: ', trim(external_source_time_function_filename)
+    print *,'Problem when reading external ASCII source time file: ', trim(external_stf_filename)
     print *,'  number of time steps in the simulation                  = ',NSTEP_STF
     print *,'  number of time steps read from the source time function = ',i
     print *,'Please make sure that the number of time steps in the external ASCII source file read is greater or &
@@ -178,7 +178,7 @@
       ! reads the STF values
       read(line,*,iostat=ier) stf_val
       if (ier /= 0) then
-        print *,'Problem when reading external ASCII source time file: ', trim(external_source_time_function_filename)
+        print *,'Problem when reading external ASCII source time file: ', trim(external_stf_filename)
         print *,'Please check, file format should be: '
         print *,'  # DT-time-step-size'
         print *,'  # stf-value'
@@ -193,7 +193,7 @@
       if (i == 1 .and. stf_val > SMALL_STF_VAL) then
         print *
         print *,'****************************************************************************************'
-        print *,'Warning: ',trim(external_source_time_function_filename), &
+        print *,'Warning: ',trim(external_stf_filename), &
                 ' starts with an STF value ',stf_val
         print *,'         Onset values should be close to zero to avoid numerical, high-frequency oscillations artifacts'
         print *,'****************************************************************************************'
@@ -215,5 +215,5 @@
   !tCPU = wtime() - tstart
   !print *,'debug: ascii read source ',isource,' - elapsed time: ',sngl(tCPU),'s'
 
-  end subroutine read_external_source_time_function
+  end subroutine read_external_stf
 
