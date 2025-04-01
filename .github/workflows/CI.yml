@@ -314,7 +314,7 @@ jobs:
         key: install-${{ runner.os }}-all
 
     - name: Install packages
-      if: steps.cache-intel-oneapi-ifx.outputs.cache-hit != 'true'
+      #if: steps.cache-intel-oneapi-ifx.outputs.cache-hit != 'true'
       run: |
         # old way
         #wget https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB
@@ -346,10 +346,11 @@ jobs:
         which icx
         icx --version
         echo ""
-        echo "icc --version"
-        which icc
-        icc --version
-        echo ""
+        # icc deprecated
+        #echo "icc --version"
+        #which icc
+        #icc --version
+        #echo ""
         echo "ifx --version"
         which ifx
         ifx --version
@@ -373,7 +374,7 @@ jobs:
         echo ""
         # infos
         which ifx
-        which icc
+        which icx
         which mpiifx
         echo "mpirun:"
         which mpirun
@@ -397,8 +398,8 @@ jobs:
         echo ""
         echo ""
         printenv >> $GITHUB_ENV
-        echo "CXX=icpc" >> $GITHUB_ENV
-        echo "CC=icc" >> $GITHUB_ENV
+        echo "CXX=icx" >> $GITHUB_ENV
+        echo "CC=icx" >> $GITHUB_ENV
         echo "FC=ifx" >> $GITHUB_ENV
         echo ""
 
@@ -423,7 +424,7 @@ jobs:
 
     - name: configure parallel debug
       run: |
-        ./configure --enable-debug --with-mpi FC=ifx CC=icc MPIFC=mpiifx MPI_INC="${I_MPI_ROOT}/include"
+        ./configure --enable-debug --with-mpi FC=ifx CC=icx MPIFC=mpiifx MPI_INC="${I_MPI_ROOT}/include"
 
     - name: make parallel debug
       run: |
