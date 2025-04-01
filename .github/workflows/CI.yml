@@ -188,7 +188,7 @@ jobs:
         sudo apt-get update
         echo ""
         # info
-        sudo -E apt-cache pkgnames intel | grep intel-oneapi
+        #sudo -E apt-cache pkgnames intel | grep intel-oneapi
         #echo ""
         echo "installing packages intel oneapi:"
         sudo apt-get install -y intel-oneapi-compiler-fortran-2023.2.2 intel-oneapi-compiler-dpcpp-cpp-and-cpp-classic-2023.2.2 intel-oneapi-mpi-2021.14 intel-oneapi-mpi-devel-2021.14
@@ -311,18 +311,11 @@ jobs:
       uses: actions/cache@v4
       with:
         path: /opt/intel/oneapi
-        key: install-${{ runner.os }}-all
+        key: install-${{ runner.os }}-ifx-all
 
     - name: Install packages
-      #if: steps.cache-intel-oneapi-ifx.outputs.cache-hit != 'true'
+      if: steps.cache-intel-oneapi-ifx.outputs.cache-hit != 'true'
       run: |
-        # old way
-        #wget https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB
-        #sudo apt-key add GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB  # deprecated warning
-        #sudo echo "deb https://apt.repos.intel.com/oneapi all main" | sudo tee /etc/apt/sources.list.d/oneAPI.list
-        # new way
-        #curl -Lo- https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB | sudo gpg --dearmor -o /usr/share/keyrings/oneapi-archive-keyring.gpg
-        #sudo tee /etc/apt/sources.list.d/oneAPI.list <<< "deb [signed-by=/usr/share/keyrings/oneapi-archive-keyring.gpg] https://apt.repos.intel.com/oneapi all main"
         # new way
         wget -O- https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB | gpg --dearmor | sudo tee /usr/share/keyrings/oneapi-archive-keyring.gpg > /dev/null
         echo "deb [signed-by=/usr/share/keyrings/oneapi-archive-keyring.gpg] https://apt.repos.intel.com/oneapi all main" | sudo tee /etc/apt/sources.list.d/oneAPI.list
@@ -330,10 +323,10 @@ jobs:
         sudo apt-get update
         echo ""
         # info
-        sudo -E apt-cache pkgnames intel | grep intel-oneapi
+        #sudo -E apt-cache pkgnames intel | grep intel-oneapi
         #echo ""
         echo "installing packages intel oneapi:"
-        sudo apt-get install -y intel-oneapi-compiler-fortran intel-oneapi-compiler-dpcpp-cpp-and-cpp-classic intel-oneapi-mpi intel-oneapi-mpi-devel
+        sudo apt-get install -y intel-oneapi-compiler-fortran intel-oneapi-compiler-dpcpp-cpp intel-oneapi-mpi intel-oneapi-mpi-devel
         echo ""
 
     - name: compiler infos
@@ -346,24 +339,10 @@ jobs:
         which icx
         icx --version
         echo ""
-        # icc deprecated
-        #echo "icc --version"
-        #which icc
-        #icc --version
-        #echo ""
         echo "ifx --version"
         which ifx
         ifx --version
         echo ""
-        # ifort no more provided - use ifx instead
-        #echo "ifort --version"
-        #which ifort
-        #ifort --version
-        #echo ""
-        # mpiifort no more provided - use mpiifx instead
-        #echo "mpiifort --version"
-        #which mpiifort
-        #mpiifort --version
         echo "mpiifx --version"
         which mpiifx
         mpiifx --version
@@ -405,7 +384,9 @@ jobs:
 
     - name: configure serial debug
       run: |
-        ./configure --enable-debug --without-mpi FC=ifx CC=icc
+        set +e # revert the default `set -e`
+        ./configure --enable-debug --without-mpi FC=ifx CC=icx
+        if [[ $? -ne 0 ]]; then echo "configuration failed:"; cat config.log; echo ""; echo "exiting..."; exit 1; fi
 
     - name: make serial debug
       run: |
@@ -415,7 +396,7 @@ jobs:
 
     - name: configure serial
       run: |
-        ./configure --without-mpi FC=ifx CC=icc
+        ./configure --without-mpi FC=ifx CC=icx
 
     - name: make serial
       run: |
@@ -424,7 +405,9 @@ jobs:
 
     - name: configure parallel debug
       run: |
+        set +e # revert the default `set -e`
         ./configure --enable-debug --with-mpi FC=ifx CC=icx MPIFC=mpiifx MPI_INC="${I_MPI_ROOT}/include"
+        if [[ $? -ne 0 ]]; then echo "configuration failed:"; cat config.log; echo ""; echo "exiting..."; exit 1; fi
 
     - name: make parallel debug
       run: |
@@ -434,7 +417,7 @@ jobs:
 
     - name: configure parallel
       run: |
-        ./configure --with-mpi FC=ifx CC=icc MPIFC=mpiifx MPI_INC="${I_MPI_ROOT}/include"
+        ./configure --with-mpi FC=ifx CC=icx MPIFC=mpiifx MPI_INC="${I_MPI_ROOT}/include"
 
     - name: make parallel
       run: |
