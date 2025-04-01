@@ -616,7 +616,7 @@
 
   ! gets velocity & stress for boundary points
   select case(INJECTION_TECHNIQUE_TYPE)
-  !NQDU don't need 
+  !NQDU don't need
   ! case (INJECTION_TECHNIQUE_IS_DSM)
   !   ! DSM coupling
   !   if (old_DSM_coupling_from_Vadim) then
@@ -799,7 +799,7 @@
 
   use specfem_par, only: SAVE_STACEY,SIMULATION_TYPE
 
-  use specfem_par, only:  num_abs_boundary_faces
+  use specfem_par, only: num_abs_boundary_faces
 
   ! boundary coupling
   use shared_parameters, only: COUPLE_WITH_INJECTION_TECHNIQUE
@@ -829,7 +829,7 @@
   if (SIMULATION_TYPE /= 1) return
 
   ! compute contribution in device
-  call compute_coupled_injection_contribution_el_device(Mesh_pointer,b_boundary_injection_field,&
+  call compute_coupled_injection_contribution_el_device(Mesh_pointer,b_boundary_injection_field, &
                                                         SAVE_STACEY)
 
 

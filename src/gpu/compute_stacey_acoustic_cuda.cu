@@ -282,7 +282,7 @@ void FC_FUNC_(compute_stacey_acoustic_undoatt_cuda,
   GPU_ERROR_CHECKING("compute_stacey_acoustic_undoatt_cuda");
 }
 
-extern EXTERN_LANG 
+extern EXTERN_LANG
 void FC_FUNC_(compute_coupled_injection_contribution_ac_device,
               COMPUTE_COUPLED_INJECTION_CONTRIBUTION_AC_DEVICE) (long *Mesh_pointer,
                                                       realw* b_boundary_injection_potential,
@@ -317,7 +317,7 @@ void FC_FUNC_(compute_coupled_injection_contribution_ac_device,
         SAVE_STACEY,mp->d_num_abs_boundary_faces,mp->d_b_boundary_injection_potential
       );
     }
-#endif 
+#endif
 #ifdef USE_HIP
     if (run_hip){
       hipLaunchKernelGGL(compute_stacey_acoustic_injection_kernel,dim3(grid), dim3(threads), 0, mp->compute_stream,

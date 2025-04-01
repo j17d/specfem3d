@@ -100,7 +100,7 @@
                                 NB_RUNS_ACOUSTIC_GPU, &
                                 FAULT_SIMULATION, &
                                 IS_WAVEFIELD_DISCONTINUITY, &
-                                COUPLE_WITH_INJECTION_TECHNIQUE,&
+                                COUPLE_WITH_INJECTION_TECHNIQUE, &
                                 UNDO_ATTENUATION_AND_OR_PML, &
                                 PML_CONDITIONS)
 

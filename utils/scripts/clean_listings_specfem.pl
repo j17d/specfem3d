@@ -177,12 +177,12 @@ foreach $name (@objects) {
 # do not move this before the above line in which we change the keyword "function"
     $line =~ s#use_ricker_time_function#USE_RICKER_TIME_FUNCTION#ogi;
     $line =~ s#print_source_time_function#PRINT_SOURCE_TIME_FUNCTION#ogi;
-    $line =~ s#external_source_time_function#EXTERNAL_SOURCE_TIME_FUNCTION#ogi;
     $line =~ s#sourceTimeFunction#sourceTimeFunction#ogi;
 
-    $line =~ s#external_stf#EXTERNAL_SOURCE_TIME_FUNCTION#ogi;
-    $line =~ s#EXTERNAL_SOURCE_TIME_FUNCTION_filename#external_source_time_function_filename#ogi;
-    $line =~ s#read_EXTERNAL_SOURCE_TIME_FUNCTION#read_external_source_time_function#ogi;
+    #$line =~ s#external_source_time_function#EXTERNAL_SOURCE_TIME_FUNCTION#ogi;
+    #$line =~ s#external_stf#EXTERNAL_SOURCE_TIME_FUNCTION#ogi;
+    #$line =~ s#EXTERNAL_SOURCE_TIME_FUNCTION_filename#external_source_time_function_filename#ogi;
+    #$line =~ s#read_EXTERNAL_SOURCE_TIME_FUNCTION#read_external_source_time_function#ogi;
     $line =~ s#USE_MAP_function#USE_MAP_FUNCTION#ogi;
 
     $line =~ s#enddo_LOOP_IJK#ENDDO_LOOP_IJK#ogi;
