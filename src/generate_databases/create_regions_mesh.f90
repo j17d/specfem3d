@@ -959,7 +959,7 @@ contains
 
   subroutine crm_ext_setup_jacobian(nodes_coords_ext_mesh, nnodes_ext_mesh, elmnts_ext_mesh, nelmnts_ext_mesh)
 
-  use constants, only: myrank,NDIM,NGLLX,NGLLY,NGLLZ,CUSTOM_REAL,MAX_STRING_LEN,OUTPUT_FILES
+  use constants, only: myrank,NDIM,NGLLX,NGLLY,NGLLZ,CUSTOM_REAL,MAX_STRING_LEN,OUTPUT_FILES,HUGEVAL,IMAIN
 
   use generate_databases_par, only: NGNOD
 
@@ -987,6 +987,9 @@ contains
   double precision, dimension(NGNOD) :: xelm,yelm,zelm
   double precision,parameter :: threshold_zero = 1.e-25
 
+  ! stats
+  real(kind=CUSTOM_REAL) :: jacobian_min,jacobian_min_glob,jacobian_max,jacobian_max_glob
+
   ! debug
   logical, parameter :: DEBUG_ELEMENT = .false.
   character(len=MAX_STRING_LEN) :: filename
@@ -1001,6 +1004,9 @@ contains
   ! initializes
   xix_regular = 0.0_CUSTOM_REAL
   jacobian_regular = 0.0_CUSTOM_REAL
+
+  jacobian_min = +HUGEVAL
+  jacobian_max = -HUGEVAL
 
   ! determines regular elements
   do ispec = 1, nspec
@@ -1023,6 +1029,10 @@ contains
                          etaxstore(1,1,1,ispec_irreg),etaystore(1,1,1,ispec_irreg),etazstore(1,1,1,ispec_irreg), &
                          gammaxstore(1,1,1,ispec_irreg),gammaystore(1,1,1,ispec_irreg),gammazstore(1,1,1,ispec_irreg), &
                          jacobianstore(1,1,1,ispec_irreg),xelm,yelm,zelm,dershape3D)
+
+      ! stats
+      if (minval(jacobianstore(:,:,:,ispec_irreg)) < jacobian_min) jacobian_min = minval(jacobianstore(:,:,:,ispec_irreg))
+      if (maxval(jacobianstore(:,:,:,ispec_irreg)) > jacobian_max) jacobian_max = maxval(jacobianstore(:,:,:,ispec_irreg))
     else
       ! sets flag for regular elements
       any_regular_elem = .true.
@@ -1035,7 +1045,7 @@ contains
       if (myrank == 0 .and. ispec == 1) then
         write(filename,'(a,i6.6,a)') trim(OUTPUT_FILES)//'/proc',myrank,'_debug_element'
         call write_VTK_data_points_elem(NGNOD,xelm,yelm,zelm,dble(jacobianstore(1,1,1,ispec_irreg)),filename)
-        print *,'  written out:',trim(filename)
+        print *,'  written out: ',trim(filename)
       endif
     endif
   enddo
@@ -1100,6 +1110,20 @@ contains
     ! saves regular values
     xix_regular = xix_reg(1,1,1)
     jacobian_regular  = jacobian_reg(1,1,1)
+
+    ! stats
+    if (jacobian_regular < jacobian_min) jacobian_min = jacobian_regular
+    if (jacobian_regular > jacobian_max) jacobian_max = jacobian_regular
+
+  endif
+
+  ! stats info
+  call min_all_cr(jacobian_min,jacobian_min_glob)
+  call max_all_cr(jacobian_max,jacobian_max_glob)
+  if (myrank == 0) then
+      write(IMAIN,*) '     mesh jacobian: min/max = ',jacobian_min_glob,'/',jacobian_max_glob
+      write(IMAIN,*)
+      call flush_IMAIN()
   endif
 
   end subroutine crm_ext_setup_jacobian

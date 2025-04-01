@@ -9,4 +9,4 @@
 	url = https://github.com/wjlei1990/pycmt3d
 [submodule "external_libs/ROCm-HIP-CPU"]
 	path = external_libs/ROCm-HIP-CPU
-	url = git@github.com:ROCm/HIP-CPU.git
+	url = https://github.com/ROCm/HIP-CPU.git

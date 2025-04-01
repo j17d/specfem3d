@@ -95,7 +95,7 @@
           enddo
           write(filename,'(a,i6.6,a)') trim(OUTPUT_FILES)//'/error_proc',myrank,'_element_with_invalid_jacobian'
           call write_VTK_data_points_elem(NGNOD,xelm,yelm,zelm,jacobian,filename)
-          print *,'  written out:',trim(filename)
+          print *,'  written out: ',trim(filename)
           print *,'Please check your mesh...'
           call exit_MPI(myrank,'Error negative or null 3D Jacobian found')
         endif
