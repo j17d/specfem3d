@@ -321,11 +321,11 @@ __global__ void compute_stacey_acoustic_injection_kernel(const realw* veloc_inj,
       nx = abs_boundary_normal[INDEX3(NDIM,NGLL2,0,igll,iface)];
       ny = abs_boundary_normal[INDEX3(NDIM,NGLL2,1,igll,iface)];
       nz = abs_boundary_normal[INDEX3(NDIM,NGLL2,2,igll,iface)];
-      
-      // n \cdot u 
+
+      // n \cdot u
       un = ux * nx + uy * ny + uz * nz;
       un += chi_dot /(cpl * rhol);
-    
+
       // gets associated, weighted jacobian
       jacobianw = abs_boundary_jacobian2Dw[INDEX2(NGLL2,igll,iface)];
 

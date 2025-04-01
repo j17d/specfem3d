@@ -911,7 +911,7 @@ __global__ void compute_stacey_elastic_undoatt_kernel(realw* veloc,
                                                       int num_abs_boundary_faces) ;
 
 // nqdu added
-__global__ void 
+__global__ void
 compute_stacey_elastic_injection_kernel(const realw* veloc_inj,
                                         const realw* tract_inj,
                                         realw* accel,
@@ -944,7 +944,7 @@ __global__ void compute_stacey_acoustic_injection_kernel(const realw* veloc_inj,
                                        int SAVE_STACEY,
                                        int num_abs_boundary_faces,
                                        field* b_boundary_injection_potential
-                                       );                                       
+                                       );
 
 //
 // src/gpu/kernels/enforce_free_surface_cuda_kernel.cu

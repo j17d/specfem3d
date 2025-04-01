@@ -180,7 +180,7 @@
   rho_vs(:,:,:,:) = rhostore(:,:,:,:) * vs_read(:,:,:,:)
 
   if (ANISOTROPY) then
-    
+
     ! c11
     if (myrank == 0) write(IMAIN,*) '     reading in: c11.bin'
 
@@ -284,7 +284,7 @@
 
     read(IIN) c23store
     close(IIN)
-    
+
     ! c24
     if (myrank == 0) write(IMAIN,*) '     reading in: c24.bin'
 
@@ -349,7 +349,7 @@
 
     read(IIN) c34store
     close(IIN)
-    
+
     ! c35
     if (myrank == 0) write(IMAIN,*) '     reading in: c35.bin'
 

@@ -566,7 +566,7 @@
           ! point index using table lookup
           ipt = ipt_table(igll,iface)
 
-          ! interpolates velocity/stress  
+          ! interpolates velocity/stress
           ! nqdu NOT CORRECT!!!
           ! vx_FK = cs1 * Veloc_FK(1,ipt,iim1) + cs2 * Veloc_FK(1,ipt,ii) + cs3 * Veloc_FK(1,ipt,iip1) + cs4 * Veloc_FK(1,ipt,iip2)
           ! vy_FK = cs1 * Veloc_FK(2,ipt,iim1) + cs2 * Veloc_FK(2,ipt,ii) + cs3 * Veloc_FK(2,ipt,iip1) + cs4 * Veloc_FK(2,ipt,iip2)
@@ -575,7 +575,7 @@
           ! tx_FK = cs1 * Tract_FK(1,ipt,iim1) + cs2 * Tract_FK(1,ipt,ii) + cs3 * Tract_FK(1,ipt,iip1) + cs4 * Tract_FK(1,ipt,iip2)
           ! ty_FK = cs1 * Tract_FK(2,ipt,iim1) + cs2 * Tract_FK(2,ipt,ii) + cs3 * Tract_FK(2,ipt,iip1) + cs4 * Tract_FK(2,ipt,iip2)
           ! tz_FK = cs1 * Tract_FK(3,ipt,iim1) + cs2 * Tract_FK(3,ipt,ii) + cs3 * Tract_FK(3,ipt,iip1) + cs4 * Tract_FK(3,ipt,iip2)
-          
+
           ! now displ/chi_dot are saved in veloc_fk/tract_fk
           ux_FK = cs1 * Veloc_FK(1,ipt,iim1) + cs2 * Veloc_FK(1,ipt,ii) + &
                   cs3 * Veloc_FK(1,ipt,iip1) + cs4 * Veloc_FK(1,ipt,iip2)
@@ -585,7 +585,7 @@
                   cs3 * Veloc_FK(3,ipt,iip1) + cs4 * Veloc_FK(3,ipt,iip2)
           chi_dot_FK = cs1 * Tract_FK(1,ipt,iim1) + cs2 * Tract_FK(1,ipt,ii) + &
                        cs3 * Tract_FK(1,ipt,iip1) + cs4 * Tract_FK(1,ipt,iip2)
-          
+
           ! velocity
           ! vx = - vx_FK
           ! vy = - vy_FK
@@ -642,7 +642,7 @@
         !       here, it is added to first undo the factor (rhol*cpl) used to add the velocity contribution to the traction together
         !       with another (rhol*cpl) used in the expressions of the Sommerfeld condition, where
         !          absorbl = potential_dot_acoustic(iglob) * jacobianw / cpl / rhol
-        
+
         un = ux*nx + uy*ny + uz*nz
         un = un + chi_dot / (rhol * cpl)
 
@@ -673,25 +673,25 @@
   subroutine compute_coupled_injection_contribution_ac_GPU(iphase,Mesh_pointer)
 
     use constants
-  
+
     use specfem_par, only: SAVE_STACEY,SIMULATION_TYPE
-  
-    use specfem_par, only:  num_abs_boundary_faces
-  
+
+    use specfem_par, only: num_abs_boundary_faces
+
     ! boundary coupling
     use shared_parameters, only: COUPLE_WITH_INJECTION_TECHNIQUE
     ! boundary injection wavefield parts for saving together with b_absorb_field
     use specfem_par_coupling, only: b_boundary_injection_potential
-  
+
     implicit none
-  
+
     ! communication overlap
     integer,intent(in) :: iphase
-  
+
     ! GPU_MODE variables
     integer(kind=8),intent(in) :: Mesh_pointer
 
-  
+
   ! safety checks
   if (.not. COUPLE_WITH_INJECTION_TECHNIQUE) return
 
@@ -703,13 +703,13 @@
 
   ! only for forward wavefield
   if (SIMULATION_TYPE /= 1) return
-  
-  
+
+
     ! compute contribution in device
-    call compute_coupled_injection_contribution_ac_device(Mesh_pointer,&
-                                                          b_boundary_injection_potential,&
+    call compute_coupled_injection_contribution_ac_device(Mesh_pointer, &
+                                                          b_boundary_injection_potential, &
                                                           SAVE_STACEY)
-  
-  
+
+
     end subroutine compute_coupled_injection_contribution_ac_GPU
-  
+
