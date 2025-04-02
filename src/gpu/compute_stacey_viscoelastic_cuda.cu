@@ -304,13 +304,13 @@ void FC_FUNC_(compute_stacey_viscoelastic_undoatt_cuda,
 }
 
 
+/* ----------------------------------------------------------------------------------------------- */
 
 extern EXTERN_LANG
 void FC_FUNC_(compute_coupled_injection_contribution_el_device,
-              COMPUTE_COUPLED_INJECTION_CONTRIBUTION_EL_DEVICE)
-              (long* Mesh_pointer,
-               realw* b_boundary_injection_field,
-               int *SAVE_STACEY_f) {
+              COMPUTE_COUPLED_INJECTION_CONTRIBUTION_EL_DEVICE)(long* Mesh_pointer,
+                                                                realw* b_boundary_injection_field,
+                                                                int *SAVE_STACEY_f) {
 
   TRACE("compute_coupled_injection_contribution_el_device");
 

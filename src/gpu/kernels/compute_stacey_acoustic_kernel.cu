@@ -258,23 +258,23 @@ __global__ void compute_stacey_acoustic_undoatt_kernel( field* potential_dot_aco
   }
 }
 
+/* ----------------------------------------------------------------------------------------------- */
 
 __global__ void compute_stacey_acoustic_injection_kernel(const realw* veloc_inj,
-                                                    const realw* tract_inj,
-                                               field* potential_dot_dot_acoustic,
-                                               int* abs_boundary_ispec,
-                                               int* abs_boundary_ijk,
-                                               realw* abs_boundary_normal,
-                                               realw* abs_boundary_jacobian2Dw,
-                                               int* d_ibool,
-                                               realw* rhostore,
-                                               realw* kappastore,
-                                               int* ispec_is_acoustic,
-                                               int SIMULATION_TYPE,
-                                               int SAVE_STACEY,
-                                               int num_abs_boundary_faces,
-                                               field* b_boundary_injection_potential
-                                               ) {
+                                                         const realw* tract_inj,
+                                                         field* potential_dot_dot_acoustic,
+                                                         int* abs_boundary_ispec,
+                                                         int* abs_boundary_ijk,
+                                                         realw* abs_boundary_normal,
+                                                         realw* abs_boundary_jacobian2Dw,
+                                                         int* d_ibool,
+                                                         realw* rhostore,
+                                                         realw* kappastore,
+                                                         int* ispec_is_acoustic,
+                                                         int SIMULATION_TYPE,
+                                                         int SAVE_STACEY,
+                                                         int num_abs_boundary_faces,
+                                                         field* b_boundary_injection_potential) {
 
   int igll = threadIdx.x;
   int iface = blockIdx.x + gridDim.x*blockIdx.y;

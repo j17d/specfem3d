@@ -290,6 +290,11 @@ void FC_FUNC_(compute_stacey_acoustic_undoatt_cuda,
                                                      int* iphasef,
                                                      int* FORWARD_OR_ADJOINT_f) {}
 
+void FC_FUNC_(compute_coupled_injection_contribution_ac_device,
+              COMPUTE_COUPLED_INJECTION_CONTRIBUTION_AC_DEVICE)(long *Mesh_pointer,
+                                                                realw* b_boundary_injection_potential,
+                                                                int* SAVE_STACEY_f) {}
+
 
 //
 // src/gpu/compute_stacey_viscoelastic_cuda.cu
@@ -305,6 +310,11 @@ void FC_FUNC_(compute_stacey_viscoelastic_undoatt_cuda,
               COMPUTE_STACEY_VISCOELASTIC_UNDOATT_CUDA)(long* Mesh_pointer,
                                                         int* iphasef,
                                                         int* FORWARD_OR_ADJOINT_f) {}
+
+void FC_FUNC_(compute_coupled_injection_contribution_el_device,
+              COMPUTE_COUPLED_INJECTION_CONTRIBUTION_EL_DEVICE)(long* Mesh_pointer,
+                                                                realw* b_boundary_injection_field,
+                                                                int *SAVE_STACEY_f) {}
 
 
 //
@@ -517,6 +527,8 @@ void FC_FUNC_(prepare_constants_device,
                                         int* SAVE_SEISMOGRAMS_ACCELERATION,int* SAVE_SEISMOGRAMS_PRESSURE,
                                         int* h_NB_RUNS_ACOUSTIC_GPU,
                                         int* FAULT_SIMULATION,
+                                        int* IS_WAVEFIELD_DISCONTINUITY,
+                                        int* IS_COUPLE_WITH_INJECTION,
                                         int* UNDO_ATTENUATION_AND_OR_PML,
                                         int* PML_CONDITIONS) {}
 
@@ -654,12 +666,6 @@ void FC_FUNC_(prepare_wavefield_discontinuity_device,
                              realw* face_normal_wd,
                              realw* face_jacobian2Dw_wd) {}
 
-void FC_FUNC_(transfer_injection_field_to_device,
-              TRANSFER_INJECTION_FIELD_TO_DEVICE)(
-                         int* size_face,
-                         realw* veloc_inj,realw* traction_inj,
-                         long* Mesh_pointer) {}
-
 void FC_FUNC_(prepare_cleanup_device,
               PREPARE_CLEANUP_DEVICE)(long* Mesh_pointer,
                                       int* ACOUSTIC_SIMULATION,
@@ -695,6 +701,7 @@ void FC_FUNC_(compute_smooth_gpu,
 void FC_FUNC_(get_smooth_gpu,
               GET_SMOOTH_gpu)(long * smooth_pointer,
                               realw * data_smooth) {}
+
 
 //
 // src/gpu/transfer_fields_cuda.cu
@@ -755,25 +762,18 @@ void FC_FUNC_(transfer_displ_to_device,
 void FC_FUNC_(transfer_pml_displ_from_device,
               TRANSFER_PML_DISPL_FROM_DEVICE)(int* size, realw* PML_displ_old, realw* PML_displ_new, long* Mesh_pointer) {}
 
+void FC_FUNC_(transfer_wavefield_discontinuity_to_device,
+              TRANSFER_WAVEFIELD_DISCONTINUITY_TO_DEVICE)(int* size_point, int* size_face,
+                                                          realw* displ_wd, realw* accel_wd,
+                                                          realw* traction_wd, long* Mesh_pointer) {}
+
+void FC_FUNC_(transfer_injection_field_to_device,
+              TRANSFER_INJECTION_FIELD_TO_DEVICE)(int* size_face,
+                                                  realw* veloc_inj,realw* traction_inj,
+                                                  long* Mesh_pointer) {}
+
 void FC_FUNC_(transfer_pml_displ_to_device,
               TRANSFER_PML_DISPL_TO_DEVICE)(int* size, realw* PML_displ_old, realw* PML_displ_new, long* Mesh_pointer) {}
-
-void FC_FUNC_(transfer_wavefield_discontinuity_to_device,
-              TRANSFER_WAVEFIELD_DISCONTINUITY_TO_DEVICE)(
-                         int* size_point, int* size_face,
-                         realw* displ_wd, realw* accel_wd,
-                         realw* traction_wd, long* Mesh_pointer) {}
-
-void FC_FUNC_(compute_coupled_injection_contribution_ac_device,
-              COMPUTE_COUPLED_INJECTION_CONTRIBUTION_AC_DEVICE) (long *Mesh_pointer,
-                                                      realw* b_boundary_injection_potential,
-                                                       int* SAVE_STACEY_f) {}
-
-void FC_FUNC_(compute_coupled_injection_contribution_el_device,
-              COMPUTE_COUPLED_INJECTION_CONTRIBUTION_EL_DEVICE)
-              (long* Mesh_pointer,
-               realw* b_boundary_injection_field,
-               int *SAVE_STACEY_f) {}
 
 void FC_FUNC_(transfer_b_rmemory_to_device,
               TRANSFER_B_RMEMORY_TO_DEVICE)(long* Mesh_pointer,
@@ -964,6 +964,16 @@ void FC_FUNC_(kernel_3_acoustic_cuda,
 
 
 //
+// src/gpu/wavefield_discontinuity_cuda.cu
+//
+
+void FC_FUNC_(wavefield_discontinuity_add_traction_cuda,
+              WAVEFIELD_DISCONTINUITY_ADD_TRACTION_CUDA)(int* size_points,
+                                                         int* size_faces,
+                                                         long* Mesh_pointer){}
+
+
+//
 // src/gpu/write_seismograms_cuda.cu
 //
 
@@ -979,15 +989,4 @@ void FC_FUNC_(compute_seismograms_cuda,
                                         int* ACOUSTIC_SIMULATION,
                                         int* ELASTIC_SIMULATION,
                                         int* USE_TRICK_FOR_BETTER_PRESSURE) {}
-
-//
-// src/gpu/wavefield_discontinuity_cuda.cu
-//
-
-void FC_FUNC_(wavefield_discontinuity_add_traction_cuda,
-              WAVEFIELD_DISCONTINUITY_ADD_TRACTION_CUDA)(int* size_points,
-                                                         int* size_faces,
-                                                         long* Mesh_pointer){}
-
-
 

@@ -207,7 +207,7 @@ void start_timing_gpu(gpu_event* start,gpu_event* stop){
 /* ----------------------------------------------------------------------------------------------- */
 
 void stop_timing_gpu(gpu_event* start,gpu_event* stop, const char* info_str){
-  realw time;
+  realw time = 0.0;
 
 #ifdef USE_CUDA
   // stops events
@@ -233,7 +233,7 @@ void stop_timing_gpu(gpu_event* start,gpu_event* stop, const char* info_str){
 /* ----------------------------------------------------------------------------------------------- */
 
 void stop_timing_gpu(gpu_event* start,gpu_event* stop, const char* info_str, realw* t){
-  realw time;
+  realw time = 0.0;
 
 #ifdef USE_CUDA
   // stops events

@@ -113,7 +113,7 @@ Kernel_2_noatt_iso_impl(const int nb_blocks_to_compute,
                         realw_const_p d_muv,
                         const int is_wavefield_discontinuity,
                         realw_const_p d_displ_wd,
-                        const int* d_ispec_to_element_wd,
+                        const int* d_ispec_to_elem_wd,
                         const int* d_ibool_wd,
                         const int pml_conditions,
                         const int* d_is_CPML,
@@ -532,26 +532,6 @@ __global__ void compute_coupling_elastic_ac_kernel(field* potential_dot_dot_acou
 
 
 //
-// src/gpu/kernels/wavefield_discontinuity_kernel.cu
-//
-
-__global__ void add_acceleration_discontinuity_kernel(
-                                  realw_const_p accel_wd,
-                                  realw_const_p mass_in_wd,
-                                  const int* boundary_to_iglob_wd,
-                                  const int size, realw* accel
-                                  );
-
-__global__ void add_traction_discontinuity_kernel(
-                                  realw_const_p traction_wd,
-                                  const int* face_ispec_wd,
-                                  const int* face_ijk_wd,
-                                  realw_const_p face_jacobian2Dw_wd,
-                                  const int* d_ibool,
-                                  const int size, realw* accel);
-
-
-//
 // src/gpu/kernels/compute_coupling_ocean_cuda_kernel.cu
 //
 
@@ -854,6 +834,22 @@ __global__ void compute_stacey_acoustic_undoatt_kernel( field* potential_dot_aco
                                                         int num_abs_boundary_faces,
                                                         int gravity) ;
 
+__global__ void compute_stacey_acoustic_injection_kernel(const realw* veloc_inj,
+                                                         const realw* tract_inj,
+                                                         field* potential_dot_dot_acoustic,
+                                                         int* abs_boundary_ispec,
+                                                         int* abs_boundary_ijk,
+                                                         realw* abs_boundary_normal,
+                                                         realw* abs_boundary_jacobian2Dw,
+                                                         int* d_ibool,
+                                                         realw* rhostore,
+                                                         realw* kappastore,
+                                                         int* ispec_is_acoustic,
+                                                         int SIMULATION_TYPE,
+                                                         int SAVE_STACEY,
+                                                         int num_abs_boundary_faces,
+                                                         field* b_boundary_injection_potential) ;
+
 
 //
 // src/gpu/kernels/compute_stacey_elastic_kernel.cu
@@ -910,41 +906,22 @@ __global__ void compute_stacey_elastic_undoatt_kernel(realw* veloc,
                                                       int* ispec_is_elastic,
                                                       int num_abs_boundary_faces) ;
 
-// nqdu added
-__global__ void
-compute_stacey_elastic_injection_kernel(const realw* veloc_inj,
-                                        const realw* tract_inj,
-                                        realw* accel,
-                                        int* abs_boundary_ispec,
-                                        int* abs_boundary_ijk,
-                                        realw* abs_boundary_normal,
-                                        realw* abs_boundary_jacobian2Dw,
-                                        int* d_ibool,
-                                        realw* rho_vp,
-                                        realw* rho_vs,
-                                        int* ispec_is_elastic,
-                                        int SIMULATION_TYPE,
-                                        int SAVE_STACEY,
-                                        int num_abs_boundary_faces,
-                                        realw* b_boundary_injection_field);
+__global__ void compute_stacey_elastic_injection_kernel(const realw* veloc_inj,
+                                                        const realw* tract_inj,
+                                                        realw* accel,
+                                                        int* abs_boundary_ispec,
+                                                        int* abs_boundary_ijk,
+                                                        realw* abs_boundary_normal,
+                                                        realw* abs_boundary_jacobian2Dw,
+                                                        int* d_ibool,
+                                                        realw* rho_vp,
+                                                        realw* rho_vs,
+                                                        int* ispec_is_elastic,
+                                                        int SIMULATION_TYPE,
+                                                        int SAVE_STACEY,
+                                                        int num_abs_boundary_faces,
+                                                        realw* b_boundary_injection_field) ;
 
-// nqdu added
-__global__ void compute_stacey_acoustic_injection_kernel(const realw* veloc_inj,
-                                            const realw* tract_inj,
-                                       field* potential_dot_dot_acoustic,
-                                       int* abs_boundary_ispec,
-                                       int* abs_boundary_ijk,
-                                       realw* abs_boundary_normal,
-                                       realw* abs_boundary_jacobian2Dw,
-                                       int* d_ibool,
-                                       realw* rhostore,
-                                       realw* kappastore,
-                                       int* ispec_is_acoustic,
-                                       int SIMULATION_TYPE,
-                                       int SAVE_STACEY,
-                                       int num_abs_boundary_faces,
-                                       field* b_boundary_injection_potential
-                                       );
 
 //
 // src/gpu/kernels/enforce_free_surface_cuda_kernel.cu
@@ -1200,6 +1177,23 @@ __global__ void transfer_surface_to_host_kernel(int* free_surface_ispec,
                                                 int* d_ibool,
                                                 realw* displ,
                                                 realw* noise_surface_movie) ;
+
+
+//
+// src/gpu/kernels/wavefield_discontinuity_kernel.cu
+//
+
+__global__ void add_acceleration_discontinuity_kernel(realw_const_p accel_wd,
+                                                      realw_const_p mass_in_wd,
+                                                      const int* boundary_to_iglob_wd,
+                                                      const int size, realw* accel) ;
+
+__global__ void add_traction_discontinuity_kernel(realw_const_p traction_wd,
+                                                  const int* face_ispec_wd,
+                                                  const int* face_ijk_wd,
+                                                  realw_const_p face_jacobian2Dw_wd,
+                                                  const int* d_ibool,
+                                                  const int size, realw* accel) ;
 
 #endif  // KERNEL_PROTO_CUDA_H
 

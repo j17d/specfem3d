@@ -282,11 +282,13 @@ void FC_FUNC_(compute_stacey_acoustic_undoatt_cuda,
   GPU_ERROR_CHECKING("compute_stacey_acoustic_undoatt_cuda");
 }
 
+/* ----------------------------------------------------------------------------------------------- */
+
 extern EXTERN_LANG
 void FC_FUNC_(compute_coupled_injection_contribution_ac_device,
-              COMPUTE_COUPLED_INJECTION_CONTRIBUTION_AC_DEVICE) (long *Mesh_pointer,
-                                                      realw* b_boundary_injection_potential,
-                                                       int* SAVE_STACEY_f) {
+              COMPUTE_COUPLED_INJECTION_CONTRIBUTION_AC_DEVICE)(long *Mesh_pointer,
+                                                                realw* b_boundary_injection_potential,
+                                                                int* SAVE_STACEY_f) {
 
   TRACE("compute_coupled_injection_contribution_ac_device");
 
