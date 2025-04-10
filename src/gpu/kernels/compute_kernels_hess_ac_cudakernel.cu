@@ -95,21 +95,21 @@ __global__ void compute_kernels_hess_ac_cudakernel(int* ispec_is_acoustic,
     rhol = rhostore[ijk_ispec_padded];
 
     // acceleration vector
-    compute_gradient_kernel(ijk,ispec,ispec_irreg,
+    compute_gradient_kernel(ijk,ispec_irreg,
                             scalar_field_accel,accel_loc,
                             d_hprime_xx,
                             d_xix,d_xiy,d_xiz,d_etax,d_etay,d_etaz,d_gammax,d_gammay,d_gammaz,
                             rhol,xix_regular,gravity);
 
     // acceleration vector from backward field
-    compute_gradient_kernel(ijk,ispec,ispec_irreg,
+    compute_gradient_kernel(ijk,ispec_irreg,
                             scalar_field_b_accel,b_accel_loc,
                             d_hprime_xx,
                             d_xix,d_xiy,d_xiz,d_etax,d_etay,d_etaz,d_gammax,d_gammay,d_gammaz,
                             rhol,xix_regular,gravity);
 
     // velocity vector from backward field
-    compute_gradient_kernel(ijk,ispec,ispec_irreg,
+    compute_gradient_kernel(ijk,ispec_irreg,
                             scalar_field_b_veloc,b_veloc_loc,
                             d_hprime_xx,
                             d_xix,d_xiy,d_xiz,d_etax,d_etay,d_etaz,d_gammax,d_gammay,d_gammaz,

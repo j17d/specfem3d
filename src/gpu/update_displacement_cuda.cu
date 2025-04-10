@@ -108,7 +108,7 @@ void FC_FUNC_(update_displacement_cuda,
                                                                             mp->d_PML_displ_old,
                                                                             mp->NSPEC_CPML,mp->d_CPML_to_spec,
                                                                             mp->d_ibool,
-                                                                            deltat,deltatsqover2,deltatover2);
+                                                                            deltatsqover2,deltatover2);
       }
 #endif
 #ifdef USE_HIP
@@ -118,7 +118,7 @@ void FC_FUNC_(update_displacement_cuda,
                                                                           mp->d_PML_displ_old,
                                                                           mp->NSPEC_CPML,mp->d_CPML_to_spec,
                                                                           mp->d_ibool,
-                                                                          deltat,deltatsqover2,deltatover2);
+                                                                          deltatsqover2,deltatover2);
       }
 #endif
     }
@@ -149,7 +149,7 @@ void FC_FUNC_(update_displacement_cuda,
                                                                             mp->d_PML_displ_new,
                                                                             mp->NSPEC_CPML,mp->d_CPML_to_spec,
                                                                             mp->d_ibool,
-                                                                            deltat,deltatsqover2,deltatover2);
+                                                                            deltatsqover2,deltatover2);
       }
 #endif
 #ifdef USE_HIP
@@ -159,7 +159,7 @@ void FC_FUNC_(update_displacement_cuda,
                                                                           mp->d_PML_displ_new,
                                                                           mp->NSPEC_CPML,mp->d_CPML_to_spec,
                                                                           mp->d_ibool,
-                                                                          deltat,deltatsqover2,deltatover2);
+                                                                          deltatsqover2,deltatover2);
       }
 #endif
 

@@ -87,7 +87,7 @@ Kernel_2_acoustic_single_impl(const int nb_blocks_to_compute,
                               realw_const_p minus_g,
                               realw* d_kappastore,
                               realw_const_p wgll_cube,
-                              const int FORWAR_OR_ADJOINT);
+                              const int FORWARD_OR_ADJOINT);
 
 
 //
@@ -262,7 +262,6 @@ Kernel_2_att_impl(int nb_blocks_to_compute,
                   realw_p epsilondev_trace,
                   realw_p epsilon_trace_over_3,
                   const int SIMULATION_TYPE,
-                  const int NSPEC,
                   realw_const_p factor_common,
                   realw_p R_xx,realw_p R_yy,realw_p R_xy,realw_p R_xz,realw_p R_yz,
                   realw_p R_trace,
@@ -328,7 +327,6 @@ __global__ void UpdateDispVeloc_PML_kernel(realw* displ,
                                            const int NSPEC_CPML,
                                            const int* d_CPML_to_spec,
                                            const int* d_ibool,
-                                           const realw deltat,
                                            const realw deltatsqover2,
                                            const realw deltatover2) ;
 
@@ -363,9 +361,7 @@ __global__ void add_source_main_rec_noise_cuda_kernel(int* d_ibool,
 //
 
 __global__ void add_sources_ac_SIM_TYPE_2_OR_3_kernel(field* potential_dot_dot_acoustic,
-                                                      int nrec,
                                                       int it,
-                                                      int NSTEP_BETWEEN_ADJSRC,
                                                       field* source_adjoint,
                                                       realw* xir_store,
                                                       realw* etar_store,
@@ -373,8 +369,7 @@ __global__ void add_sources_ac_SIM_TYPE_2_OR_3_kernel(field* potential_dot_dot_a
                                                       int* d_ibool,
                                                       int* ispec_is_acoustic,
                                                       int* ispec_selected_recloc,
-                                                      int nadj_rec_local,
-                                                      realw* kappastore) ;
+                                                      int nadj_rec_local) ;
 
 
 //
@@ -382,9 +377,7 @@ __global__ void add_sources_ac_SIM_TYPE_2_OR_3_kernel(field* potential_dot_dot_a
 //
 
 __global__ void add_sources_el_SIM_TYPE_2_OR_3_kernel(realw* accel,
-                                                      int nrec,
                                                       int it,
-                                                      int NSTEP_BETWEEN_ADJSRC,
                                                       field* source_adjoint,
                                                       realw* xir_store,
                                                       realw* etar_store,
@@ -445,23 +438,6 @@ __global__ void compute_acoustic_seismogram_kernel(int nrec_local,
                                                    realw* d_c25store,realw* d_c26store,realw* d_c33store,
                                                    realw* d_c34store,realw* d_c35store,realw* d_c36store,
                                                    int it);
-
-__global__ void compute_acoustic_vectorial_seismogram_kernel(int nrec_local,
-                                                             int*  d_ispec_is_acoustic,
-                                                             field* scalar_potential,
-                                                             realw* seismograms,
-                                                             realw* d_rhostore,
-                                                             int* d_ibool,
-                                                             int* d_irregular_element_number,
-                                                             realw* hxir_store, realw* hetar_store, realw* hgammar_store,
-                                                             realw* d_xix, realw* d_xiy, realw* d_xiz,
-                                                             realw* d_etax, realw* d_etay, realw* d_etaz,
-                                                             realw* d_gammax, realw* d_gammay, realw* d_gammaz,
-                                                             realw xix_regular,
-                                                             realw* d_hprime_xx,
-                                                             realw* nu_rec,
-                                                             int* ispec_selected_rec_loc,
-                                                             int it);
 
 
 //
@@ -674,7 +650,6 @@ __global__ void compute_kernels_acoustic_kernel(int* ispec_is_acoustic,
                                                 realw* d_gammax,realw* d_gammay,realw* d_gammaz,
                                                 realw xix_regular,
                                                 field* potential_acoustic,
-                                                field* potential_dot_dot_acoustic,
                                                 field* b_potential_acoustic,
                                                 field* b_potential_dot_dot_acoustic,
                                                 realw* rho_ac_kl,
@@ -1004,6 +979,155 @@ __global__ void kernel_3_veloc_cuda_device(realw_p veloc,
                                            realw_p accel,
                                            int size,
                                            realw deltatover2) ;
+
+
+//
+// src/gpu/kernels/lts_assembly_mpi_kernel.cu
+//
+
+__global__ void prepare_reduced_boundary_lts_accel_on_device(realw* d_accel,
+                                                             realw* d_send_accel_buffer,
+                                                             int num_interface_p_refine_boundary,
+                                                             int* interface_p_refine_boundary,
+                                                             int max_nibool_interfaces_boundary,
+                                                             int ilevel) ;
+
+__global__ void assemble_reduced_boundary_lts_accel_on_device(realw* d_accel,
+                                                              realw* d_send_accel_buffer,
+                                                              int num_interface_p_refine_boundary,
+                                                              int* interface_p_refine_boundary,
+                                                              int max_nibool_interfaces_boundary,
+                                                              int ilevel) ;
+
+__global__ void assemble_boundary_lts_accel_on_device(realw* d_accel,
+                                                      realw* d_send_accel_buffer,
+                                                      int num_interfaces_ext_mesh,
+                                                      int* num_interface_p_refine_ibool,
+                                                      int* interface_p_refine_ibool,
+                                                      int max_nibool_interfaces_ext_mesh,
+                                                      int ilevel) ;
+
+__global__ void prepare_boundary_lts_accel_on_device(realw* d_accel,
+                                                     realw* d_send_accel_buffer,
+                                                     int num_interfaces_ext_mesh,
+                                                     int* num_interface_p_refine_ibool,
+                                                     int* interface_p_refine_ibool,
+                                                     int max_nibool_interfaces_ext_mesh,
+                                                     int ilevel) ;
+
+
+//
+// src/gpu/kernels/lts_compute_forces_viscoelastic_kernel.cu
+//
+
+__global__ void compute_forces_viscoelastic_cuda_lts_kernel (const int nb_blocks_to_compute,
+                                                             const int* d_ibool,
+                                                             const int* d_irregular_element_number,
+                                                             realw_const_p d_displ,
+                                                             realw* d_accel,
+                                                             realw_const_p d_xix, realw_const_p d_xiy, realw_const_p d_xiz,
+                                                             realw_const_p d_etax, realw_const_p d_etay, realw_const_p d_etaz,
+                                                             realw_const_p d_gammax, realw_const_p d_gammay, realw_const_p d_gammaz,
+                                                             const realw xix_regular, const realw jacobian_regular,
+                                                             realw_const_p d_hprime_xx,
+                                                             realw_const_p d_hprimewgll_xx,
+                                                             realw_const_p d_wgllwgll_xy,
+                                                             realw_const_p d_wgllwgll_xz,
+                                                             realw_const_p d_wgllwgll_yz,
+                                                             realw_const_p d_kappav, realw_const_p d_muv,
+                                                             const int* element_list) ;
+
+__global__ void setup_lts_boundary_array(int* ibool_from,
+                                         int* ilevel_from,
+                                         int num_ibool_tofrom,
+                                         realw* displ_p,
+                                         realw* displ_tmp,
+                                         int nglob_ab) ;
+
+__global__ void lts_newmark_update_kernel_slow(realw* displ,
+                                               realw* veloc,
+                                               realw* accel,
+                                               realw* rmassx,
+                                               int ilevel,
+                                               int step_m,
+                                               int NGLOB_AB,
+                                               int num_p_level,
+                                               realw deltat_lts,
+                                               realw* displ_global,
+                                               realw* veloc_global) ;
+
+__global__ void lts_newmark_update_kernel_P(realw* displ,
+                                            realw* veloc,
+                                            realw* accel,
+                                            realw* rmassxyz,
+                                            realw* rmassxyz_mod,
+                                            realw* cmassxyz,
+                                            int ilevel,
+                                            int step_m,
+                                            int NGLOB_AB,
+                                            int NGLOB_PLEVELS_END,
+                                            int num_p_level,
+                                            realw deltat_lts,
+                                            realw* displ_global,
+                                            realw* veloc_global) ;
+
+__global__ void lts_newmark_update_kernel_P2(realw* displ,
+                                             realw* veloc,
+                                             realw* accel,
+                                             realw* rmassxyz,
+                                             realw* rmassxyz_mod,
+                                             int ilevel,
+                                             int step_m,
+                                             int NGLOB_AB,
+                                             int NGLOB_PLEVELS_START,
+                                             int NGLOB_PLEVELS,
+                                             int num_p_level,
+                                             realw deltat_lts,
+                                             realw* displ_global,
+                                             realw* veloc_global) ;
+
+__global__ void lts_newmark_update_kernel_R(realw* displ,
+                                            realw* veloc,
+                                            realw* accel,
+                                            realw* rmassxyz,
+                                            realw* rmassxyz_mod,
+                                            int ilevel,
+                                            int step_m,
+                                            int NGLOB_AB,
+                                            int num_p_level,
+                                            realw deltat_lts,
+                                            realw* displ_global,
+                                            realw* veloc_global,
+                                            int num_p_level_coarser_to_update,
+                                            int* p_level_coarser_to_update,
+                                            int* iglob_p_refine) ;
+
+__global__ void lts_newmark_update_displ_kernel(realw* displ,
+                                                realw* displ_global,
+                                                int size,
+                                                int num_p_level) ;
+
+__global__ void zero_accel_kernel_P(realw* accel,
+                                    int NGLOB_PLEVELS_END) ;
+
+__global__ void zero_accel_kernel_R(realw* accel,
+                                    int num_p_level_coarser_to_update,
+                                    int* p_level_coarser_to_update) ;
+
+__global__ void set_finer_initial_condition_fast_kernel_P(realw* displ_p,
+                                                          int ilevel,
+                                                          int NGLOB_AB,
+                                                          int NGLOB_PLEVELS_END) ;
+
+__global__ void set_finer_initial_condition_fast_kernel_R(realw* displ_p,
+                                                          int ilevel,
+                                                          int NGLOB_AB,
+                                                          int num_p_level_coarser_to_update,
+                                                          int* p_level_coarser_to_update) ;
+
+__global__ void set_finer_initial_condition_kernel(realw* displ_p,
+                                                   int ilevel,
+                                                   int NGLOB_AB) ;
 
 
 //

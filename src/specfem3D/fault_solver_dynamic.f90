@@ -3311,7 +3311,7 @@ contains
     bc => faults(ifault)
 
     ! copies data back to CPU
-    call transfer_fault_data_to_host(Fault_pointer, ifault-1, bc%nspec, bc%nglob, bc%D, bc%V, bc%T)
+    call transfer_fault_data_to_host(Fault_pointer, ifault-1, bc%nglob, bc%D, bc%V, bc%T)
 
     ! copies dataT back to CPU
     call transfer_dataT_to_host(Fault_pointer, ifault-1, bc%dataT%dat, it)

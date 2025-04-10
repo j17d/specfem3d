@@ -573,7 +573,7 @@ Kernel_2_acoustic_single_impl(const int nb_blocks_to_compute,
                               realw_const_p minus_g,
                               realw* d_kappastore,
                               realw_const_p wgll_cube,
-                              const int FORWAR_OR_ADJOINT){
+                              const int FORWARD_OR_ADJOINT){
 
   // block-id == number of local element id in phase_ispec array
   int bx = blockIdx.y*gridDim.x+blockIdx.x;

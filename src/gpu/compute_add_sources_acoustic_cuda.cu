@@ -199,7 +199,6 @@ extern EXTERN_LANG
 void FC_FUNC_(add_sources_ac_sim_2_or_3_cuda,
               ADD_SOURCES_AC_SIM_2_OR_3_CUDA)(long* Mesh_pointer,
                                               realw* h_source_adjoint,
-                                              int* nrec,
                                               int* nadj_rec_local,
                                               int* NTSTEP_BETWEEN_READ_ADJSRC,
                                               int* it) {
@@ -285,7 +284,7 @@ void FC_FUNC_(add_sources_ac_sim_2_or_3_cuda,
 #ifdef USE_CUDA
   if (run_cuda){
     add_sources_ac_SIM_TYPE_2_OR_3_kernel<<<grid,threads,0,mp->compute_stream>>>(mp->d_potential_dot_dot_acoustic,
-                                                                                  *nrec,it_index,*NTSTEP_BETWEEN_READ_ADJSRC,
+                                                                                  it_index,
                                                                                   mp->d_source_adjoint,
                                                                                   mp->d_hxir_adj,
                                                                                   mp->d_hetar_adj,
@@ -293,15 +292,14 @@ void FC_FUNC_(add_sources_ac_sim_2_or_3_cuda,
                                                                                   mp->d_ibool,
                                                                                   mp->d_ispec_is_acoustic,
                                                                                   mp->d_ispec_selected_adjrec_loc,
-                                                                                  mp->nadj_rec_local,
-                                                                                  mp->d_kappastore);
+                                                                                  mp->nadj_rec_local);
   }
 #endif
 #ifdef USE_HIP
   if (run_hip){
     hipLaunchKernelGGL(add_sources_ac_SIM_TYPE_2_OR_3_kernel, dim3(grid), dim3(threads), 0, mp->compute_stream,
                                                               mp->d_potential_dot_dot_acoustic,
-                                                              *nrec,it_index,*NTSTEP_BETWEEN_READ_ADJSRC,
+                                                              it_index,
                                                               mp->d_source_adjoint,
                                                               mp->d_hxir_adj,
                                                               mp->d_hetar_adj,
@@ -309,8 +307,7 @@ void FC_FUNC_(add_sources_ac_sim_2_or_3_cuda,
                                                               mp->d_ibool,
                                                               mp->d_ispec_is_acoustic,
                                                               mp->d_ispec_selected_adjrec_loc,
-                                                              mp->nadj_rec_local,
-                                                              mp->d_kappastore);
+                                                              mp->nadj_rec_local);
   }
 #endif
 

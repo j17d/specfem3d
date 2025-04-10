@@ -85,10 +85,17 @@ void FC_FUNC_(compute_stacey_viscoelastic_cuda,
 
   if (FORWARD_OR_ADJOINT == 0){
     // combined forward/backward fields
+    realw* veloc = mp->d_veloc;
+    realw* accel = mp->d_accel;
+    // LTS simulation uses veloc_p(:,:,num_p_level) array
+    if (mp->lts_mode) {
+      veloc = &(mp->d_lts_veloc_p[NDIM * mp->NGLOB_AB * (mp->lts_num_p_level-1)]); // -1 for 0-indexing
+    }
+
 #ifdef USE_CUDA
     if (run_cuda){
-      compute_stacey_elastic_kernel<<<grid,threads,0,mp->compute_stream>>>(mp->d_veloc,
-                                                                           mp->d_accel,
+      compute_stacey_elastic_kernel<<<grid,threads,0,mp->compute_stream>>>(veloc,
+                                                                           accel,
                                                                            mp->d_abs_boundary_ispec,
                                                                            mp->d_abs_boundary_ijk,
                                                                            mp->d_abs_boundary_normal,
@@ -106,8 +113,8 @@ void FC_FUNC_(compute_stacey_viscoelastic_cuda,
 #ifdef USE_HIP
     if (run_hip){
       hipLaunchKernelGGL(compute_stacey_elastic_kernel, dim3(grid), dim3(threads), 0, mp->compute_stream,
-                                                        mp->d_veloc,
-                                                        mp->d_accel,
+                                                        veloc,
+                                                        accel,
                                                         mp->d_abs_boundary_ispec,
                                                         mp->d_abs_boundary_ijk,
                                                         mp->d_abs_boundary_normal,
@@ -150,17 +157,23 @@ void FC_FUNC_(compute_stacey_viscoelastic_cuda,
 #endif
 
     }
-  }else{
+  } else {
+    // single FORWARD_OR_ADJOINT==1/3
     // sets gpu arrays
-    realw *veloc, *accel;
-    if (FORWARD_OR_ADJOINT == 1) {
-      veloc = mp->d_veloc;
-      accel = mp->d_accel;
-    } else {
+    realw* veloc = mp->d_veloc;  // FORWARD_OR_ADJOINT == 1
+    realw* accel = mp->d_accel;
+    // LTS simulation uses veloc_p(:,:,num_p_level) array
+    if (mp->lts_mode) {
+      veloc = &(mp->d_lts_veloc_p[NDIM * mp->NGLOB_AB * (mp->lts_num_p_level-1)]); // -1 for 0-indexing
+    }
+    if (FORWARD_OR_ADJOINT != 1) {
       // for backward/reconstructed fields
       veloc = mp->d_b_veloc;
       accel = mp->d_b_accel;
+      // safety stop - kernel simulations w/ LTS mode not fully implemented yet
+      if (mp->lts_mode) exit_on_error("error LTS mode for kernel simulations not fully implemented yet");
     }
+
     // single forward or backward fields
 #ifdef USE_CUDA
     if (run_cuda){

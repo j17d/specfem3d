@@ -163,7 +163,6 @@ extern EXTERN_LANG
 void FC_FUNC_(transfer_fault_data_to_host,
               TRANSFER_FAULT_DATA_TO_HOST)(long* Fault_pointer,
                                            int* fault_index,
-                                           int* NSPEC_FLT,
                                            int* NGLOB_FLT,
                                            realw* D,
                                            realw* V,

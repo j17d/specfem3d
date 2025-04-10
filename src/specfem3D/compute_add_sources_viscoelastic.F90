@@ -490,7 +490,7 @@
     tshift_src,t0, &
     istage,it, &
     NSOURCES,nsources_local,ispec_selected_source, &
-    nrec,islice_selected_rec, &
+    islice_selected_rec, &
     nadj_rec_local,source_adjoint,nadj_rec_local,number_adjsources_global, &
     Mesh_pointer
 
@@ -669,7 +669,6 @@
       if (it < NSTEP) then
         call add_sources_el_sim_type_2_or_3(Mesh_pointer, &
                                             source_adjoint, &
-                                            nrec, &
                                             nadj_rec_local, &
                                             NTSTEP_BETWEEN_READ_ADJSRC, &
                                             it)

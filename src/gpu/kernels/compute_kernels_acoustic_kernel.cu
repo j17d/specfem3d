@@ -41,7 +41,6 @@ __global__ void compute_kernels_acoustic_kernel(int* ispec_is_acoustic,
                                                 realw* d_gammax,realw* d_gammay,realw* d_gammaz,
                                                 realw xix_regular,
                                                 field* potential_acoustic,
-                                                field* potential_dot_dot_acoustic,
                                                 field* b_potential_acoustic,
                                                 field* b_potential_dot_dot_acoustic,
                                                 realw* rho_ac_kl,
@@ -93,13 +92,13 @@ __global__ void compute_kernels_acoustic_kernel(int* ispec_is_acoustic,
     rhol = rhostore[ijk_ispec_padded];
 
     // displacement vector from backward field
-    compute_gradient_kernel(ijk,ispec,ispec_irreg,scalar_field_displ,b_displ_loc,
+    compute_gradient_kernel(ijk,ispec_irreg,scalar_field_displ,b_displ_loc,
                             d_hprime_xx,
                             d_xix,d_xiy,d_xiz,d_etax,d_etay,d_etaz,d_gammax,d_gammay,d_gammaz,
                             rhol,xix_regular,gravity);
 
     // acceleration vector
-    compute_gradient_kernel(ijk,ispec,ispec_irreg,scalar_field_accel,accel_loc,
+    compute_gradient_kernel(ijk,ispec_irreg,scalar_field_accel,accel_loc,
                             d_hprime_xx,
                             d_xix,d_xiy,d_xiz,d_etax,d_etay,d_etaz,d_gammax,d_gammay,d_gammaz,
                             rhol,xix_regular,gravity);

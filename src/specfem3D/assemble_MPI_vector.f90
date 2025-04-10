@@ -678,8 +678,7 @@
     enddo
 
     ! send contributions to GPU
-    call transfer_boundary_to_device_a(Mesh_pointer, buffer_recv_vector_ext_mesh, &
-                                       num_interfaces_ext_mesh, max_nibool_interfaces_ext_mesh)
+    call transfer_boundary_to_device_a(Mesh_pointer, buffer_recv_vector_ext_mesh)
   endif
 
   ! This step is done via previous function transfer_and_assemble...
@@ -700,8 +699,7 @@
   subroutine assemble_MPI_vector_send_cuda(NPROC, &
                                            buffer_send_vector_ext_mesh,buffer_recv_vector_ext_mesh, &
                                            num_interfaces_ext_mesh,max_nibool_interfaces_ext_mesh, &
-                                           nibool_interfaces_ext_mesh, &
-                                           my_neighbors_ext_mesh, &
+                                           nibool_interfaces_ext_mesh,my_neighbors_ext_mesh, &
                                            request_send_vector_ext_mesh,request_recv_vector_ext_mesh)
 
 ! sends data
@@ -756,7 +754,6 @@
   subroutine assemble_MPI_vector_write_cuda(NPROC,NGLOB_AB,array_val, Mesh_pointer, &
                                             buffer_recv_vector_ext_mesh, &
                                             num_interfaces_ext_mesh,max_nibool_interfaces_ext_mesh, &
-                                            nibool_interfaces_ext_mesh,ibool_interfaces_ext_mesh, &
                                             request_send_vector_ext_mesh,request_recv_vector_ext_mesh, &
                                             FORWARD_OR_ADJOINT)
 
@@ -776,11 +773,7 @@
   integer,intent(in) :: num_interfaces_ext_mesh,max_nibool_interfaces_ext_mesh
   real(kind=CUSTOM_REAL), dimension(NDIM,max_nibool_interfaces_ext_mesh,num_interfaces_ext_mesh),intent(inout) :: &
        buffer_recv_vector_ext_mesh
-
-  integer, dimension(num_interfaces_ext_mesh),intent(in) :: nibool_interfaces_ext_mesh
-  integer, dimension(max_nibool_interfaces_ext_mesh,num_interfaces_ext_mesh),intent(in) :: ibool_interfaces_ext_mesh
   integer, dimension(num_interfaces_ext_mesh),intent(inout) :: request_send_vector_ext_mesh,request_recv_vector_ext_mesh
-
   integer,intent(in) :: FORWARD_OR_ADJOINT
 
   ! local parameters
@@ -798,11 +791,7 @@
     enddo
 
     ! adding contributions of neighbors
-    call transfer_asmbl_accel_to_device(Mesh_pointer, &
-                                        buffer_recv_vector_ext_mesh, &
-                                        num_interfaces_ext_mesh, max_nibool_interfaces_ext_mesh, &
-                                        nibool_interfaces_ext_mesh, &
-                                        ibool_interfaces_ext_mesh,FORWARD_OR_ADJOINT)
+    call transfer_asmbl_accel_to_device(Mesh_pointer,buffer_recv_vector_ext_mesh,FORWARD_OR_ADJOINT)
 
     ! to avoid compiler warning
     dummy_val = array_val(1,1)
@@ -829,77 +818,69 @@
 !-------------------------------------------------------------------------------------------------
 !
 
+! not used yet..
 
-  subroutine synchronize_MPI_vector_write_cuda(NPROC,NGLOB_AB,array_val, Mesh_pointer, &
-                                               buffer_recv_vector_ext_mesh, &
-                                               num_interfaces_ext_mesh,max_nibool_interfaces_ext_mesh, &
-                                               nibool_interfaces_ext_mesh,ibool_interfaces_ext_mesh, &
-                                               request_send_vector_ext_mesh,request_recv_vector_ext_mesh, &
-                                               FORWARD_OR_ADJOINT)
-
-! waits for data to receive and assembles
-
-  use constants, only: NDIM,CUSTOM_REAL
-
-  implicit none
-
-  integer,intent(in) :: NPROC
-  integer,intent(in) :: NGLOB_AB
-  integer(kind=8),intent(in) :: Mesh_pointer
-
-  ! array to assemble
-  real(kind=CUSTOM_REAL), dimension(NDIM,NGLOB_AB),intent(in) :: array_val
-
-  integer,intent(in) :: num_interfaces_ext_mesh,max_nibool_interfaces_ext_mesh
-  real(kind=CUSTOM_REAL), dimension(NDIM,max_nibool_interfaces_ext_mesh,num_interfaces_ext_mesh),intent(inout) :: &
-       buffer_recv_vector_ext_mesh
-
-  integer, dimension(num_interfaces_ext_mesh),intent(in) :: nibool_interfaces_ext_mesh
-  integer, dimension(max_nibool_interfaces_ext_mesh,num_interfaces_ext_mesh),intent(in) :: ibool_interfaces_ext_mesh
-  integer, dimension(num_interfaces_ext_mesh),intent(inout) :: request_send_vector_ext_mesh,request_recv_vector_ext_mesh
-
-  integer,intent(in) :: FORWARD_OR_ADJOINT
-
-  ! local parameters
-  integer :: iinterface
-  real(kind=CUSTOM_REAL) :: dummy_val ! to avoid compiler warnings
-
-  ! here we have to assemble all the contributions between partitions using MPI
-
-  ! assemble only if more than one partition
-  if (NPROC > 1) then
-
-    ! wait for communications completion (recv)
-    do iinterface = 1, num_interfaces_ext_mesh
-      call wait_req(request_recv_vector_ext_mesh(iinterface))
-    enddo
-
-    ! adding contributions of neighbors
-    call transfer_sync_accel_to_device(Mesh_pointer, &
-                                       buffer_recv_vector_ext_mesh, &
-                                       num_interfaces_ext_mesh, max_nibool_interfaces_ext_mesh, &
-                                       nibool_interfaces_ext_mesh, &
-                                       ibool_interfaces_ext_mesh,FORWARD_OR_ADJOINT)
-
-    ! to avoid compiler warning
-    dummy_val = array_val(1,1)
-
-    ! This step is done via previous function transfer_and_assemble...
-    ! do iinterface = 1, num_interfaces_ext_mesh
-    !   do ipoin = 1, nibool_interfaces_ext_mesh(iinterface)
-    !     array_val(:,ibool_interfaces_ext_mesh(ipoin,iinterface)) = &
-    !          array_val(:,ibool_interfaces_ext_mesh(ipoin,iinterface)) + buffer_recv_vector_ext_mesh(:,ipoin,iinterface)
-    !   enddo
-    ! enddo
-
-    ! wait for communications completion (send)
-    do iinterface = 1, num_interfaces_ext_mesh
-      call wait_req(request_send_vector_ext_mesh(iinterface))
-    enddo
-
-  endif
-
-  end subroutine synchronize_MPI_vector_write_cuda
+!  subroutine synchronize_MPI_vector_write_cuda(NPROC,NGLOB_AB,array_val, Mesh_pointer, &
+!                                               buffer_recv_vector_ext_mesh, &
+!                                               num_interfaces_ext_mesh,max_nibool_interfaces_ext_mesh, &
+!                                               request_send_vector_ext_mesh,request_recv_vector_ext_mesh, &
+!                                               FORWARD_OR_ADJOINT)
+!
+!! waits for data to receive and assembles
+!
+!  use constants, only: NDIM,CUSTOM_REAL
+!
+!  implicit none
+!
+!  integer,intent(in) :: NPROC
+!  integer,intent(in) :: NGLOB_AB
+!  integer(kind=8),intent(in) :: Mesh_pointer
+!
+!  ! array to assemble
+!  real(kind=CUSTOM_REAL), dimension(NDIM,NGLOB_AB),intent(in) :: array_val
+!
+!  integer,intent(in) :: num_interfaces_ext_mesh,max_nibool_interfaces_ext_mesh
+!  real(kind=CUSTOM_REAL), dimension(NDIM,max_nibool_interfaces_ext_mesh,num_interfaces_ext_mesh),intent(inout) :: &
+!       buffer_recv_vector_ext_mesh
+!  integer, dimension(num_interfaces_ext_mesh),intent(inout) :: request_send_vector_ext_mesh,request_recv_vector_ext_mesh
+!  integer,intent(in) :: FORWARD_OR_ADJOINT
+!
+!  ! local parameters
+!  integer :: iinterface
+!  real(kind=CUSTOM_REAL) :: dummy_val ! to avoid compiler warnings
+!
+!  ! here we have to assemble all the contributions between partitions using MPI
+!
+!  ! assemble only if more than one partition
+!  if (NPROC > 1) then
+!
+!    ! wait for communications completion (recv)
+!    do iinterface = 1, num_interfaces_ext_mesh
+!      call wait_req(request_recv_vector_ext_mesh(iinterface))
+!    enddo
+!
+!    ! adding contributions of neighbors
+!    call transfer_sync_accel_to_device(Mesh_pointer,buffer_recv_vector_ext_mesh,FORWARD_OR_ADJOINT)
+!
+!    ! to avoid compiler warning
+!    dummy_val = array_val(1,1)
+!
+!    ! This step is done via previous function transfer_and_assemble...
+!    ! do iinterface = 1, num_interfaces_ext_mesh
+!    !   do ipoin = 1, nibool_interfaces_ext_mesh(iinterface)
+!    !     array_val(:,ibool_interfaces_ext_mesh(ipoin,iinterface)) = &
+!    !          array_val(:,ibool_interfaces_ext_mesh(ipoin,iinterface)) + buffer_recv_vector_ext_mesh(:,ipoin,iinterface)
+!    !   enddo
+!    ! enddo
+!
+!    ! wait for communications completion (send)
+!    do iinterface = 1, num_interfaces_ext_mesh
+!      call wait_req(request_send_vector_ext_mesh(iinterface))
+!    enddo
+!
+!  endif
+!
+!  end subroutine synchronize_MPI_vector_write_cuda
 
 
 !
