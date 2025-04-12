@@ -53,6 +53,8 @@ gpu_specfem3D_OBJECTS = \
 	$O/fault_solver_dynamics.o \
 	$O/helper_functions.o \
 	$O/initialize_gpu.o \
+	$O/lts_assembly_mpi_cuda.o \
+	$O/lts_compute_forces_viscoelastic_cuda.o \
 	$O/noise_tomography_cuda.o \
 	$O/pml_compute_accel_cuda.o \
 	$O/prepare_mesh_constants_cuda.o \
@@ -188,8 +190,12 @@ $(cuda_specfem3D_DEVICE_OBJ): $(subst $(cuda_specfem3D_DEVICE_OBJ), ,$(gpu_specf
 endif
 
 ifeq ($(HIP),yes)
-$O/%.hip-kernel.o: $(KERNEL_DIR)/%.cpp $S/mesh_constants_gpu.h $S/mesh_constants_hip.h $(KERNEL_DIR)/kernel_proto.cu.h
-	$(HIPCC) -c $< -o $@ $(HIP_CFLAGS) -I${SETUP} -I$(KERNEL_DIR) $(SELECTOR_CFLAG) -include $(word 2,$^)
+#$O/%.hip-kernel.o: $(KERNEL_DIR)/%.cpp $S/mesh_constants_gpu.h $S/mesh_constants_hip.h $(KERNEL_DIR)/kernel_proto.cu.h
+#	$(HIPCC) -c $< -o $@ $(HIP_CFLAGS) -I${SETUP} -I$(KERNEL_DIR) $(SELECTOR_CFLAG) -include $(word 2,$^)
+# note: at the moment, the HIP kernel files %.cpp all just include the corresponding %.cu kernel.
+#       this rule triggers a compilation also when a change in the included %.cu file was done
+$O/%.hip-kernel.o: $(KERNEL_DIR)/%.cpp $(KERNEL_DIR)/%.cu $S/mesh_constants_gpu.h $S/mesh_constants_hip.h $(KERNEL_DIR)/kernel_proto.cu.h
+	$(HIPCC) -c $< -o $@ $(HIP_CFLAGS) -I${SETUP} -I$(KERNEL_DIR) $(SELECTOR_CFLAG) -include $(word 3,$^)
 endif
 
 

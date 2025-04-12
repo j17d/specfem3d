@@ -812,6 +812,45 @@ typedef struct mesh_ {
   // for option NB_RUNS_FOR_ACOUSTIC_GPU
   int* run_number_of_the_source;
 
+  // ------------------------------------------------------------------ //
+  // local time stepping
+  // ------------------------------------------------------------------ //
+  int lts_mode;
+  int lts_num_p_level;
+
+  // LTS wavefields
+  realw* d_lts_displ_p;
+  realw* d_lts_veloc_p;
+
+  int* d_lts_iglob_p_refine;
+  int* d_lts_p_level_coarser_to_update;
+  int* d_lts_element_list;
+  int* lts_num_element_list;
+
+  // boundary contributions
+  int* d_lts_boundary_node;
+  int* d_lts_boundary_ilevel_from;
+  int* d_lts_boundary_ispec;
+
+  realw* d_lts_displ_tmp;
+  realw* d_lts_accel_tmp;
+
+  // accel collected
+  int lts_use_accel_collected;
+  realw* d_lts_accel_collected;
+  int* d_lts_mask_ibool_collected;
+
+  // LTS modified mass matrices
+  realw* d_lts_rmassxyz;
+  realw* d_lts_rmassxyz_mod;
+  realw* d_lts_cmassxyz;
+
+  // MPI for LTS
+  int* d_lts_num_interface_p_refine_ibool;
+  int* d_lts_interface_p_refine_ibool;
+  int* d_lts_interface_p_refine_boundary;
+  int lts_max_nibool_interfaces_boundary;
+
 } Mesh;
 
 /* ----------------------------------------------------------------------------------------------- */

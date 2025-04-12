@@ -73,8 +73,12 @@
 
   use shared_parameters, only: GPU_MODE
   use specfem_par_elastic, only: displ !,accel
+
   ! LTS
   use specfem_par_lts, only: num_p_level,displ_p
+
+  ! GPU
+  use specfem_par, only: Mesh_pointer
 
   implicit none
 
@@ -87,8 +91,7 @@
     !accel(:,:) = 0.0_CUSTOM_REAL
   else
     ! on GPU
-    !#TODO: LTS on GPU newmark update displ
-    stop 'LTS on GPU w/ newmark update displ not implemented yet'
+    call lts_newmark_update_displ_cuda(Mesh_pointer)
   endif
 
   end subroutine lts_newmark_update_displ
@@ -112,7 +115,7 @@
   use specfem_par_elastic, only: veloc
 
   ! GPU
-  !use specfem_par, only: Mesh_pointer
+  use specfem_par, only: Mesh_pointer
 
   ! LTS
   use specfem_par_lts, only: iglob_p_refine, p_level_iglob_start, p_level_iglob_end, &
@@ -144,17 +147,16 @@
   integer,dimension(1) :: imax
   logical, parameter :: DEBUG = .false.
 
-  ! we assume contiguous range of p-level nodes
-  ! initialization
-  is = 0
-  ie = 0
-  is0 = 0
-  ie0 = 0
-
   ! Local-time stepping update: Newmark scheme
 
   if (.not. GPU_MODE) then
     ! on CPU
+    ! we assume contiguous range of p-level nodes
+    ! initialization
+    is = 0
+    ie = 0
+    is0 = 0
+    ie0 = 0
 
     ! ---- updates to P nodes -----------------------------------
 
@@ -321,7 +323,7 @@
       enddo
     endif
 
-    ! collects acceleration a_n+1 = B u_n+1 from diffferent levels
+    ! collects acceleration a_n+1 = B u_n+1 from different levels
     if (use_accel_collected) then
       ! collects acceleration B u_n+1 from this current level ilevel
       ! this is computed in the first local iteration (m==1) where the initial condition sets u_0 = u_n+1
@@ -425,11 +427,9 @@
 
   else
     ! on GPU
-    !#TODO: LTS on GPU w/ Newmark update
-    stop 'LTS on GPU w/ Newmark update not implemented yet'
     ! newmark update
-    !call finalize_step_lts(Mesh_pointer,deltat_lts_local,ilevel,m, &
-    !                       p_level_iglob_start,p_level_iglob_end,num_p_level_coarser_to_update)
+    call lts_newmark_update_cuda(Mesh_pointer,deltat_lts_local,ilevel,m,lts_current_m, &
+                                 p_level_iglob_start,p_level_iglob_end,num_p_level_coarser_to_update)
   endif ! GPU_MODE
 
   ! debug
@@ -504,10 +504,9 @@
 !  logical,parameter :: USE_FAST = .true.
 !
 !  if (GPU_MODE) then
-!
-!    if (p_level_iglob_start(1) /= 1) call exit_mpi(myrank,"ASSERT FAIL: iglob should start at 1")
-!    call finalize_step_lts(Mesh_pointer,deltat_lts_local,ilevel,m, &
-!         p_level_iglob_start,p_level_iglob_end,num_p_level_coarser_to_update)
+!    ! newmark update
+!    call lts_newmark_update_cuda(Mesh_pointer,deltat_lts_local,ilevel,m,lts_current_m, &
+!                                 p_level_iglob_start,p_level_iglob_end,num_p_level_coarser_to_update)
 !
 !  else ! GPU MODE
 !
@@ -658,10 +657,9 @@
 !  logical,parameter :: USE_FAST = .true.
 !
 !  if (GPU_MODE) then
-!
-!    if (p_level_iglob_start(1) /= 1) call exit_mpi(myrank,"ASSERT FAIL: iglob should start at 1")
-!    call finalize_step_lts(Mesh_pointer,deltat_lts_local,ilevel,m, &
-!         p_level_iglob_start,p_level_iglob_end,num_p_level_coarser_to_update)
+!    ! newmark update
+!    call lts_newmark_update_cuda(Mesh_pointer,deltat_lts_local,ilevel,m,lts_current_m, &
+!                                 p_level_iglob_start,p_level_iglob_end,num_p_level_coarser_to_update)
 !
 !  else ! GPU MODE
 !

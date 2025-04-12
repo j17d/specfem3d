@@ -114,7 +114,7 @@ void FC_FUNC_(prepare_constants_device,
   TRACE("prepare_constants_device");
 
   // allocates mesh parameter structure
-  Mesh* mp = (Mesh*) malloc( sizeof(Mesh) );
+  Mesh* mp = (Mesh*) malloc( sizeof(Mesh));
   if (mp == NULL) exit_on_error("error allocating mesh pointer");
 
   // sets mesh pointer (for Fortran<->CUDA calls)
@@ -141,6 +141,9 @@ void FC_FUNC_(prepare_constants_device,
   mp->NSPEC_CPML = 0;
 
   mp->undo_attenuation = *UNDO_ATTENUATION_AND_OR_PML;
+
+  // local time stepping initially false
+  mp->lts_mode = 0;
 
   // checks setup
 // DK DK August 2018: adding this test, following a suggestion by Etienne Bachmann
@@ -229,7 +232,7 @@ void FC_FUNC_(prepare_constants_device,
   }
   */
   // way 2: faster ....
-  if (*NSPEC_IRREGULAR > 0 ){
+  if (*NSPEC_IRREGULAR > 0){
     gpuMemcpy2D_todevice_realw(mp->d_xix, NGLL3_PADDED, h_xix, NGLL3, NGLL3, mp->NSPEC_IRREGULAR);
     gpuMemcpy2D_todevice_realw(mp->d_xiy, NGLL3_PADDED, h_xiy, NGLL3, NGLL3, mp->NSPEC_IRREGULAR);
     gpuMemcpy2D_todevice_realw(mp->d_xiz, NGLL3_PADDED, h_xiz, NGLL3, NGLL3, mp->NSPEC_IRREGULAR);
@@ -428,7 +431,7 @@ void FC_FUNC_(prepare_constants_device,
   // nqdu added
   // couple with injection
   mp->is_couple_with_injection = *IS_COUPLE_WITH_INJECTION;
-  if(mp->is_couple_with_injection) {
+  if (mp->is_couple_with_injection) {
     gpuMalloc_realw((void**)&(mp->d_veloc_inj),NDIM*NGLL2*(mp->d_num_abs_boundary_faces));
     gpuMalloc_realw((void**)&(mp->d_tract_inj),NDIM*NGLL2*(mp->d_num_abs_boundary_faces));
     gpuMalloc_realw((void**)&(mp->d_b_boundary_injection_field),NDIM*NGLL2*(mp->d_num_abs_boundary_faces));
@@ -572,7 +575,7 @@ void FC_FUNC_(prepare_fields_acoustic_device,
   }
 
   // mesh coloring
-  if (mp->use_mesh_coloring_gpu ){
+  if (mp->use_mesh_coloring_gpu){
     mp->num_colors_outer_acoustic = *num_colors_outer_acoustic;
     mp->num_colors_inner_acoustic = *num_colors_inner_acoustic;
     mp->h_num_elem_colors_acoustic = (int*) num_elem_colors_acoustic;
@@ -705,7 +708,7 @@ void FC_FUNC_(prepare_fields_elastic_device,
                                              realw *c25store,realw *c26store,realw *c33store,
                                              realw *c34store,realw *c35store,realw *c36store,
                                              realw *c44store,realw *c45store,realw *c46store,
-                                             realw *c55store,realw *c56store,realw *c66store ){
+                                             realw *c55store,realw *c56store,realw *c66store){
 
   TRACE("prepare_fields_elastic_device");
 
@@ -995,7 +998,7 @@ void FC_FUNC_(prepare_fields_elastic_device,
   }
 
   // mesh coloring
-  if (mp->use_mesh_coloring_gpu ){
+  if (mp->use_mesh_coloring_gpu){
     mp->num_colors_outer_elastic = *num_colors_outer_elastic;
     mp->num_colors_inner_elastic = *num_colors_inner_elastic;
     mp->h_num_elem_colors_elastic = (int*) num_elem_colors_elastic;
@@ -1097,7 +1100,7 @@ void FC_FUNC_(prepare_fields_elastic_adj_dev,
   // initializes kernel values to zero
   gpuMemset_realw(mp->d_rho_kl,size,0);
 
-  if (mp->anisotropic_kl ){
+  if (mp->anisotropic_kl){
     // anisotropic kernels
     gpuMalloc_realw((void**)&(mp->d_cijkl_kl),21*size);
     gpuMemset_realw(mp->d_cijkl_kl,21*size,0);
@@ -1389,7 +1392,6 @@ void FC_FUNC_(prepare_sim2_or_3_const_device,
 extern EXTERN_LANG
 void FC_FUNC_(prepare_fields_noise_device,
               PREPARE_FIELDS_NOISE_DEVICE)(long* Mesh_pointer,
-                                           int* NSPEC_AB, int* NGLOB_AB,
                                            int* free_surface_ispec,
                                            int* free_surface_ijk,
                                            int* num_free_surface_faces,
@@ -1460,7 +1462,7 @@ void FC_FUNC_(prepare_fields_gravity_device,
   Mesh* mp = (Mesh*)(*Mesh_pointer);
 
   mp->gravity = *GRAVITY;
-  if (mp->gravity ){
+  if (mp->gravity){
 
     gpuCreateCopy_todevice_realw((void**)&mp->d_minus_deriv_gravity,minus_deriv_gravity,mp->NGLOB_AB);
     gpuCreateCopy_todevice_realw((void**)&mp->d_minus_g,minus_g,mp->NGLOB_AB);
@@ -1551,7 +1553,7 @@ void FC_FUNC_(prepare_fault_device,
   //printf("debug: prepare_fault_device: myrank = %d , isAllocated = %d\n",mp->myrank,mp->use_Kelvin_Voigt_damping);
 
   // allocates & copies damping array onto GPU
-  if (mp->use_Kelvin_Voigt_damping ){
+  if (mp->use_Kelvin_Voigt_damping){
     gpuCreateCopy_todevice_realw((void**)&mp->d_Kelvin_Voigt_eta,Kelvin_Voigt_eta,mp->NSPEC_AB);
   }
 }
@@ -1565,19 +1567,18 @@ void FC_FUNC_(prepare_fault_device,
 
 extern EXTERN_LANG
 void FC_FUNC_(prepare_wavefield_discontinuity_device,
-              PREPARE_WAVEFIELD_DISCONTINUITY_DEVICE)(
-                             long* Mesh_pointer,
-                             int* ispec_to_elem_wd,
-                             int* nglob_wd,
-                             int* nspec_wd,
-                             int* ibool_wd,
-                             int* boundary_to_iglob_wd,
-                             realw* mass_in_wd,
-                             int* nfaces_wd,
-                             int* face_ijk_wd,
-                             int* face_ispec_wd,
-                             realw* face_normal_wd,
-                             realw* face_jacobian2Dw_wd) {
+              PREPARE_WAVEFIELD_DISCONTINUITY_DEVICE)(long* Mesh_pointer,
+                                                      int* ispec_to_elem_wd,
+                                                      int* nglob_wd,
+                                                      int* nspec_wd,
+                                                      int* ibool_wd,
+                                                      int* boundary_to_iglob_wd,
+                                                      realw* mass_in_wd,
+                                                      int* nfaces_wd,
+                                                      int* face_ijk_wd,
+                                                      int* face_ispec_wd,
+                                                      realw* face_normal_wd,
+                                                      realw* face_jacobian2Dw_wd) {
   TRACE("prepare_wavefield_discontinuity_device");
   Mesh* mp = (Mesh*)(*Mesh_pointer);
 
@@ -1602,6 +1603,192 @@ void FC_FUNC_(prepare_wavefield_discontinuity_device,
   gpuMalloc_realw((void**)&(mp->d_traction_wd),size);
 }
 
+
+/* ----------------------------------------------------------------------------------------------- */
+
+// for LTS
+
+/* ----------------------------------------------------------------------------------------------- */
+
+extern EXTERN_LANG
+void FC_FUNC_(prepare_lts_device,
+              PREPARE_LTS_DEVICE)(long* Mesh_pointer, int* num_p_level, int* iglob_p_refine, int* use_accel_collected_f) {
+
+  TRACE("prepare_lts_device");
+
+  Mesh* mp = (Mesh*)(*Mesh_pointer);
+  int size;
+
+  // turn on LTS on device
+  mp->lts_mode = 1;
+  mp->lts_num_p_level = *num_p_level;
+  mp->lts_use_accel_collected = *use_accel_collected_f;
+
+  // check that we have p-levels
+  if (mp->lts_num_p_level == 0) exit_on_error("error LTS mode has zero p-levels");
+
+  // LTS wavefields
+  size = NDIM * mp->NGLOB_AB * mp->lts_num_p_level;
+
+  //debug
+  //printf("debug:: prepare_lts_device:: num_p_level %d wavefield size %d\n",mp->lts_num_p_level, size);
+
+  gpuMalloc_realw((void**)&(mp->d_lts_displ_p),size);   // original mp->d_displ_p renamed to mp->d_lts_displ_p
+  gpuMalloc_realw((void**)&(mp->d_lts_veloc_p),size);   //          mp->d_veloc_p renamed to mp->d_lts_veloc_p
+
+  // initializes values to zero
+  gpuMemset_realw(mp->d_lts_displ_p,size,0);
+  gpuMemset_realw(mp->d_lts_veloc_p,size,0);
+
+  // LTS boundary contributions - temporary fields
+  size = NDIM * mp->NGLOB_AB;
+  gpuMalloc_realw((void**)&(mp->d_lts_displ_tmp),size);   // mp->d_displ_tmp
+  gpuMalloc_realw((void**)&(mp->d_lts_accel_tmp),size);
+
+  // initializes values to zero
+  gpuMemset_realw(mp->d_lts_displ_tmp,size,0);
+  gpuMemset_realw(mp->d_lts_accel_tmp,size,0);
+
+  // p-values
+  gpuCreateCopy_todevice_int((void**)&mp->d_lts_iglob_p_refine,iglob_p_refine,mp->NGLOB_AB);
+
+  // collecting acceleration across different levels for seismogram outputs & shakemaps
+  if (mp->lts_use_accel_collected){
+    // collected accel buffer
+    gpuMalloc_realw((void**)&(mp->d_lts_accel_collected),NDIM * mp->NGLOB_AB);
+    gpuMemset_realw(mp->d_lts_accel_collected,NDIM * mp->NGLOB_AB,0);
+    // mask
+    gpuMalloc_int((void**)&(mp->d_lts_mask_ibool_collected),mp->NGLOB_AB);
+    gpuMemset_int(mp->d_lts_mask_ibool_collected,mp->NGLOB_AB,0);
+  }
+
+  GPU_ERROR_CHECKING("prepare_lts_device");
+}
+
+/* ----------------------------------------------------------------------------------------------- */
+
+extern EXTERN_LANG
+void FC_FUNC_(prepare_lts_mass_boundary_fields_device,
+              PREPARE_LTS_MASS_BOUNDARY_FIELDS_DEVICE)(long* Mesh_pointer,
+                                                       realw* rmassxyz, realw* rmassxyz_mod, realw* cmassxyz) {
+  TRACE("prepare_lts_mass_boundary_fields_device");
+  Mesh* mp = (Mesh*)(*Mesh_pointer); // get Mesh from fortran integer wrapper
+
+  // check if anything to do
+  if (! mp->lts_mode) return;
+
+  gpuCreateCopy_todevice_realw((void**)&mp->d_lts_rmassxyz,rmassxyz,NDIM * mp->NGLOB_AB);
+  gpuCreateCopy_todevice_realw((void**)&mp->d_lts_rmassxyz_mod,rmassxyz_mod,NDIM * mp->NGLOB_AB);
+  gpuCreateCopy_todevice_realw((void**)&mp->d_lts_cmassxyz,cmassxyz,NDIM * mp->NGLOB_AB);
+
+  // don't need these anymore, because we are now using the 3xnglob rmassxyz array
+  gpuFree(mp->d_rmassx);
+  gpuFree(mp->d_rmassy);
+  gpuFree(mp->d_rmassz);
+
+  GPU_ERROR_CHECKING("prepare_lts_mass_boundary_fields_device");
+}
+
+/* ----------------------------------------------------------------------------------------------- */
+
+extern EXTERN_LANG
+void FC_FUNC_(transfer_element_list_to_device,
+              TRANSFER_ELEMENT_LIST_TO_DEVICE)(long* Mesh_pointer,
+                                               int* element_list,int* num_element_list) {
+  TRACE("transfer_element_list_to_device");
+  Mesh* mp = (Mesh*)(*Mesh_pointer); // get Mesh from fortran integer wrapper
+
+  // check if anything to do
+  if (! mp->lts_mode) return;
+
+  // number of elements (keep on CPU)
+  mp->lts_num_element_list = (int*) malloc(sizeof(int) * 2 * mp->lts_num_p_level);
+  memcpy(mp->lts_num_element_list,num_element_list,sizeof(int) * 2 * mp->lts_num_p_level);
+
+  // element list (transfer on GPU)
+  gpuCreateCopy_todevice_int((void**)&mp->d_lts_element_list,element_list,mp->NSPEC_AB * 2 * mp->lts_num_p_level);
+
+  GPU_ERROR_CHECKING("transfer_element_list_to_device");
+}
+
+/* ----------------------------------------------------------------------------------------------- */
+
+extern EXTERN_LANG
+void FC_FUNC_(transfer_boundary_element_list_to_device,
+              TRANSFER_BOUNDARY_ELEMENT_LIST_TO_DEVICE)(long* Mesh_pointer,
+                                                        int* p_level_boundary_node,
+                                                        int* p_level_boundary_ilevel_from,
+                                                        int* p_level_boundary_ispec) {
+  TRACE("transfer_boundary_element_list_to_device");
+  Mesh* mp = (Mesh*)(*Mesh_pointer); // get Mesh from fortran integer wrapper
+
+  // check if anything to do
+  if (! mp->lts_mode) return;
+
+  gpuCreateCopy_todevice_int((void**)&mp->d_lts_boundary_node,p_level_boundary_node,mp->NGLOB_AB * 2 * mp->lts_num_p_level);
+  gpuCreateCopy_todevice_int((void**)&mp->d_lts_boundary_ilevel_from,p_level_boundary_ilevel_from,mp->NGLOB_AB * 2 * mp->lts_num_p_level);
+  gpuCreateCopy_todevice_int((void**)&mp->d_lts_boundary_ispec,p_level_boundary_ispec,mp->NSPEC_AB * 2 * mp->lts_num_p_level);
+
+  GPU_ERROR_CHECKING("transfer_boundary_element_list_to_device");
+}
+
+/* ----------------------------------------------------------------------------------------------- */
+
+extern EXTERN_LANG
+void FC_FUNC_(setup_r_boundaries_time_stepping,
+              SETUP_R_BOUNDARIES_TIME_STEPPING)(long* Mesh_pointer,
+                                                int* p_level_coarser_to_update) {
+  TRACE("setup_r_boundaries_time_stepping");
+  Mesh* mp = (Mesh*)(*Mesh_pointer); // get Mesh from fortran integer wrapper
+
+  // check if anything to do
+  if (! mp->lts_mode) return;
+
+  gpuCreateCopy_todevice_int((void**)&mp->d_lts_p_level_coarser_to_update,p_level_coarser_to_update,mp->NGLOB_AB * mp->lts_num_p_level);
+
+  GPU_ERROR_CHECKING("setup_r_boundaries_time_stepping");
+}
+
+/* ----------------------------------------------------------------------------------------------- */
+
+extern EXTERN_LANG
+void FC_FUNC_(setup_mpi_boundaries_lts,
+              SETUP_MPI_BOUNDARIES_LTS)(long* Mesh_pointer,
+                                        int* num_interface_p_refine_ibool,
+                                        int* interface_p_refine_ibool,
+                                        int* interface_p_refine_boundary,
+                                        int* num_interfaces_ext_mesh_f,
+                                        int* max_nibool_interfaces_boundary_f,
+                                        int* num_p_level_f) {
+  TRACE("setup_mpi_boundaries_lts");
+  Mesh* mp = (Mesh*)(*Mesh_pointer);
+
+  // check if anything to do
+  if (! mp->lts_mode) return;
+
+  // mpi boundary interfaces
+  mp->lts_max_nibool_interfaces_boundary = *max_nibool_interfaces_boundary_f;
+
+  // checks
+  if (mp->num_interfaces_ext_mesh != (*num_interfaces_ext_mesh_f)) exit_on_error("error LTS mode has invalid num_interfaces_ext_mesh value");
+  if (mp->lts_num_p_level != (*num_p_level_f)) exit_on_error("error LTS mode has invalid num_p_level value");
+
+  // transfers LTS MPI arrays
+  if (mp->num_interfaces_ext_mesh > 0){
+    gpuCreateCopy_todevice_int((void**)&mp->d_lts_num_interface_p_refine_ibool,num_interface_p_refine_ibool,
+                                mp->num_interfaces_ext_mesh * mp->lts_num_p_level);
+
+    if (mp->lts_max_nibool_interfaces_boundary > 0){
+      gpuCreateCopy_todevice_int((void**)&mp->d_lts_interface_p_refine_ibool,interface_p_refine_ibool,
+                                 mp->lts_max_nibool_interfaces_boundary * mp->num_interfaces_ext_mesh * mp->lts_num_p_level);
+
+      gpuCreateCopy_todevice_int((void**)&mp->d_lts_interface_p_refine_boundary,interface_p_refine_boundary,
+                                 mp->lts_max_nibool_interfaces_boundary * mp->lts_num_p_level);
+    }
+  }
+
+  GPU_ERROR_CHECKING("setup_mpi_boundaries_lts");
+}
 
 /* ----------------------------------------------------------------------------------------------- */
 
@@ -1680,7 +1867,7 @@ TRACE("prepare_cleanup_device");
   gpuFree(mp->d_ispec_selected_rec);
 
   // ACOUSTIC arrays
-  if (*ACOUSTIC_SIMULATION ){
+  if (*ACOUSTIC_SIMULATION){
     gpuFree(mp->d_potential_acoustic);
     gpuFree(mp->d_potential_dot_acoustic);
     gpuFree(mp->d_potential_dot_dot_acoustic);
@@ -1717,7 +1904,7 @@ TRACE("prepare_cleanup_device");
   } // ACOUSTIC_SIMULATION
 
   // ELASTIC arrays
-  if (*ELASTIC_SIMULATION ){
+  if (*ELASTIC_SIMULATION){
     gpuFree(mp->d_displ);
     gpuFree(mp->d_veloc);
     gpuFree(mp->d_accel);
@@ -1725,9 +1912,13 @@ TRACE("prepare_cleanup_device");
       gpuFree(mp->d_send_accel_buffer);
       if (mp->simulation_type == 3) gpuFree(mp->d_b_send_accel_buffer);
     }
-    gpuFree(mp->d_rmassx);
-    gpuFree(mp->d_rmassy);
-    gpuFree(mp->d_rmassz);
+
+    if (! mp->lts_mode){
+      gpuFree(mp->d_rmassx);
+      gpuFree(mp->d_rmassy);
+      gpuFree(mp->d_rmassz);
+    }
+
     gpuFree(mp->d_phase_ispec_inner_elastic);
     if (mp->stacey_absorbing_conditions && mp->d_num_abs_boundary_faces > 0){
       gpuFree(mp->d_rho_vp);
@@ -1774,7 +1965,7 @@ TRACE("prepare_cleanup_device");
       gpuFree(mp->d_b_veloc);
       gpuFree(mp->d_b_accel);
       gpuFree(mp->d_rho_kl);
-      if (mp->anisotropic_kl ){
+      if (mp->anisotropic_kl){
         gpuFree(mp->d_cijkl_kl);
       }else{
         gpuFree(mp->d_mu_kl);
@@ -1891,7 +2082,7 @@ TRACE("prepare_cleanup_device");
   }
 
   // fix bug wavefield discontinuity
-  if(mp->is_wavefield_discontinuity) {
+  if (mp->is_wavefield_discontinuity) {
     gpuFree(mp->d_displ_wd);
     gpuFree(mp->d_accel_wd);
     gpuFree(mp->d_accel_wd);
@@ -1907,13 +2098,45 @@ TRACE("prepare_cleanup_device");
   }
 
   // couple with injection
-  if(mp->is_couple_with_injection) {
+  if (mp->is_couple_with_injection) {
     gpuFree(mp->d_veloc_inj);
     gpuFree(mp->d_tract_inj);
     gpuFree(mp->d_b_boundary_injection_field);
     gpuFree(mp->d_b_boundary_injection_potential);
   }
 
+  // LTS
+  if (mp->lts_mode) {
+    // wavefields
+    gpuFree(mp->d_lts_displ_p);
+    gpuFree(mp->d_lts_veloc_p);
+    gpuFree(mp->d_lts_displ_tmp);
+    gpuFree(mp->d_lts_accel_tmp);
+    if (mp->lts_use_accel_collected) {
+      gpuFree(mp->d_lts_accel_collected);
+      gpuFree(mp->d_lts_mask_ibool_collected);
+    }
+    gpuFree(mp->d_lts_iglob_p_refine);
+    // mass matrices
+    gpuFree(mp->d_lts_rmassxyz);
+    gpuFree(mp->d_lts_rmassxyz_mod);
+    gpuFree(mp->d_lts_cmassxyz);
+    // boundary element list
+    gpuFree(mp->d_lts_element_list);
+    gpuFree(mp->d_lts_boundary_node);
+    gpuFree(mp->d_lts_boundary_ilevel_from);
+    gpuFree(mp->d_lts_boundary_ispec);
+    // boundary time stepping
+    gpuFree(mp->d_lts_p_level_coarser_to_update);
+    // mpi boundary interfaces
+    if (mp->num_interfaces_ext_mesh > 0){
+      gpuFree(mp->d_lts_num_interface_p_refine_ibool);
+      if (mp->lts_max_nibool_interfaces_boundary > 0){
+        gpuFree(mp->d_lts_interface_p_refine_ibool);
+        gpuFree(mp->d_lts_interface_p_refine_boundary);
+      }
+    }
+  }
 
   // releases previous contexts
   gpuReset();

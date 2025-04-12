@@ -1011,8 +1011,6 @@
       stop 'USE_LDDRK in LTS_MODE not supported yet'
     if (PML_CONDITIONS) &
       stop 'PML_CONDITIONS in LTS_MODE not supported yet'
-    if (GPU_MODE) &
-      stop 'GPU_MODE and LTS_MODE together not supported yet'
   endif
 
   ! PARTITIONING_TYPE

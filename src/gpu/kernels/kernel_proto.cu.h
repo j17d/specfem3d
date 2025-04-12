@@ -36,315 +36,6 @@
 
 
 //
-// src/gpu/kernels/Kernel_2_acoustic_impl.cu
-//
-
-template<int FORWARD_OR_ADJOINT> __global__ void
-Kernel_2_acoustic_impl(const int nb_blocks_to_compute,
-                       const int* d_ibool,
-                       const int* d_irregular_element_number,
-                       const int* d_phase_ispec_inner_acoustic,
-                       const int num_phase_ispec_acoustic,
-                       const int d_iphase,
-                       field_const_p d_potential_acoustic,
-                       field_p d_potential_dot_dot_acoustic,
-                       field_const_p d_b_potential_acoustic,
-                       field_p d_b_potential_dot_dot_acoustic,
-                       const int nb_field,
-                       realw* d_xix,realw* d_xiy,realw* d_xiz,
-                       realw* d_etax,realw* d_etay,realw* d_etaz,
-                       realw* d_gammax,realw* d_gammay,realw* d_gammaz,
-                       const realw xix_regular, const realw jacobian_regular,
-                       realw_const_p d_hprime_xx,
-                       realw_const_p d_hprimewgll_xx,
-                       realw_const_p d_wgllwgll_xy,realw_const_p d_wgllwgll_xz,realw_const_p d_wgllwgll_yz,
-                       realw_const_p d_rhostore,
-                       const int use_mesh_coloring_gpu,
-                       const int gravity,
-                       realw_const_p minus_g,
-                       realw* d_kappastore,
-                       realw_const_p wgll_cube);
-
-__global__ void
-Kernel_2_acoustic_single_impl(const int nb_blocks_to_compute,
-                              const int* d_ibool,
-                              const int* d_phase_ispec_inner_acoustic,
-                              const int num_phase_ispec_acoustic,
-                              const int d_iphase,
-                              field_const_p d_potential_acoustic,
-                              field_p d_potential_dot_dot_acoustic,
-                              realw* d_xix,realw* d_xiy,realw* d_xiz,
-                              realw* d_etax,realw* d_etay,realw* d_etaz,
-                              realw* d_gammax,realw* d_gammay,realw* d_gammaz,
-                              const int* d_irregular_element_number,
-                              const realw xix_regular, const realw jacobian_regular,
-                              realw_const_p d_hprime_xx,
-                              realw_const_p d_hprimewgll_xx,
-                              realw_const_p d_wgllwgll_xy,realw_const_p d_wgllwgll_xz,realw_const_p d_wgllwgll_yz,
-                              realw_const_p d_rhostore,
-                              const int use_mesh_coloring_gpu,
-                              const int gravity,
-                              realw_const_p minus_g,
-                              realw* d_kappastore,
-                              realw_const_p wgll_cube,
-                              const int FORWARD_OR_ADJOINT);
-
-
-//
-// src/gpu/kernels/Kernel_2_viscoelastic_impl.cu
-//
-
-__global__ void
-Kernel_2_noatt_iso_impl(const int nb_blocks_to_compute,
-                        const int* d_ibool,
-                        const int* d_phase_ispec_inner_elastic,const int num_phase_ispec_elastic,
-                        const int d_iphase,
-                        const int* d_irregular_element_number,
-                        realw_const_p d_displ,
-                        realw_p d_accel,
-                        realw_const_p d_xix,realw_const_p d_xiy,realw_const_p d_xiz,
-                        realw_const_p d_etax,realw_const_p d_etay,realw_const_p d_etaz,
-                        realw_const_p d_gammax,realw_const_p d_gammay,realw_const_p d_gammaz,
-                        const realw xix_regular,const realw jacobian_regular,
-                        realw_const_p d_hprime_xx,
-                        realw_const_p d_hprimewgll_xx,
-                        realw_const_p d_wgllwgll_xy,realw_const_p d_wgllwgll_xz,realw_const_p d_wgllwgll_yz,
-                        realw_const_p d_kappav,
-                        realw_const_p d_muv,
-                        const int is_wavefield_discontinuity,
-                        realw_const_p d_displ_wd,
-                        const int* d_ispec_to_elem_wd,
-                        const int* d_ibool_wd,
-                        const int pml_conditions,
-                        const int* d_is_CPML,
-                        const int FORWARD_OR_ADJOINT);
-
-__global__ void
-Kernel_2_noatt_iso_strain_impl(int nb_blocks_to_compute,
-                              const int* d_ibool,
-                              const int* d_phase_ispec_inner_elastic,const int num_phase_ispec_elastic,
-                              const int d_iphase,
-                              const int* d_irregular_element_number,
-                              realw_const_p d_displ,
-                              realw_p d_accel,
-                              realw_const_p d_xix,realw_const_p d_xiy,realw_const_p d_xiz,
-                              realw_const_p d_etax,realw_const_p d_etay,realw_const_p d_etaz,
-                              realw_const_p d_gammax,realw_const_p d_gammay,realw_const_p d_gammaz,
-                              const realw xix_regular,const realw jacobian_regular,
-                              realw_const_p d_hprime_xx,
-                              realw_const_p d_hprimewgll_xx,
-                              realw_const_p d_wgllwgll_xy,realw_const_p d_wgllwgll_xz,realw_const_p d_wgllwgll_yz,
-                              realw_const_p d_kappav,realw_const_p d_muv,
-                              const int COMPUTE_AND_STORE_STRAIN,
-                              realw_p epsilondev_xx,realw_p epsilondev_yy,realw_p epsilondev_xy,
-                              realw_p epsilondev_xz,realw_p epsilondev_yz,
-                              realw_p epsilon_trace_over_3,
-                              const int SIMULATION_TYPE,
-                              const int pml_conditions,
-                              const int* d_is_CPML,
-                              const int FORWARD_OR_ADJOINT);
-
-__global__ void
-Kernel_2_noatt_iso_col_impl(int nb_blocks_to_compute,
-                        const int* d_ibool,
-                        const int* d_phase_ispec_inner_elastic,const int num_phase_ispec_elastic,
-                        const int d_iphase,
-                        const int use_mesh_coloring_gpu,
-                        realw_const_p d_displ,
-                        realw_p d_accel,
-                        realw_const_p d_xix,realw_const_p d_xiy,realw_const_p d_xiz,
-                        realw_const_p d_etax,realw_const_p d_etay,realw_const_p d_etaz,
-                        realw_const_p d_gammax,realw_const_p d_gammay,realw_const_p d_gammaz,
-                        realw_const_p d_hprime_xx,
-                        realw_const_p d_hprimewgll_xx,
-                        realw_const_p d_wgllwgll_xy,realw_const_p d_wgllwgll_xz,realw_const_p d_wgllwgll_yz,
-                        realw_const_p d_kappav,realw_const_p d_muv,
-                        const int COMPUTE_AND_STORE_STRAIN,
-                        realw_p epsilondev_xx,realw_p epsilondev_yy,realw_p epsilondev_xy,
-                        realw_p epsilondev_xz,realw_p epsilondev_yz,
-                        realw_p epsilon_trace_over_3,
-                        const int SIMULATION_TYPE,
-                        const int pml_conditions,
-                        const int* d_is_CPML,
-                        const int FORWARD_OR_ADJOINT);
-
-__global__ void
-Kernel_2_noatt_iso_grav_impl(int nb_blocks_to_compute,
-                             const int* d_ibool,
-                             const int* d_phase_ispec_inner_elastic,const int num_phase_ispec_elastic,
-                             const int d_iphase,
-                             const int* d_irregular_element_number,
-                             const int use_mesh_coloring_gpu,
-                             realw_const_p d_displ,
-                             realw_p d_accel,
-                             realw_const_p d_xix,realw_const_p d_xiy,realw_const_p d_xiz,
-                             realw_const_p d_etax,realw_const_p d_etay,realw_const_p d_etaz,
-                             realw_const_p d_gammax,realw_const_p d_gammay,realw_const_p d_gammaz,
-                             const realw xix_regular,const realw jacobian_regular,
-                             realw_const_p d_hprime_xx,
-                             realw_const_p d_hprimewgll_xx,
-                             realw_const_p d_wgllwgll_xy,realw_const_p d_wgllwgll_xz,realw_const_p d_wgllwgll_yz,
-                             realw_const_p d_kappav,realw_const_p d_muv,
-                             const int COMPUTE_AND_STORE_STRAIN,
-                             realw_p epsilondev_xx,realw_p epsilondev_yy,realw_p epsilondev_xy,
-                             realw_p epsilondev_xz,realw_p epsilondev_yz,
-                             realw_p epsilon_trace_over_3,
-                             const int SIMULATION_TYPE,
-                             const int gravity,
-                             realw_const_p d_minus_g,
-                             realw_const_p d_minus_deriv_gravity,
-                             realw_const_p d_rhostore,
-                             realw_const_p wgll_cube,
-                             const int pml_conditions,
-                             const int* d_is_CPML,
-                             const int FORWARD_OR_ADJOINT);
-
-__global__ void
-Kernel_2_noatt_ani_impl(int nb_blocks_to_compute,
-                        const int* d_ibool,
-                        const int* d_phase_ispec_inner_elastic,const int num_phase_ispec_elastic,
-                        const int d_iphase,
-                        const int* d_irregular_element_number,
-                        const int use_mesh_coloring_gpu,
-                        realw_const_p d_displ,
-                        realw_p d_accel,
-                        realw_const_p d_xix,realw_const_p d_xiy,realw_const_p d_xiz,
-                        realw_const_p d_etax,realw_const_p d_etay,realw_const_p d_etaz,
-                        realw_const_p d_gammax,realw_const_p d_gammay,realw_const_p d_gammaz,
-                        const realw xix_regular,const realw jacobian_regular,
-                        realw_const_p d_hprime_xx,
-                        realw_const_p d_hprimewgll_xx,
-                        realw_const_p d_wgllwgll_xy,realw_const_p d_wgllwgll_xz,realw_const_p d_wgllwgll_yz,
-                        realw_const_p d_kappav,realw_const_p d_muv,
-                        const int COMPUTE_AND_STORE_STRAIN,
-                        realw_p epsilondev_xx,realw_p epsilondev_yy,realw_p epsilondev_xy,
-                        realw_p epsilondev_xz,realw_p epsilondev_yz,
-                        realw_p epsilon_trace_over_3,
-                        const int SIMULATION_TYPE,
-                        const int ANISOTROPY,
-                        realw* d_c11store,realw* d_c12store,realw* d_c13store,
-                        realw* d_c14store,realw* d_c15store,realw* d_c16store,
-                        realw* d_c22store,realw* d_c23store,realw* d_c24store,
-                        realw* d_c25store,realw* d_c26store,realw* d_c33store,
-                        realw* d_c34store,realw* d_c35store,realw* d_c36store,
-                        realw* d_c44store,realw* d_c45store,realw* d_c46store,
-                        realw* d_c55store,realw* d_c56store,realw* d_c66store,
-                        const int gravity,
-                        realw_const_p d_minus_g,
-                        realw_const_p d_minus_deriv_gravity,
-                        realw_const_p d_rhostore,
-                        realw_const_p wgll_cube,
-                        const int pml_conditions,
-                        const int* d_is_CPML,
-                        const int FORWARD_OR_ADJOINT);
-
-__global__ void
-Kernel_2_att_impl(int nb_blocks_to_compute,
-                  const int* d_ibool,
-                  const int* d_phase_ispec_inner_elastic,const int num_phase_ispec_elastic,
-                  const int d_iphase,
-                  const int* d_irregular_element_number,
-                  const int use_mesh_coloring_gpu,
-                  const realw d_deltat,
-                  realw_const_p d_displ,
-                  realw_const_p d_veloc,
-                  realw_p d_accel,
-                  realw_const_p d_xix,realw_const_p d_xiy,realw_const_p d_xiz,
-                  realw_const_p d_etax,realw_const_p d_etay,realw_const_p d_etaz,
-                  realw_const_p d_gammax,realw_const_p d_gammay,realw_const_p d_gammaz,
-                  const realw xix_regular,const realw jacobian_regular,
-                  realw_const_p d_hprime_xx,
-                  realw_const_p d_hprimewgll_xx,
-                  realw_const_p d_wgllwgll_xy,realw_const_p d_wgllwgll_xz,realw_const_p d_wgllwgll_yz,
-                  realw_const_p d_kappav,realw_const_p d_muv,
-                  realw_p epsilondev_xx,realw_p epsilondev_yy,realw_p epsilondev_xy,
-                  realw_p epsilondev_xz,realw_p epsilondev_yz,
-                  realw_p epsilondev_trace,
-                  realw_p epsilon_trace_over_3,
-                  const int SIMULATION_TYPE,
-                  realw_const_p factor_common,
-                  realw_p R_xx,realw_p R_yy,realw_p R_xy,realw_p R_xz,realw_p R_yz,
-                  realw_p R_trace,
-                  realw_const_p factor_common_kappa,
-                  realw_const_p alphaval,realw_const_p betaval,realw_const_p gammaval,
-                  const int ANISOTROPY,
-                  realw_const_p d_c11store,realw_const_p d_c12store,realw_const_p d_c13store,
-                  realw_const_p d_c14store,realw_const_p d_c15store,realw_const_p d_c16store,
-                  realw_const_p d_c22store,realw_const_p d_c23store,realw_const_p d_c24store,
-                  realw_const_p d_c25store,realw_const_p d_c26store,realw_const_p d_c33store,
-                  realw_const_p d_c34store,realw_const_p d_c35store,realw_const_p d_c36store,
-                  realw_const_p d_c44store,realw_const_p d_c45store,realw_const_p d_c46store,
-                  realw_const_p d_c55store,realw_const_p d_c56store,realw_const_p d_c66store,
-                  const int gravity,
-                  realw_const_p d_minus_g,
-                  realw_const_p d_minus_deriv_gravity,
-                  realw_const_p d_rhostore,
-                  realw_const_p wgll_cube,
-                  const int pml_conditions,
-                  const int* d_is_CPML,
-                  const int FORWARD_OR_ADJOINT);
-
-__global__ void
-Kernel_2_noatt_iso_kelvinvoigt_impl(const int nb_blocks_to_compute,
-                                    const int* d_ibool,
-                                    const int* d_phase_ispec_inner_elastic,const int num_phase_ispec_elastic,
-                                    const int d_iphase,
-                                    const int* d_irregular_element_number,
-                                    realw* d_kelvin_voigt_eta,
-                                    realw_const_p d_displ,
-                                    realw_const_p d_veloc,
-                                    realw_p d_accel,
-                                    realw_const_p d_xix,realw_const_p d_xiy,realw_const_p d_xiz,
-                                    realw_const_p d_etax,realw_const_p d_etay,realw_const_p d_etaz,
-                                    realw_const_p d_gammax,realw_const_p d_gammay,realw_const_p d_gammaz,
-                                    const realw xix_regular,const realw jacobian_regular,
-                                    realw_const_p d_hprime_xx,
-                                    realw_const_p d_hprimewgll_xx,
-                                    realw_const_p d_wgllwgll_xy,realw_const_p d_wgllwgll_xz,realw_const_p d_wgllwgll_yz,
-                                    realw_const_p d_kappav,
-                                    realw_const_p d_muv,
-                                    const int pml_conditions,
-                                    const int* d_is_CPML,
-                                    const int FORWARD_OR_ADJOINT);
-
-
-//
-// src/gpu/kernels/UpdateDispVeloc_kernel.cu
-//
-
-__global__ void UpdateDispVeloc_kernel(realw* displ,
-                                       realw* veloc,
-                                       realw* accel,
-                                       const int size,
-                                       const realw deltat,
-                                       const realw deltatsqover2,
-                                       const realw deltatover2) ;
-
-__global__ void UpdateDispVeloc_PML_kernel(realw* displ,
-                                           realw* veloc,
-                                           realw* accel,
-                                           realw* PML_displ,
-                                           const int NSPEC_CPML,
-                                           const int* d_CPML_to_spec,
-                                           const int* d_ibool,
-                                           const realw deltatsqover2,
-                                           const realw deltatover2) ;
-
-
-//
-// src/gpu/kernels/UpdatePotential_kernel.cu
-//
-
-__global__ void UpdatePotential_kernel(field* potential_acoustic,
-                                       field* potential_dot_acoustic,
-                                       field* potential_dot_dot_acoustic,
-                                       int size,
-                                       realw deltat,
-                                       realw deltatsqover2,
-                                       realw deltatover2) ;
-
-
-//
 // src/gpu/kernels/add_source_main_rec_noise_cuda_kernel.cu
 //
 
@@ -927,6 +618,279 @@ __global__ void get_maximum_vector_kernel(realw* array, int size, realw* d_max);
 
 
 //
+// src/gpu/kernels/Kernel_2_acoustic_impl.cu
+//
+
+template<int FORWARD_OR_ADJOINT> __global__ void
+Kernel_2_acoustic_impl(const int nb_blocks_to_compute,
+                       const int* d_ibool,
+                       const int* d_irregular_element_number,
+                       const int* d_phase_ispec_inner_acoustic,
+                       const int num_phase_ispec_acoustic,
+                       const int d_iphase,
+                       field_const_p d_potential_acoustic,
+                       field_p d_potential_dot_dot_acoustic,
+                       field_const_p d_b_potential_acoustic,
+                       field_p d_b_potential_dot_dot_acoustic,
+                       const int nb_field,
+                       realw* d_xix,realw* d_xiy,realw* d_xiz,
+                       realw* d_etax,realw* d_etay,realw* d_etaz,
+                       realw* d_gammax,realw* d_gammay,realw* d_gammaz,
+                       const realw xix_regular, const realw jacobian_regular,
+                       realw_const_p d_hprime_xx,
+                       realw_const_p d_hprimewgll_xx,
+                       realw_const_p d_wgllwgll_xy,realw_const_p d_wgllwgll_xz,realw_const_p d_wgllwgll_yz,
+                       realw_const_p d_rhostore,
+                       const int use_mesh_coloring_gpu,
+                       const int gravity,
+                       realw_const_p minus_g,
+                       realw* d_kappastore,
+                       realw_const_p wgll_cube);
+
+__global__ void
+Kernel_2_acoustic_single_impl(const int nb_blocks_to_compute,
+                              const int* d_ibool,
+                              const int* d_phase_ispec_inner_acoustic,
+                              const int num_phase_ispec_acoustic,
+                              const int d_iphase,
+                              field_const_p d_potential_acoustic,
+                              field_p d_potential_dot_dot_acoustic,
+                              realw* d_xix,realw* d_xiy,realw* d_xiz,
+                              realw* d_etax,realw* d_etay,realw* d_etaz,
+                              realw* d_gammax,realw* d_gammay,realw* d_gammaz,
+                              const int* d_irregular_element_number,
+                              const realw xix_regular, const realw jacobian_regular,
+                              realw_const_p d_hprime_xx,
+                              realw_const_p d_hprimewgll_xx,
+                              realw_const_p d_wgllwgll_xy,realw_const_p d_wgllwgll_xz,realw_const_p d_wgllwgll_yz,
+                              realw_const_p d_rhostore,
+                              const int use_mesh_coloring_gpu,
+                              const int gravity,
+                              realw_const_p minus_g,
+                              realw* d_kappastore,
+                              realw_const_p wgll_cube,
+                              const int FORWARD_OR_ADJOINT);
+
+
+//
+// src/gpu/kernels/Kernel_2_viscoelastic_impl.cu
+//
+
+__global__ void
+Kernel_2_noatt_iso_impl(const int nb_blocks_to_compute,
+                        const int* d_ibool,
+                        const int* d_phase_ispec_inner_elastic,const int num_phase_ispec_elastic,
+                        const int d_iphase,
+                        const int* d_irregular_element_number,
+                        realw_const_p d_displ,
+                        realw_p d_accel,
+                        realw_const_p d_xix,realw_const_p d_xiy,realw_const_p d_xiz,
+                        realw_const_p d_etax,realw_const_p d_etay,realw_const_p d_etaz,
+                        realw_const_p d_gammax,realw_const_p d_gammay,realw_const_p d_gammaz,
+                        const realw xix_regular,const realw jacobian_regular,
+                        realw_const_p d_hprime_xx,
+                        realw_const_p d_hprimewgll_xx,
+                        realw_const_p d_wgllwgll_xy,realw_const_p d_wgllwgll_xz,realw_const_p d_wgllwgll_yz,
+                        realw_const_p d_kappav,
+                        realw_const_p d_muv,
+                        const int is_wavefield_discontinuity,
+                        realw_const_p d_displ_wd,
+                        const int* d_ispec_to_elem_wd,
+                        const int* d_ibool_wd,
+                        const int pml_conditions,
+                        const int* d_is_CPML,
+                        const int FORWARD_OR_ADJOINT);
+
+__global__ void
+Kernel_2_noatt_iso_strain_impl(int nb_blocks_to_compute,
+                              const int* d_ibool,
+                              const int* d_phase_ispec_inner_elastic,const int num_phase_ispec_elastic,
+                              const int d_iphase,
+                              const int* d_irregular_element_number,
+                              realw_const_p d_displ,
+                              realw_p d_accel,
+                              realw_const_p d_xix,realw_const_p d_xiy,realw_const_p d_xiz,
+                              realw_const_p d_etax,realw_const_p d_etay,realw_const_p d_etaz,
+                              realw_const_p d_gammax,realw_const_p d_gammay,realw_const_p d_gammaz,
+                              const realw xix_regular,const realw jacobian_regular,
+                              realw_const_p d_hprime_xx,
+                              realw_const_p d_hprimewgll_xx,
+                              realw_const_p d_wgllwgll_xy,realw_const_p d_wgllwgll_xz,realw_const_p d_wgllwgll_yz,
+                              realw_const_p d_kappav,realw_const_p d_muv,
+                              const int COMPUTE_AND_STORE_STRAIN,
+                              realw_p epsilondev_xx,realw_p epsilondev_yy,realw_p epsilondev_xy,
+                              realw_p epsilondev_xz,realw_p epsilondev_yz,
+                              realw_p epsilon_trace_over_3,
+                              const int SIMULATION_TYPE,
+                              const int pml_conditions,
+                              const int* d_is_CPML,
+                              const int FORWARD_OR_ADJOINT);
+
+__global__ void
+Kernel_2_noatt_iso_col_impl(int nb_blocks_to_compute,
+                        const int* d_ibool,
+                        const int* d_phase_ispec_inner_elastic,const int num_phase_ispec_elastic,
+                        const int d_iphase,
+                        const int use_mesh_coloring_gpu,
+                        realw_const_p d_displ,
+                        realw_p d_accel,
+                        realw_const_p d_xix,realw_const_p d_xiy,realw_const_p d_xiz,
+                        realw_const_p d_etax,realw_const_p d_etay,realw_const_p d_etaz,
+                        realw_const_p d_gammax,realw_const_p d_gammay,realw_const_p d_gammaz,
+                        realw_const_p d_hprime_xx,
+                        realw_const_p d_hprimewgll_xx,
+                        realw_const_p d_wgllwgll_xy,realw_const_p d_wgllwgll_xz,realw_const_p d_wgllwgll_yz,
+                        realw_const_p d_kappav,realw_const_p d_muv,
+                        const int COMPUTE_AND_STORE_STRAIN,
+                        realw_p epsilondev_xx,realw_p epsilondev_yy,realw_p epsilondev_xy,
+                        realw_p epsilondev_xz,realw_p epsilondev_yz,
+                        realw_p epsilon_trace_over_3,
+                        const int SIMULATION_TYPE,
+                        const int pml_conditions,
+                        const int* d_is_CPML,
+                        const int FORWARD_OR_ADJOINT);
+
+__global__ void
+Kernel_2_noatt_iso_grav_impl(int nb_blocks_to_compute,
+                             const int* d_ibool,
+                             const int* d_phase_ispec_inner_elastic,const int num_phase_ispec_elastic,
+                             const int d_iphase,
+                             const int* d_irregular_element_number,
+                             const int use_mesh_coloring_gpu,
+                             realw_const_p d_displ,
+                             realw_p d_accel,
+                             realw_const_p d_xix,realw_const_p d_xiy,realw_const_p d_xiz,
+                             realw_const_p d_etax,realw_const_p d_etay,realw_const_p d_etaz,
+                             realw_const_p d_gammax,realw_const_p d_gammay,realw_const_p d_gammaz,
+                             const realw xix_regular,const realw jacobian_regular,
+                             realw_const_p d_hprime_xx,
+                             realw_const_p d_hprimewgll_xx,
+                             realw_const_p d_wgllwgll_xy,realw_const_p d_wgllwgll_xz,realw_const_p d_wgllwgll_yz,
+                             realw_const_p d_kappav,realw_const_p d_muv,
+                             const int COMPUTE_AND_STORE_STRAIN,
+                             realw_p epsilondev_xx,realw_p epsilondev_yy,realw_p epsilondev_xy,
+                             realw_p epsilondev_xz,realw_p epsilondev_yz,
+                             realw_p epsilon_trace_over_3,
+                             const int SIMULATION_TYPE,
+                             const int gravity,
+                             realw_const_p d_minus_g,
+                             realw_const_p d_minus_deriv_gravity,
+                             realw_const_p d_rhostore,
+                             realw_const_p wgll_cube,
+                             const int pml_conditions,
+                             const int* d_is_CPML,
+                             const int FORWARD_OR_ADJOINT);
+
+__global__ void
+Kernel_2_noatt_ani_impl(int nb_blocks_to_compute,
+                        const int* d_ibool,
+                        const int* d_phase_ispec_inner_elastic,const int num_phase_ispec_elastic,
+                        const int d_iphase,
+                        const int* d_irregular_element_number,
+                        const int use_mesh_coloring_gpu,
+                        realw_const_p d_displ,
+                        realw_p d_accel,
+                        realw_const_p d_xix,realw_const_p d_xiy,realw_const_p d_xiz,
+                        realw_const_p d_etax,realw_const_p d_etay,realw_const_p d_etaz,
+                        realw_const_p d_gammax,realw_const_p d_gammay,realw_const_p d_gammaz,
+                        const realw xix_regular,const realw jacobian_regular,
+                        realw_const_p d_hprime_xx,
+                        realw_const_p d_hprimewgll_xx,
+                        realw_const_p d_wgllwgll_xy,realw_const_p d_wgllwgll_xz,realw_const_p d_wgllwgll_yz,
+                        realw_const_p d_kappav,realw_const_p d_muv,
+                        const int COMPUTE_AND_STORE_STRAIN,
+                        realw_p epsilondev_xx,realw_p epsilondev_yy,realw_p epsilondev_xy,
+                        realw_p epsilondev_xz,realw_p epsilondev_yz,
+                        realw_p epsilon_trace_over_3,
+                        const int SIMULATION_TYPE,
+                        const int ANISOTROPY,
+                        realw* d_c11store,realw* d_c12store,realw* d_c13store,
+                        realw* d_c14store,realw* d_c15store,realw* d_c16store,
+                        realw* d_c22store,realw* d_c23store,realw* d_c24store,
+                        realw* d_c25store,realw* d_c26store,realw* d_c33store,
+                        realw* d_c34store,realw* d_c35store,realw* d_c36store,
+                        realw* d_c44store,realw* d_c45store,realw* d_c46store,
+                        realw* d_c55store,realw* d_c56store,realw* d_c66store,
+                        const int gravity,
+                        realw_const_p d_minus_g,
+                        realw_const_p d_minus_deriv_gravity,
+                        realw_const_p d_rhostore,
+                        realw_const_p wgll_cube,
+                        const int pml_conditions,
+                        const int* d_is_CPML,
+                        const int FORWARD_OR_ADJOINT);
+
+__global__ void
+Kernel_2_att_impl(int nb_blocks_to_compute,
+                  const int* d_ibool,
+                  const int* d_phase_ispec_inner_elastic,const int num_phase_ispec_elastic,
+                  const int d_iphase,
+                  const int* d_irregular_element_number,
+                  const int use_mesh_coloring_gpu,
+                  const realw d_deltat,
+                  realw_const_p d_displ,
+                  realw_const_p d_veloc,
+                  realw_p d_accel,
+                  realw_const_p d_xix,realw_const_p d_xiy,realw_const_p d_xiz,
+                  realw_const_p d_etax,realw_const_p d_etay,realw_const_p d_etaz,
+                  realw_const_p d_gammax,realw_const_p d_gammay,realw_const_p d_gammaz,
+                  const realw xix_regular,const realw jacobian_regular,
+                  realw_const_p d_hprime_xx,
+                  realw_const_p d_hprimewgll_xx,
+                  realw_const_p d_wgllwgll_xy,realw_const_p d_wgllwgll_xz,realw_const_p d_wgllwgll_yz,
+                  realw_const_p d_kappav,realw_const_p d_muv,
+                  realw_p epsilondev_xx,realw_p epsilondev_yy,realw_p epsilondev_xy,
+                  realw_p epsilondev_xz,realw_p epsilondev_yz,
+                  realw_p epsilondev_trace,
+                  realw_p epsilon_trace_over_3,
+                  const int SIMULATION_TYPE,
+                  realw_const_p factor_common,
+                  realw_p R_xx,realw_p R_yy,realw_p R_xy,realw_p R_xz,realw_p R_yz,
+                  realw_p R_trace,
+                  realw_const_p factor_common_kappa,
+                  realw_const_p alphaval,realw_const_p betaval,realw_const_p gammaval,
+                  const int ANISOTROPY,
+                  realw_const_p d_c11store,realw_const_p d_c12store,realw_const_p d_c13store,
+                  realw_const_p d_c14store,realw_const_p d_c15store,realw_const_p d_c16store,
+                  realw_const_p d_c22store,realw_const_p d_c23store,realw_const_p d_c24store,
+                  realw_const_p d_c25store,realw_const_p d_c26store,realw_const_p d_c33store,
+                  realw_const_p d_c34store,realw_const_p d_c35store,realw_const_p d_c36store,
+                  realw_const_p d_c44store,realw_const_p d_c45store,realw_const_p d_c46store,
+                  realw_const_p d_c55store,realw_const_p d_c56store,realw_const_p d_c66store,
+                  const int gravity,
+                  realw_const_p d_minus_g,
+                  realw_const_p d_minus_deriv_gravity,
+                  realw_const_p d_rhostore,
+                  realw_const_p wgll_cube,
+                  const int pml_conditions,
+                  const int* d_is_CPML,
+                  const int FORWARD_OR_ADJOINT);
+
+__global__ void
+Kernel_2_noatt_iso_kelvinvoigt_impl(const int nb_blocks_to_compute,
+                                    const int* d_ibool,
+                                    const int* d_phase_ispec_inner_elastic,const int num_phase_ispec_elastic,
+                                    const int d_iphase,
+                                    const int* d_irregular_element_number,
+                                    realw* d_kelvin_voigt_eta,
+                                    realw_const_p d_displ,
+                                    realw_const_p d_veloc,
+                                    realw_p d_accel,
+                                    realw_const_p d_xix,realw_const_p d_xiy,realw_const_p d_xiz,
+                                    realw_const_p d_etax,realw_const_p d_etay,realw_const_p d_etaz,
+                                    realw_const_p d_gammax,realw_const_p d_gammay,realw_const_p d_gammaz,
+                                    const realw xix_regular,const realw jacobian_regular,
+                                    realw_const_p d_hprime_xx,
+                                    realw_const_p d_hprimewgll_xx,
+                                    realw_const_p d_wgllwgll_xy,realw_const_p d_wgllwgll_xz,realw_const_p d_wgllwgll_yz,
+                                    realw_const_p d_kappav,
+                                    realw_const_p d_muv,
+                                    const int pml_conditions,
+                                    const int* d_is_CPML,
+                                    const int FORWARD_OR_ADJOINT);
+
+
+//
 // src/gpu/kernels/kernel_3_accel_cuda_device.cu
 //
 
@@ -1037,12 +1001,18 @@ __global__ void compute_forces_viscoelastic_cuda_lts_kernel (const int nb_blocks
                                                              realw_const_p d_kappav, realw_const_p d_muv,
                                                              const int* element_list) ;
 
-__global__ void setup_lts_boundary_array(int* ibool_from,
-                                         int* ilevel_from,
-                                         int num_ibool_tofrom,
-                                         realw* displ_p,
+__global__ void setup_lts_boundary_array(const int* ibool_from,
+                                         const int* ilevel_from,
+                                         int num_points,
+                                         const realw* displ_p,
                                          realw* displ_tmp,
+                                         realw* accel_tmp,
                                          int nglob_ab) ;
+
+__global__ void add_lts_boundary_contribution(const int* ibool_from,
+                                              int num_points,
+                                              const realw* accel_tmp,
+                                              realw* accel) ;
 
 __global__ void lts_newmark_update_kernel_slow(realw* displ,
                                                realw* veloc,
@@ -1068,8 +1038,9 @@ __global__ void lts_newmark_update_kernel_P(realw* displ,
                                             int NGLOB_PLEVELS_END,
                                             int num_p_level,
                                             realw deltat_lts,
-                                            realw* displ_global,
-                                            realw* veloc_global) ;
+                                            int collect_accel,
+                                            realw* accel_collected,
+                                            int* mask_ibool_collected) ;
 
 __global__ void lts_newmark_update_kernel_P2(realw* displ,
                                              realw* veloc,
@@ -1083,8 +1054,9 @@ __global__ void lts_newmark_update_kernel_P2(realw* displ,
                                              int NGLOB_PLEVELS,
                                              int num_p_level,
                                              realw deltat_lts,
-                                             realw* displ_global,
-                                             realw* veloc_global) ;
+                                             int collect_accel,
+                                             realw* accel_collected,
+                                             int* mask_ibool_collected) ;
 
 __global__ void lts_newmark_update_kernel_R(realw* displ,
                                             realw* veloc,
@@ -1096,15 +1068,25 @@ __global__ void lts_newmark_update_kernel_R(realw* displ,
                                             int NGLOB_AB,
                                             int num_p_level,
                                             realw deltat_lts,
-                                            realw* displ_global,
-                                            realw* veloc_global,
                                             int num_p_level_coarser_to_update,
                                             int* p_level_coarser_to_update,
-                                            int* iglob_p_refine) ;
+                                            int* iglob_p_refine,
+                                            int collect_accel,
+                                            realw* accel_collected,
+                                            int* mask_ibool_collected) ;
+
+__global__ void lts_newmark_update_veloc_kernel(realw* veloc,
+                                                realw* veloc_global,
+                                                realw* accel_global,
+                                                int nglob,
+                                                int num_p_level,
+                                                int use_accel_collected,
+                                                realw* accel_collected,
+                                                int* mask_ibool_collected) ;
 
 __global__ void lts_newmark_update_displ_kernel(realw* displ,
                                                 realw* displ_global,
-                                                int size,
+                                                int nglob,
                                                 int num_p_level) ;
 
 __global__ void zero_accel_kernel_P(realw* accel,
@@ -1301,6 +1283,42 @@ __global__ void transfer_surface_to_host_kernel(int* free_surface_ispec,
                                                 int* d_ibool,
                                                 realw* displ,
                                                 realw* noise_surface_movie) ;
+
+
+//
+// src/gpu/kernels/UpdateDispVeloc_kernel.cu
+//
+
+__global__ void UpdateDispVeloc_kernel(realw* displ,
+                                       realw* veloc,
+                                       realw* accel,
+                                       const int size,
+                                       const realw deltat,
+                                       const realw deltatsqover2,
+                                       const realw deltatover2) ;
+
+__global__ void UpdateDispVeloc_PML_kernel(realw* displ,
+                                           realw* veloc,
+                                           realw* accel,
+                                           realw* PML_displ,
+                                           const int NSPEC_CPML,
+                                           const int* d_CPML_to_spec,
+                                           const int* d_ibool,
+                                           const realw deltatsqover2,
+                                           const realw deltatover2) ;
+
+
+//
+// src/gpu/kernels/UpdatePotential_kernel.cu
+//
+
+__global__ void UpdatePotential_kernel(field* potential_acoustic,
+                                       field* potential_dot_acoustic,
+                                       field* potential_dot_dot_acoustic,
+                                       int size,
+                                       realw deltat,
+                                       realw deltatsqover2,
+                                       realw deltatover2) ;
 
 
 //

@@ -515,8 +515,8 @@ void FC_FUNC_(copy_lts_fields_to_device,
 
 void FC_FUNC_(lts_boundary_contribution_cuda,
               LTS_BOUNDARY_CONTRIBUTION_CUDA)(long* Mesh_pointer,
-                                              int* num_ibool_tofrom,
-                                              int* num_elements,
+                                              int* num_points_f,
+                                              int* num_elements_f,
                                               int* iphase_f,
                                               int* ilevel_f) {}
 
@@ -525,6 +525,7 @@ void FC_FUNC_(lts_newmark_update_cuda,
                                        realw* deltat_lts_f,
                                        int* ilevel_f,
                                        int* step_m_f,
+                                       int* lts_current_m,
                                        int* p_level_iglob_start,
                                        int* p_level_iglob_end,
                                        int* num_p_level_coarser_to_update) {}
@@ -753,7 +754,7 @@ void FC_FUNC_(prepare_wavefield_discontinuity_device,
                                                       realw* face_jacobian2Dw_wd) {}
 
 void FC_FUNC_(prepare_lts_device,
-              PREPARE_LTS_DEVICE)(long* Mesh_pointer, int* num_p_level, int* iglob_p_refine) {}
+              PREPARE_LTS_DEVICE)(long* Mesh_pointer, int* num_p_level, int* iglob_p_refine, int* use_accel_collected_f) {}
 
 void FC_FUNC_(prepare_lts_mass_boundary_fields_device,
               PREPARE_LTS_MASS_BOUNDARY_FIELDS_DEVICE)(long* Mesh_pointer,
@@ -765,7 +766,9 @@ void FC_FUNC_(transfer_element_list_to_device,
 
 void FC_FUNC_(transfer_boundary_element_list_to_device,
               TRANSFER_BOUNDARY_ELEMENT_LIST_TO_DEVICE)(long* Mesh_pointer,
-                                                        int* ibool_from, int* ilevel_from, int* boundary_ispec) {}
+                                                        int* p_level_boundary_node,
+                                                        int* p_level_boundary_ilevel_from,
+                                                        int* p_level_boundary_ispec) {}
 
 void FC_FUNC_(setup_r_boundaries_time_stepping,
               SETUP_R_BOUNDARIES_TIME_STEPPING)(long* Mesh_pointer,
