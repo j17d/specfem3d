@@ -167,22 +167,23 @@
                                          backward_simulation)
       else
         ! on GPU
-        !#TODO: LTS on GPU compute_forces
-        stop 'LTS on GPU w/ compute_forces not implemented yet'
-        ! if (iphase == 1) then
-        !   num_elements = nspec_outer_elastic
-        ! else
-        !   num_elements = nspec_inner_elastic
-        ! endif
-        ! iispec = 1
-        ! do ispec=1,num_elements
-        !   ispec_p = phase_ispec_inner_elastic(ispec,iphase)
-        !   if (.not. p_elem(ispec_p,ilevel)) cycle
-        !   if (boundary_elem(ispec_p,ilevel) .eqv. .true.) cycle
-        !   element_list(iispec) = ispec_p
-        !   iispec = iispec + 1
-        ! enddo
-        !call compute_forces_viscoelastic_cuda_lts(Mesh_pointer,ilevel,iphase)
+        call compute_forces_viscoelastic_cuda_lts(Mesh_pointer,ilevel,iphase)
+        ! debugging
+        !! transfer arrays to CPU
+        !call copy_lts_fields_from_device(displ_p,veloc_p,accel,Mesh_pointer)
+        !!on CPU
+        !lts_type_compute_pelem = .true.   ! p-elements only (no boundary elements)
+        !call compute_forces_viscoelastic(iphase,deltat_lts_local, &
+        !                                 displ_p(:,:,ilevel),veloc_p(:,:,ilevel),accel, &
+        !                                 alphaval,betaval,gammaval, &
+        !                                 R_trace,R_xx,R_yy,R_xy,R_xz,R_yz, &
+        !                                 R_trace_lddrk, &
+        !                                 R_xx_lddrk,R_yy_lddrk,R_xy_lddrk,R_xz_lddrk,R_yz_lddrk, &
+        !                                 epsilondev_trace,epsilondev_xx,epsilondev_yy,epsilondev_xy, &
+        !                                 epsilondev_xz,epsilondev_yz,epsilon_trace_over_3, &
+        !                                 backward_simulation)
+        !! transfer arrays to GPU
+        !call copy_lts_fields_to_device(displ_p,veloc_p,accel,Mesh_pointer)
       endif
 
       ! compute "assembly" contributions from coarser and finer levels
@@ -194,11 +195,18 @@
                                        iphase, backward_simulation)
       else
         ! on GPU
-        !#TODO: LTS on GPU boundary contribution
-        stop 'LTS on GPU w/ boundary contribution not implemented yet'
-        !call lts_boundary_contribution_cuda(Mesh_pointer,num_p_level_boundary_nodes(iphase,ilevel), &
-        !                                    num_p_level_boundary_ispec(iphase,ilevel), &
-        !                                    iphase,ilevel)
+        call lts_boundary_contribution_cuda(Mesh_pointer,num_p_level_boundary_nodes(iphase,ilevel), &
+                                            num_p_level_boundary_ispec(iphase,ilevel), &
+                                            iphase,ilevel)
+        ! debugging
+        !! transfer arrays to CPU
+        !call copy_lts_fields_from_device(displ_p,veloc_p,accel,Mesh_pointer)
+        !!on CPU
+        !call lts_boundary_contribution(displ_p, veloc_p, accel, ilevel, &
+        !                               p, deltat_lts_local, &
+        !                               iphase, backward_simulation)
+        !! transfer arrays to GPU
+        !call copy_lts_fields_to_device(displ_p,veloc_p,accel,Mesh_pointer)
       endif
 
       ! computes additional contributions
@@ -247,12 +255,10 @@
                                                        it,b_num_abs_boundary_faces,b_reclen_field,b_absorb_field)
             else
               ! on GPU
-              !#TODO: LTS on GPU stacey contribution
-              stop 'LTS on GPU w/ Stacey contribution not implemented yet'
-              !call compute_stacey_viscoelastic_GPU(iphase,num_abs_boundary_faces, &
-              !                                     NSTEP,it, &
-              !                                     b_num_abs_boundary_faces,b_reclen_field,b_absorb_field, &
-              !                                     Mesh_pointer,1) ! 1 == forward
+              call compute_stacey_viscoelastic_GPU(iphase,num_abs_boundary_faces, &
+                                                   NSTEP,it, &
+                                                   b_num_abs_boundary_faces,b_reclen_field,b_absorb_field, &
+                                                   Mesh_pointer,1) ! 1 == forward
             endif
           endif
         endif
@@ -328,8 +334,7 @@
         ! receives MPI buffers
         call assemble_MPI_vector_async_recv_lts(NPROC,NGLOB_AB,accel,ilevel, &
                                                 buffer_recv_vector_ext_mesh,num_interfaces_ext_mesh, &
-                                                max_nibool_interfaces_ext_mesh, &
-                                                nibool_interfaces_ext_mesh,ibool_interfaces_ext_mesh, &
+                                                max_nibool_interfaces_ext_mesh,nibool_interfaces_ext_mesh, &
                                                 request_send_vector_ext_mesh,request_recv_vector_ext_mesh, &
                                                 my_neighbors_ext_mesh)
       endif
@@ -429,8 +434,8 @@
   use specfem_par, only: NGLOB_AB
 
   ! GPU
-  !use specfem_par, only: Mesh_pointer
-  !use specfem_par_lts, only: num_p_level
+  use specfem_par, only: Mesh_pointer
+  use specfem_par_lts, only: num_p_level
 
   ! LTS
   use specfem_par_lts, only: p_level_iglob_start, p_level_iglob_end, &
@@ -470,13 +475,11 @@
     enddo
   else
     ! on GPU
-    !#TODO: LTS on GPU compute_forces
-    stop 'LTS on GPU w/ lts_set_accel_zero not implemented yet'
-    !if (ilevel == num_p_level) then
-    !  call lts_zero_accel_cuda(Mesh_pointer)
-    !else if (ilevel < num_p_level) then
-    !  call lts_set_accel_zero_fast_cuda(Mesh_pointer,ilevel,p_level_iglob_end,num_p_level_coarser_to_update)
-    !endif
+    if (ilevel == num_p_level) then
+      call lts_set_accel_zero_cuda(Mesh_pointer)
+    else if (ilevel < num_p_level) then
+      call lts_set_accel_zero_level_cuda(Mesh_pointer,ilevel,p_level_iglob_end,num_p_level_coarser_to_update)
+    endif
   endif
 
   end subroutine lts_set_accel_zero
@@ -499,7 +502,7 @@
     num_p_level
 
   ! GPU
-  !use specfem_par, only: Mesh_pointer
+  use specfem_par, only: Mesh_pointer
 
   implicit none
 
@@ -538,9 +541,7 @@
     enddo
   else
     ! on GPU
-    !#TODO: LTS on GPU compute_forces
-    stop 'LTS on GPU w/ set_finer_initial_condition not implemented yet'
-    !call lts_set_finer_initial_condition_cuda(Mesh_pointer,ilevel,p_level_iglob_end,num_p_level_coarser_to_update)
+    call lts_set_finer_initial_condition_cuda(Mesh_pointer,ilevel,p_level_iglob_end,num_p_level_coarser_to_update)
   endif
 
   end subroutine lts_set_finer_initial_condition
@@ -559,7 +560,7 @@
                                        p, deltat_lts_local, &
                                        iphase, backward_simulation)
 
-  use constants, only: myrank,CUSTOM_REAL,NDIM
+  use constants, only: CUSTOM_REAL,NDIM !,myrank
 
   use specfem_par, only: NGLOB_AB
 
@@ -571,8 +572,9 @@
     epsilondev_xz,epsilondev_yz,epsilon_trace_over_3
 
   ! LTS
-  use specfem_par_lts, only: p_level_ilevel_map, num_p_level, lts_type_compute_pelem, iglob_p_refine, &
-    num_p_level_boundary_nodes,p_level_boundary_node
+  use specfem_par_lts, only: num_p_level, lts_type_compute_pelem, &
+    num_p_level_boundary_nodes,p_level_boundary_node,p_level_boundary_ilevel_from
+    !,num_p_level_boundary_ispec,iglob_p_refine,p_level_ilevel_map
 
   implicit none
 
@@ -588,14 +590,20 @@
   logical, intent(in) :: backward_simulation
 
   ! local parameters
-  integer :: iglob
-  integer :: p_node, iilevel
-  integer :: num_points,ipoin
+  integer :: iglob,iilevel,ipoin,num_points  !,num_elements,p_node
   real(kind=CUSTOM_REAL), dimension(NDIM,NGLOB_AB) :: displ_p_boundary
   real(kind=CUSTOM_REAL), dimension(NDIM,NGLOB_AB) :: veloc_p_boundary
   real(kind=CUSTOM_REAL), dimension(NDIM,NGLOB_AB) :: accel_p_boundary
 
   ! prepares boundary wavefield arrays
+
+  ! check if p-level value is valid
+  if (p < 1) return
+
+  ! not needed - we'll check number of points...
+  !! checks if any elements to do
+  !num_elements = num_p_level_boundary_ispec(iphase,ilevel)
+  !if (num_elements == 0) return
 
   ! number of global points on this level boundary
   num_points = num_p_level_boundary_nodes(iphase,ilevel)
@@ -603,28 +611,37 @@
   ! checks if anything to do
   if (num_points == 0) return
 
+  ! note: for a coarse element at a p-level boundary, all of its GLL nodes become boundary nodes and are stored in
+  !       the array p_level_boundary_node(..). these boundary nodes can have different associated p values,
+  !       determined by the neighboring elements they touch. the p-value on a iglob node is uniquely given by
+  !       the array iglob_p_refine(). thus, initializing the boundary wavefields displ_p_boundary()/..
+  !       can be done once at setup time.
+
   ! loop only over boundary nodes
   do ipoin = 1,num_points
     iglob = p_level_boundary_node(ipoin,iphase,ilevel)
 
+    ! this check is done in setup routine lts_setup_level_boundary()...
     ! checks if node belongs to this or coarser p-level
-    p_node = iglob_p_refine(iglob)
-    if (p_node > p) then
-      print *,'Error: boundary node p value is invalid: ',p_node,'should be <= ',p
-      print *,'       iglob ',iglob ,'iphase/ilevel',iphase,ilevel !,'i/j/k/ispec',i,j,k,ispec
-      print *,'       p_level_ilevel_map = ',p_level_ilevel_map(p_node)
-      call exit_mpi(myrank,"Error: Assert(boundary nodes are this level or coarser only)")
-    endif
+    !p_node = iglob_p_refine(iglob)
+    !if (p_node > p) then
+    !  print *,'Error: boundary node p value is invalid: ',p_node,'should be <= ',p
+    !  print *,'       iglob ',iglob ,'iphase/ilevel',iphase,ilevel !,'i/j/k/ispec',i,j,k,ispec
+    !  print *,'       p_level_ilevel_map = ',p_level_ilevel_map(p_node)
+    !  call exit_mpi(myrank,"Error: Assert(boundary nodes are this level or coarser only)")
+    !endif
 
     ! takes corresponding displacement from this and coarser p-levels
-    iilevel = p_level_ilevel_map(p_node)
+    iilevel = p_level_boundary_ilevel_from(ipoin,iphase,ilevel)
+    ! or
+    !iilevel = p_level_ilevel_map(p_node)
 
     ! initial displacement
     displ_p_boundary(:,iglob) = displ_p(:,iglob,iilevel)
     ! initial velocity
     veloc_p_boundary(:,iglob) = veloc_p(:,iglob,iilevel)
     ! initial accel - zeroed out
-    accel_p_boundary(:,iglob) = 0.0_CUSTOM_REAL
+    accel_p_boundary(:,iglob) = 0.0_CUSTOM_REAL       ! TODO: check if accel_p_boundary() is really needed
   enddo
 
   ! sets compute force type
@@ -643,7 +660,8 @@
 
 
   ! fills element values back into "global" array
-
+  ! TODO: check if accel_p_boundary() is really needed or if the boundary contributions could be directly added
+  !       in routine compute_forces_viscoelastic() by passing accel instead of accel_p_boundary
   ! loop only over boundary nodes
   do ipoin = 1,num_points
     iglob = p_level_boundary_node(ipoin,iphase,ilevel)

@@ -234,7 +234,6 @@ extern EXTERN_LANG
 void FC_FUNC_(add_sources_el_sim_type_2_or_3,
               ADD_SOURCES_EL_SIM_TYPE_2_OR_3)(long* Mesh_pointer,
                                               realw* h_source_adjoint,
-                                              int* nrec,
                                               int* nadj_rec_local,
                                               int* NTSTEP_BETWEEN_READ_ADJSRC,
                                               int* it) {
@@ -276,7 +275,7 @@ void FC_FUNC_(add_sources_el_sim_type_2_or_3,
 #ifdef USE_CUDA
   if (run_cuda){
     add_sources_el_SIM_TYPE_2_OR_3_kernel<<<grid,threads,0,mp->compute_stream>>>(mp->d_accel,
-                                                                                 *nrec,it_index,*NTSTEP_BETWEEN_READ_ADJSRC,
+                                                                                 it_index,
                                                                                  mp->d_source_adjoint,
                                                                                  mp->d_hxir_adj,
                                                                                  mp->d_hetar_adj,
@@ -291,7 +290,7 @@ void FC_FUNC_(add_sources_el_sim_type_2_or_3,
   if (run_hip){
     hipLaunchKernelGGL(add_sources_el_SIM_TYPE_2_OR_3_kernel, dim3(grid), dim3(threads), 0, mp->compute_stream,
                                                               mp->d_accel,
-                                                              *nrec,it_index,*NTSTEP_BETWEEN_READ_ADJSRC,
+                                                              it_index,
                                                               mp->d_source_adjoint,
                                                               mp->d_hxir_adj,
                                                               mp->d_hetar_adj,

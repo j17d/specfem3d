@@ -426,7 +426,7 @@
                          USE_LDDRK,istage, &
                          source_adjoint,nadj_rec_local,number_adjsources_global, &
                          USE_BINARY_FOR_SEISMOGRAMS, &
-                         NSOURCES,it,SIMULATION_TYPE,NSTEP,nrec, &
+                         NSOURCES,it,SIMULATION_TYPE,NSTEP, &
                          NTSTEP_BETWEEN_READ_ADJSRC,Mesh_pointer, &
                          INVERSE_FWI_FULL_PROBLEM,run_number_of_the_source
 
@@ -568,7 +568,7 @@
       if (it < NSTEP) then
         ! receivers act as sources
         ! on GPU
-        call add_sources_ac_sim_2_or_3_cuda(Mesh_pointer,source_adjoint,nrec,nadj_rec_local,NTSTEP_BETWEEN_READ_ADJSRC,it)
+        call add_sources_ac_sim_2_or_3_cuda(Mesh_pointer,source_adjoint,nadj_rec_local,NTSTEP_BETWEEN_READ_ADJSRC,it)
       endif ! it
     endif ! nadj_rec_local > 0
   endif

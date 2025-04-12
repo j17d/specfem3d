@@ -56,6 +56,7 @@ void FC_FUNC_(compute_seismograms_cuda,
 
   //checks if anything to do
   if (mp->nrec_local == 0) return;
+  if (!(*ACOUSTIC_SIMULATION) && !(*ELASTIC_SIMULATION)) return;
 
   int num_blocks_x, num_blocks_y;
   get_blocks_xy(mp->nrec_local,&num_blocks_x,&num_blocks_y);
@@ -96,7 +97,7 @@ void FC_FUNC_(compute_seismograms_cuda,
     field* d_seismo_p = NULL;
 
     if (seismotype == 1){
-      // deplacement
+      // displacement
       if (mp->simulation_type == 1 || mp->simulation_type == 2){
         displ = mp->d_displ;
         potential = mp->d_potential_acoustic;
@@ -115,7 +116,7 @@ void FC_FUNC_(compute_seismograms_cuda,
       d_seismo = mp->d_seismograms_d;
 
     }else if (seismotype == 2){
-      // vitesse
+      // velocity
       if (mp->simulation_type == 1 || mp->simulation_type == 2){
         displ = mp->d_veloc;
         potential = mp->d_potential_dot_acoustic;

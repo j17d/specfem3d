@@ -60,7 +60,7 @@
   double precision :: f0,t0_ricker
   ! CMTs
   double precision, dimension(:), allocatable :: lat,lon,depth
-  double precision, dimension(:,:), allocatable ::  moment_tensor
+  double precision, dimension(:,:), allocatable :: moment_tensor
   ! positioning
   double precision, dimension(:), allocatable :: x_found,y_found,z_found
   double precision, dimension(:), allocatable :: elevation

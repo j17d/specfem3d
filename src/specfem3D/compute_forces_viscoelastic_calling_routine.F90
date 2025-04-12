@@ -166,8 +166,7 @@
       call assemble_MPI_vector_send_cuda(NPROC, &
                                          buffer_send_vector_ext_mesh,buffer_recv_vector_ext_mesh, &
                                          num_interfaces_ext_mesh,max_nibool_interfaces_ext_mesh, &
-                                         nibool_interfaces_ext_mesh, &
-                                         my_neighbors_ext_mesh, &
+                                         nibool_interfaces_ext_mesh,my_neighbors_ext_mesh, &
                                          request_send_vector_ext_mesh,request_recv_vector_ext_mesh)
 
       ! transfers MPI buffers onto GPU
@@ -314,7 +313,7 @@
         ! MPI-send is done from within compute_forces_viscoelastic_cuda,
         ! once the inner element kernels are launched, and the
         ! memcpy has finished. see compute_forces_viscoelastic_cuda: ~ line 1655
-        call transfer_boundary_from_device_a(Mesh_pointer,nspec_outer_elastic)
+        call transfer_boundary_from_device_a(Mesh_pointer)
       endif
     else
       ! waits for send/receive requests to be completed and assembles values
@@ -330,10 +329,9 @@
       else
         ! on GPU
         ! waits for send/receive requests to be completed and assembles values
-        call assemble_MPI_vector_write_cuda(NPROC,NGLOB_AB,accel, Mesh_pointer, &
+        call assemble_MPI_vector_write_cuda(NPROC,NGLOB_AB,accel,Mesh_pointer, &
                                             buffer_recv_vector_ext_mesh,num_interfaces_ext_mesh, &
                                             max_nibool_interfaces_ext_mesh, &
-                                            nibool_interfaces_ext_mesh,ibool_interfaces_ext_mesh, &
                                             request_send_vector_ext_mesh,request_recv_vector_ext_mesh, &
                                             1)
       endif
@@ -623,8 +621,7 @@
         call assemble_MPI_vector_send_cuda(NPROC, &
                                            b_buffer_send_vector_ext_mesh,b_buffer_recv_vector_ext_mesh, &
                                            num_interfaces_ext_mesh,max_nibool_interfaces_ext_mesh, &
-                                           nibool_interfaces_ext_mesh, &
-                                           my_neighbors_ext_mesh, &
+                                           nibool_interfaces_ext_mesh,my_neighbors_ext_mesh, &
                                            b_request_send_vector_ext_mesh,b_request_recv_vector_ext_mesh)
       endif
     else
@@ -640,10 +637,9 @@
                                             my_neighbors_ext_mesh)
       else
         ! on GPU
-        call assemble_MPI_vector_write_cuda(NPROC,NGLOB_AB,b_accel, Mesh_pointer, &
+        call assemble_MPI_vector_write_cuda(NPROC,NGLOB_AB,b_accel,Mesh_pointer, &
                                             b_buffer_recv_vector_ext_mesh,num_interfaces_ext_mesh, &
                                             max_nibool_interfaces_ext_mesh, &
-                                            nibool_interfaces_ext_mesh,ibool_interfaces_ext_mesh, &
                                             b_request_send_vector_ext_mesh,b_request_recv_vector_ext_mesh, &
                                             3)
       endif
@@ -768,8 +764,7 @@
       call assemble_MPI_vector_send_cuda(NPROC, &
                                          buffer_send_vector_ext_mesh,buffer_recv_vector_ext_mesh, &
                                          num_interfaces_ext_mesh,max_nibool_interfaces_ext_mesh, &
-                                         nibool_interfaces_ext_mesh, &
-                                         my_neighbors_ext_mesh, &
+                                         nibool_interfaces_ext_mesh,my_neighbors_ext_mesh, &
                                          request_send_vector_ext_mesh,request_recv_vector_ext_mesh)
 
       ! transfers MPI buffers onto GPU
@@ -829,7 +824,7 @@
       ! MPI-send is done from within compute_forces_viscoelastic_cuda,
       ! once the inner element kernels are launched, and the
       ! memcpy has finished. see compute_forces_viscoelastic_cuda: ~ line 1655
-      call transfer_boundary_from_device_a(Mesh_pointer,nspec_outer_elastic)
+      call transfer_boundary_from_device_a(Mesh_pointer)
 
       ! adjoint simulations
       ! assumes SIMULATION_TYPE == 3
@@ -840,26 +835,21 @@
       call assemble_MPI_vector_send_cuda(NPROC, &
                                          b_buffer_send_vector_ext_mesh,b_buffer_recv_vector_ext_mesh, &
                                          num_interfaces_ext_mesh,max_nibool_interfaces_ext_mesh, &
-                                         nibool_interfaces_ext_mesh, &
-                                         my_neighbors_ext_mesh, &
+                                         nibool_interfaces_ext_mesh,my_neighbors_ext_mesh, &
                                          b_request_send_vector_ext_mesh,b_request_recv_vector_ext_mesh)
 
     else
       ! waits for send/receive requests to be completed and assembles values
-      call assemble_MPI_vector_write_cuda(NPROC,NGLOB_AB,accel, &
-                                          Mesh_pointer, &
+      call assemble_MPI_vector_write_cuda(NPROC,NGLOB_AB,accel,Mesh_pointer, &
                                           buffer_recv_vector_ext_mesh,num_interfaces_ext_mesh, &
                                           max_nibool_interfaces_ext_mesh, &
-                                          nibool_interfaces_ext_mesh,ibool_interfaces_ext_mesh, &
                                           request_send_vector_ext_mesh,request_recv_vector_ext_mesh, &
                                           1) ! 1 == forward
       ! adjoint simulations
       ! assumes SIMULATION_TYPE == 3
-      call assemble_MPI_vector_write_cuda(NPROC,NGLOB_AB,b_accel, &
-                                          Mesh_pointer, &
+      call assemble_MPI_vector_write_cuda(NPROC,NGLOB_AB,b_accel,Mesh_pointer, &
                                           b_buffer_recv_vector_ext_mesh,num_interfaces_ext_mesh, &
                                           max_nibool_interfaces_ext_mesh, &
-                                          nibool_interfaces_ext_mesh,ibool_interfaces_ext_mesh, &
                                           b_request_send_vector_ext_mesh,b_request_recv_vector_ext_mesh, &
                                           3)  ! 3 == backward
     endif

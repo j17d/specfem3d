@@ -33,7 +33,7 @@
 // needed in compute_kernels_acoustic_kernel.cu and compute_kernels_hess_ac_cudakernel.cu
 
 __device__ __forceinline__ void compute_gradient_kernel(int ijk,
-                                                        int ispec,int ispec_irreg,
+                                                        int ispec_irreg,
                                                         field* scalar_field,
                                                         field* vector_field_loc,
                                                         realw* d_hprime_xx,

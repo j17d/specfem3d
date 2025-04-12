@@ -309,10 +309,9 @@ void FC_FUNC_(transfer_pml_displ_from_device,
 
 extern EXTERN_LANG
 void FC_FUNC_(transfer_wavefield_discontinuity_to_device,
-              TRANSFER_WAVEFIELD_DISCONTINUITY_TO_DEVICE)(
-                         int* size_point, int* size_face,
-                         realw* displ_wd, realw* accel_wd,
-                         realw* traction_wd, long* Mesh_pointer) {
+              TRANSFER_WAVEFIELD_DISCONTINUITY_TO_DEVICE)(int* size_point, int* size_face,
+                                                          realw* displ_wd, realw* accel_wd,
+                                                          realw* traction_wd, long* Mesh_pointer) {
 
   TRACE("transfer_wavefield_discontinuity_to_device");
 
@@ -324,6 +323,8 @@ void FC_FUNC_(transfer_wavefield_discontinuity_to_device,
 
 }
 
+/* ----------------------------------------------------------------------------------------------- */
+
 /**
  * @author nqdu
  * @brief copy injection field from host to device
@@ -333,10 +334,9 @@ void FC_FUNC_(transfer_wavefield_discontinuity_to_device,
  */
 extern EXTERN_LANG
 void FC_FUNC_(transfer_injection_field_to_device,
-              TRANSFER_INJECTION_FIELD_TO_DEVICE)(
-                         int* size_face,
-                         realw* veloc_inj,realw* traction_inj,
-                         long* Mesh_pointer) {
+              TRANSFER_INJECTION_FIELD_TO_DEVICE)(int* size_face,
+                                                  realw* veloc_inj,realw* traction_inj,
+                                                  long* Mesh_pointer) {
 
   TRACE("transfer_injection_field_to_device");
 

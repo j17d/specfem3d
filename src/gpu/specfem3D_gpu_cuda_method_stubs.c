@@ -64,31 +64,20 @@ void FC_FUNC_(transfer_boun_accel_from_device,
                                                const int* FORWARD_OR_ADJOINT){}
 
 void FC_FUNC_(transfer_boundary_from_device_a,
-              TRANSFER_BOUNDARY_FROM_DEVICE_A)(long* Mesh_pointer,
-                                               const int* nspec_outer_elastic) {}
+              TRANSFER_BOUNDARY_FROM_DEVICE_A)(long* Mesh_pointer) {}
 
 void FC_FUNC_(transfer_boundary_to_device_a,
               TRANSFER_BOUNDARY_TO_DEVICE_A)(long* Mesh_pointer,
-                                             realw* buffer_recv_vector_ext_mesh,
-                                             const int* num_interfaces_ext_mesh,
-                                             const int* max_nibool_interfaces_ext_mesh) {}
+                                             realw* buffer_recv_vector_ext_mesh) {}
 
 void FC_FUNC_(transfer_asmbl_accel_to_device,
               TRANSFER_ASMBL_ACCEL_TO_DEVICE)(long* Mesh_pointer,
                                               realw* buffer_recv_vector_ext_mesh,
-                                              const int* num_interfaces_ext_mesh,
-                                              const int* max_nibool_interfaces_ext_mesh,
-                                              const int* nibool_interfaces_ext_mesh,
-                                              const int* ibool_interfaces_ext_mesh,
                                               const int* FORWARD_OR_ADJOINT) {}
 
 void FC_FUNC_(transfer_sync_accel_to_device,
               TRANSFER_ASMBL_ACCEL_TO_DEVICE)(long* Mesh_pointer,
                                               realw* buffer_recv_vector_ext_mesh,
-                                              const int* num_interfaces_ext_mesh,
-                                              const int* max_nibool_interfaces_ext_mesh,
-                                              const int* nibool_interfaces_ext_mesh,
-                                              const int* ibool_interfaces_ext_mesh,
                                               const int* FORWARD_OR_ADJOINT) {}
 
 void FC_FUNC_(sync_copy_from_device,
@@ -163,7 +152,6 @@ void FC_FUNC_(compute_add_sources_ac_s3_cuda,
 void FC_FUNC_(add_sources_ac_sim_2_or_3_cuda,
               ADD_SOURCES_AC_SIM_2_OR_3_CUDA)(long* Mesh_pointer,
                                               realw* h_source_adjoint,
-                                              int* nrec,
                                               int* nadj_rec_local,
                                               int* NTSTEP_BETWEEN_READ_ADJSRC,
                                               int* it) {}
@@ -192,7 +180,6 @@ void FC_FUNC_(add_source_main_rec_noise_cu,
 void FC_FUNC_(add_sources_el_sim_type_2_or_3,
               ADD_SOURCES_EL_SIM_TYPE_2_OR_3)(long* Mesh_pointer,
                                               realw* h_source_adjoint,
-                                              int* nrec,
                                               int* nadj_rec_local,
                                               int* NTSTEP_BETWEEN_READ_ADJSRC,
                                               int* it) {}
@@ -290,6 +277,11 @@ void FC_FUNC_(compute_stacey_acoustic_undoatt_cuda,
                                                      int* iphasef,
                                                      int* FORWARD_OR_ADJOINT_f) {}
 
+void FC_FUNC_(compute_coupled_injection_contribution_ac_device,
+              COMPUTE_COUPLED_INJECTION_CONTRIBUTION_AC_DEVICE)(long *Mesh_pointer,
+                                                                realw* b_boundary_injection_potential,
+                                                                int* SAVE_STACEY_f) {}
+
 
 //
 // src/gpu/compute_stacey_viscoelastic_cuda.cu
@@ -305,6 +297,11 @@ void FC_FUNC_(compute_stacey_viscoelastic_undoatt_cuda,
               COMPUTE_STACEY_VISCOELASTIC_UNDOATT_CUDA)(long* Mesh_pointer,
                                                         int* iphasef,
                                                         int* FORWARD_OR_ADJOINT_f) {}
+
+void FC_FUNC_(compute_coupled_injection_contribution_el_device,
+              COMPUTE_COUPLED_INJECTION_CONTRIBUTION_EL_DEVICE)(long* Mesh_pointer,
+                                                                realw* b_boundary_injection_field,
+                                                                int *SAVE_STACEY_f) {}
 
 
 //
@@ -356,7 +353,6 @@ void FC_FUNC_(transfer_fault_data_to_device,
 void FC_FUNC_(transfer_fault_data_to_host,
               TRANSFER_FAULT_DATA_TO_HOST)(long* Fault_pointer,
                                            int* fault_index,
-                                           int* NSPEC_FLT,
                                            int* NGLOB_FLT,
                                            realw* D,
                                            realw* V,
@@ -451,6 +447,109 @@ void FC_FUNC_(initialize_gpu_device,
 
 
 //
+// src/gpu/lts_assembly_mpi_cuda.cu
+//
+
+void FC_FUNC_(sync_copy_reduced_from_device,
+              SYNC_copy_reduced_FROM_DEVICE)(long* Mesh_pointer,
+                                             int* iphase,
+                                             realw* send_buffer,
+                                             int* num_interface_p_refine_boundary_f) {}
+
+void FC_FUNC_(test_boundary_transfer_lts,
+              TEST_BOUNDARY_TRANSFER_LTS)(long* Mesh_pointer,
+                                          int* ilevel_f,
+                                          int* max_num_interface_p_refine_ibool_f,
+                                          realw* copy_buffer) {}
+
+void FC_FUNC_(transfer_reduced_boundary_from_device_async_lts,
+              TRANSFER_REDUCED_BOUNDARY_FROM_DEVICE_ASYNC_LTS)(long* Mesh_pointer,
+                                                               int* ilevel_f,
+                                                               int* num_interface_p_refine_boundary_f) {}
+
+void FC_FUNC_(transfer_boundary_from_device_async_lts,
+              TRANSFER_BOUNDARY_FROM_DEVICE_ASYNC_LTS)(long* Mesh_pointer,
+                                                       int* ilevel_f,
+                                                       int* max_num_interface_p_refine_ibool_f) {}
+
+void FC_FUNC_(transfer_reduced_boundary_to_device_async_lts,
+              TRANSFER_REDUCED_BOUNDARY_TO_DEVICE_ASYNC_LTS)(long* Mesh_pointer,
+                                                             realw* reduced_buffer_recv_vector_ext_mesh,
+                                                             int* num_interface_p_refine_boundary_f) {}
+
+void FC_FUNC_(assemble_mpi_device_lts,
+              ASSEMBLE_MPI_DEVICE_LTS)(long* Mesh_pointer,
+                                       int* ilevel_f,
+                                       int* max_num_interface_p_refine_ibool_f) {}
+
+void FC_FUNC_(assemble_reduced_mpi_device_lts,
+              ASSEMBLE_REDUCED_MPI_DEVICE_LTS)(long* Mesh_pointer,
+                                               int* ilevel_f,
+                                               int* num_interface_p_refine_boundary_f) {}
+
+
+//
+// src/gpu/lts_compute_forces_viscoelastic_cuda.cu
+//
+
+void FC_FUNC_(compute_forces_viscoelastic_cuda_lts,
+              COMPUTE_FORCES_VISCOELASTIC_CUDA_LTS)(long* Mesh_pointer,
+                                                    int* ilevel_f,
+                                                    int* iphase_f) {}
+
+void FC_FUNC_(copy_accelfield_from_device,
+              COPY_ACCELFIELD_FROM_DEVICE)(realw* field,
+                                           long* Mesh_pointer) {}
+
+void FC_FUNC_(copy_lts_fields_from_device,
+              COPY_LTS_FIELDS_FROM_DEVICE)(realw* displ_p,
+                                           realw* veloc_p,
+                                           realw* accel,
+                                           long* Mesh_pointer) {}
+
+void FC_FUNC_(copy_lts_fields_to_device,
+              COPY_lts_FIELDS_TO_DEVICE)(realw* displ_p,
+                                         realw* veloc_p,
+                                         realw* accel,
+                                         long* Mesh_pointer) {}
+
+void FC_FUNC_(lts_boundary_contribution_cuda,
+              LTS_BOUNDARY_CONTRIBUTION_CUDA)(long* Mesh_pointer,
+                                              int* num_points_f,
+                                              int* num_elements_f,
+                                              int* iphase_f,
+                                              int* ilevel_f) {}
+
+void FC_FUNC_(lts_newmark_update_cuda,
+              LTS_NEWMARK_UPDATE_CUDA)(long* Mesh_pointer,
+                                       realw* deltat_lts_f,
+                                       int* ilevel_f,
+                                       int* step_m_f,
+                                       int* lts_current_m,
+                                       int* p_level_iglob_start,
+                                       int* p_level_iglob_end,
+                                       int* num_p_level_coarser_to_update) {}
+
+void FC_FUNC_(lts_newmark_update_displ_cuda,
+              LTS_NEWMARK_UPDATE_displ_CUDA)(long* Mesh_pointer) {}
+
+void FC_FUNC_(lts_set_accel_zero_cuda,
+              LTS_SET_ACCEL_ZERO_CUDA)(long* Mesh_pointer) {}
+
+void FC_FUNC_(lts_set_accel_zero_level_cuda,
+              LTS_SET_ACCEL_ZERO_LEVEL_CUDA)(long* Mesh_pointer,
+                                             int* ilevel_f,
+                                             int* p_level_iglob_end,
+                                             int* num_p_level_coarser_to_update) {}
+
+void FC_FUNC_(lts_set_finer_initial_condition_cuda,
+              LTS_SET_FINER_INITIAL_CONDITION_CUDA)(long* Mesh_pointer,
+                                                    int* ilevel_f,
+                                                    int* p_level_iglob_end,
+                                                    int* num_p_level_coarser_to_update) {}
+
+
+//
 // src/gpu/noise_tomography_cuda.cu
 //
 
@@ -517,6 +616,8 @@ void FC_FUNC_(prepare_constants_device,
                                         int* SAVE_SEISMOGRAMS_ACCELERATION,int* SAVE_SEISMOGRAMS_PRESSURE,
                                         int* h_NB_RUNS_ACOUSTIC_GPU,
                                         int* FAULT_SIMULATION,
+                                        int* IS_WAVEFIELD_DISCONTINUITY,
+                                        int* IS_COUPLE_WITH_INJECTION,
                                         int* UNDO_ATTENUATION_AND_OR_PML,
                                         int* PML_CONDITIONS) {}
 
@@ -579,7 +680,7 @@ void FC_FUNC_(prepare_fields_elastic_device,
                                              realw *c25store,realw *c26store,realw *c33store,
                                              realw *c34store,realw *c35store,realw *c36store,
                                              realw *c44store,realw *c45store,realw *c46store,
-                                             realw *c55store,realw *c56store,realw *c66store ){}
+                                             realw *c55store,realw *c56store,realw *c66store){}
 
 void FC_FUNC_(prepare_fields_elastic_adj_dev,
               PREPARE_FIELDS_ELASTIC_ADJ_DEV)(long* Mesh_pointer,
@@ -615,7 +716,6 @@ void FC_FUNC_(prepare_sim2_or_3_const_device,
 
 void FC_FUNC_(prepare_fields_noise_device,
               PREPARE_FIELDS_NOISE_DEVICE)(long* Mesh_pointer,
-                                           int* NSPEC_AB, int* NGLOB_AB,
                                            int* free_surface_ispec,
                                            int* free_surface_ijk,
                                            int* num_free_surface_faces,
@@ -640,25 +740,48 @@ void FC_FUNC_(prepare_fault_device,
                                     realw* Kelvin_Voigt_eta) {}
 
 void FC_FUNC_(prepare_wavefield_discontinuity_device,
-              PREPARE_WAVEFIELD_DISCONTINUITY_DEVICE)(
-                             long* Mesh_pointer,
-                             int* ispec_to_elem_wd,
-                             int* nglob_wd,
-                             int* nspec_wd,
-                             int* ibool_wd,
-                             int* boundary_to_iglob_wd,
-                             realw* mass_in_wd,
-                             int* nfaces_wd,
-                             int* face_ijk_wd,
-                             int* face_ispec_wd,
-                             realw* face_normal_wd,
-                             realw* face_jacobian2Dw_wd) {}
+              PREPARE_WAVEFIELD_DISCONTINUITY_DEVICE)(long* Mesh_pointer,
+                                                      int* ispec_to_elem_wd,
+                                                      int* nglob_wd,
+                                                      int* nspec_wd,
+                                                      int* ibool_wd,
+                                                      int* boundary_to_iglob_wd,
+                                                      realw* mass_in_wd,
+                                                      int* nfaces_wd,
+                                                      int* face_ijk_wd,
+                                                      int* face_ispec_wd,
+                                                      realw* face_normal_wd,
+                                                      realw* face_jacobian2Dw_wd) {}
 
-void FC_FUNC_(transfer_injection_field_to_device,
-              TRANSFER_INJECTION_FIELD_TO_DEVICE)(
-                         int* size_face,
-                         realw* veloc_inj,realw* traction_inj,
-                         long* Mesh_pointer) {}
+void FC_FUNC_(prepare_lts_device,
+              PREPARE_LTS_DEVICE)(long* Mesh_pointer, int* num_p_level, int* iglob_p_refine, int* use_accel_collected_f) {}
+
+void FC_FUNC_(prepare_lts_mass_boundary_fields_device,
+              PREPARE_LTS_MASS_BOUNDARY_FIELDS_DEVICE)(long* Mesh_pointer,
+                                                       realw* rmassxyz, realw* rmassxyz_mod, realw* cmassxyz) {}
+
+void FC_FUNC_(transfer_element_list_to_device,
+              TRANSFER_ELEMENT_LIST_TO_DEVICE)(long* Mesh_pointer,
+                                               int* element_list,int* num_element_list) {}
+
+void FC_FUNC_(transfer_boundary_element_list_to_device,
+              TRANSFER_BOUNDARY_ELEMENT_LIST_TO_DEVICE)(long* Mesh_pointer,
+                                                        int* p_level_boundary_node,
+                                                        int* p_level_boundary_ilevel_from,
+                                                        int* p_level_boundary_ispec) {}
+
+void FC_FUNC_(setup_r_boundaries_time_stepping,
+              SETUP_R_BOUNDARIES_TIME_STEPPING)(long* Mesh_pointer,
+                                                int* p_level_coarser_to_update) {}
+
+void FC_FUNC_(setup_mpi_boundaries_lts,
+              SETUP_MPI_BOUNDARIES_LTS)(long* Mesh_pointer,
+                                        int* num_interface_p_refine_ibool,
+                                        int* interface_p_refine_ibool,
+                                        int* interface_p_refine_boundary,
+                                        int* num_interfaces_ext_mesh_f,
+                                        int* max_nibool_interfaces_boundary_f,
+                                        int* num_p_level_f) {}
 
 void FC_FUNC_(prepare_cleanup_device,
               PREPARE_CLEANUP_DEVICE)(long* Mesh_pointer,
@@ -695,6 +818,7 @@ void FC_FUNC_(compute_smooth_gpu,
 void FC_FUNC_(get_smooth_gpu,
               GET_SMOOTH_gpu)(long * smooth_pointer,
                               realw * data_smooth) {}
+
 
 //
 // src/gpu/transfer_fields_cuda.cu
@@ -755,25 +879,18 @@ void FC_FUNC_(transfer_displ_to_device,
 void FC_FUNC_(transfer_pml_displ_from_device,
               TRANSFER_PML_DISPL_FROM_DEVICE)(int* size, realw* PML_displ_old, realw* PML_displ_new, long* Mesh_pointer) {}
 
+void FC_FUNC_(transfer_wavefield_discontinuity_to_device,
+              TRANSFER_WAVEFIELD_DISCONTINUITY_TO_DEVICE)(int* size_point, int* size_face,
+                                                          realw* displ_wd, realw* accel_wd,
+                                                          realw* traction_wd, long* Mesh_pointer) {}
+
+void FC_FUNC_(transfer_injection_field_to_device,
+              TRANSFER_INJECTION_FIELD_TO_DEVICE)(int* size_face,
+                                                  realw* veloc_inj,realw* traction_inj,
+                                                  long* Mesh_pointer) {}
+
 void FC_FUNC_(transfer_pml_displ_to_device,
               TRANSFER_PML_DISPL_TO_DEVICE)(int* size, realw* PML_displ_old, realw* PML_displ_new, long* Mesh_pointer) {}
-
-void FC_FUNC_(transfer_wavefield_discontinuity_to_device,
-              TRANSFER_WAVEFIELD_DISCONTINUITY_TO_DEVICE)(
-                         int* size_point, int* size_face,
-                         realw* displ_wd, realw* accel_wd,
-                         realw* traction_wd, long* Mesh_pointer) {}
-
-void FC_FUNC_(compute_coupled_injection_contribution_ac_device,
-              COMPUTE_COUPLED_INJECTION_CONTRIBUTION_AC_DEVICE) (long *Mesh_pointer,
-                                                      realw* b_boundary_injection_potential,
-                                                       int* SAVE_STACEY_f) {}
-
-void FC_FUNC_(compute_coupled_injection_contribution_el_device,
-              COMPUTE_COUPLED_INJECTION_CONTRIBUTION_EL_DEVICE)
-              (long* Mesh_pointer,
-               realw* b_boundary_injection_field,
-               int *SAVE_STACEY_f) {}
 
 void FC_FUNC_(transfer_b_rmemory_to_device,
               TRANSFER_B_RMEMORY_TO_DEVICE)(long* Mesh_pointer,
@@ -964,6 +1081,16 @@ void FC_FUNC_(kernel_3_acoustic_cuda,
 
 
 //
+// src/gpu/wavefield_discontinuity_cuda.cu
+//
+
+void FC_FUNC_(wavefield_discontinuity_add_traction_cuda,
+              WAVEFIELD_DISCONTINUITY_ADD_TRACTION_CUDA)(int* size_points,
+                                                         int* size_faces,
+                                                         long* Mesh_pointer){}
+
+
+//
 // src/gpu/write_seismograms_cuda.cu
 //
 
@@ -979,15 +1106,4 @@ void FC_FUNC_(compute_seismograms_cuda,
                                         int* ACOUSTIC_SIMULATION,
                                         int* ELASTIC_SIMULATION,
                                         int* USE_TRICK_FOR_BETTER_PRESSURE) {}
-
-//
-// src/gpu/wavefield_discontinuity_cuda.cu
-//
-
-void FC_FUNC_(wavefield_discontinuity_add_traction_cuda,
-              WAVEFIELD_DISCONTINUITY_ADD_TRACTION_CUDA)(int* size_points,
-                                                         int* size_faces,
-                                                         long* Mesh_pointer){}
-
-
 

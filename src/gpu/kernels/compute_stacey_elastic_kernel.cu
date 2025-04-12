@@ -302,23 +302,23 @@ __global__ void compute_stacey_elastic_undoatt_kernel(realw* veloc,
   } // num_abs_boundary_faces
 }
 
-
+/* ----------------------------------------------------------------------------------------------- */
 
 __global__ void compute_stacey_elastic_injection_kernel(const realw* veloc_inj,
-                                              const realw* tract_inj,
-                                              realw* accel,
-                                              int* abs_boundary_ispec,
-                                              int* abs_boundary_ijk,
-                                              realw* abs_boundary_normal,
-                                              realw* abs_boundary_jacobian2Dw,
-                                              int* d_ibool,
-                                              realw* rho_vp,
-                                              realw* rho_vs,
-                                              int* ispec_is_elastic,
-                                              int SIMULATION_TYPE,
-                                              int SAVE_STACEY,
-                                              int num_abs_boundary_faces,
-                                              realw* b_boundary_injection_field) {
+                                                        const realw* tract_inj,
+                                                        realw* accel,
+                                                        int* abs_boundary_ispec,
+                                                        int* abs_boundary_ijk,
+                                                        realw* abs_boundary_normal,
+                                                        realw* abs_boundary_jacobian2Dw,
+                                                        int* d_ibool,
+                                                        realw* rho_vp,
+                                                        realw* rho_vs,
+                                                        int* ispec_is_elastic,
+                                                        int SIMULATION_TYPE,
+                                                        int SAVE_STACEY,
+                                                        int num_abs_boundary_faces,
+                                                        realw* b_boundary_injection_field) {
 
   int igll = threadIdx.x; // tx
   int iface = blockIdx.x + gridDim.x*blockIdx.y; // bx

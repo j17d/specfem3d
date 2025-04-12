@@ -29,9 +29,7 @@
 
 
 __global__ void add_sources_el_SIM_TYPE_2_OR_3_kernel(realw* accel,
-                                                      int nrec,
                                                       int it,
-                                                      int NSTEP_BETWEEN_ADJSRC,
                                                       field* source_adjoint,
                                                       realw* xir_store,
                                                       realw* etar_store,

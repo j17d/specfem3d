@@ -124,7 +124,7 @@ __device__ __forceinline__ void compute_element_att_stress(int tx,int working_el
 
 // updates R_memory
 
-__device__  __forceinline__ void compute_element_att_memory(int tx,int working_element,const int NSPEC,
+__device__  __forceinline__ void compute_element_att_memory(int tx,int working_element,
                                                             realw mul,
                                                             realw_const_p factor_common,
                                                             realw_const_p alphaval,realw_const_p betaval,realw_const_p gammaval,
@@ -683,9 +683,9 @@ __device__  __forceinline__ void get_dot_product(realw jacobianl,
   if (threadIdx.x < NGLL3) {
     if (ispec_irreg >= 0){
       //irregular element
-      sh_tempx[tx] = jacobianl * (sigma_xx*Dxl + sigma_yx*Dyl + sigma_zx*Dzl); // sh_tempx1
-      sh_tempy[tx] = jacobianl * (sigma_xy*Dxl + sigma_yy*Dyl + sigma_zy*Dzl); // sh_tempy1
-      sh_tempz[tx] = jacobianl * (sigma_xz*Dxl + sigma_yz*Dyl + sigma_zz*Dzl); // sh_tempz1
+      sh_tempx[tx] = jacobianl * (sigma_xx*Dxl + sigma_yx*Dyl + sigma_zx*Dzl); // sh_tempx1/sh_tempx2/sh_tempx3
+      sh_tempy[tx] = jacobianl * (sigma_xy*Dxl + sigma_yy*Dyl + sigma_zy*Dzl); // sh_tempy1/..
+      sh_tempz[tx] = jacobianl * (sigma_xz*Dxl + sigma_yz*Dyl + sigma_zz*Dzl); // sh_tempz1/..
     }
     else if (component == 1){
       sh_tempx[tx] = jacobian_regular * (sigma_xx*xix_regular); // sh_tempx1
@@ -693,14 +693,14 @@ __device__  __forceinline__ void get_dot_product(realw jacobianl,
       sh_tempz[tx] = jacobian_regular * (sigma_xz*xix_regular); // sh_tempz1
     }
     else if (component == 2){
-      sh_tempx[tx] = jacobian_regular * (sigma_yx*xix_regular); // sh_tempx1
-      sh_tempy[tx] = jacobian_regular * (sigma_yy*xix_regular); // sh_tempy1
-      sh_tempz[tx] = jacobian_regular * (sigma_yz*xix_regular); // sh_tempz1
+      sh_tempx[tx] = jacobian_regular * (sigma_yx*xix_regular); // sh_tempx2
+      sh_tempy[tx] = jacobian_regular * (sigma_yy*xix_regular); // sh_tempy2
+      sh_tempz[tx] = jacobian_regular * (sigma_yz*xix_regular); // sh_tempz2
 
     }else{
-      sh_tempx[tx] = jacobian_regular * (sigma_zx*xix_regular); // sh_tempx1
-      sh_tempy[tx] = jacobian_regular * (sigma_zy*xix_regular); // sh_tempy1
-      sh_tempz[tx] = jacobian_regular * (sigma_zz*xix_regular); // sh_tempz1
+      sh_tempx[tx] = jacobian_regular * (sigma_zx*xix_regular); // sh_tempx3
+      sh_tempy[tx] = jacobian_regular * (sigma_zy*xix_regular); // sh_tempy3
+      sh_tempz[tx] = jacobian_regular * (sigma_zz*xix_regular); // sh_tempz3
     }
   }
   __syncthreads();
@@ -2294,7 +2294,6 @@ Kernel_2_att_impl(int nb_blocks_to_compute,
                   realw_p epsilondev_trace,
                   realw_p epsilon_trace_over_3,
                   const int SIMULATION_TYPE,
-                  const int NSPEC,
                   realw_const_p factor_common,
                   realw_p R_xx,realw_p R_yy,realw_p R_xy,realw_p R_xz,realw_p R_yz,
                   realw_p R_trace,
@@ -2663,7 +2662,7 @@ Kernel_2_att_impl(int nb_blocks_to_compute,
 
     // attenuation
     // update memory variables based upon the Runge-Kutta scheme
-    compute_element_att_memory(tx,working_element,NSPEC,
+    compute_element_att_memory(tx,working_element,
                                mul,
                                factor_common,alphaval,betaval,gammaval,
                                R_xx,R_yy,R_xy,R_xz,R_yz,
@@ -3361,7 +3360,7 @@ Kernel_2_att_org_impl(int nb_blocks_to_compute,
 
     // attenuation
     // update memory variables based upon the Runge-Kutta scheme
-    compute_element_att_memory(tx,working_element,NSPEC,
+    compute_element_att_memory(tx,working_element,
                                d_muv,
                                factor_common,alphaval,betaval,gammaval,
                                R_xx,R_yy,R_xy,R_xz,R_yz,
@@ -3377,7 +3376,7 @@ Kernel_2_att_org_impl(int nb_blocks_to_compute,
     epsilondev_yz[tx + working_element*NGLL3] = epsilondev_yz_loc;
   } // if (active)
 
-} // kernel_2_att_impl()
+} // kernel_2_att_org_impl()
 
 */
 

@@ -118,8 +118,7 @@ TRACE("transfer_boun_accel_from_device");
 
 extern EXTERN_LANG
 void FC_FUNC_(transfer_boundary_from_device_a,
-              TRANSFER_BOUNDARY_FROM_DEVICE_A)(long* Mesh_pointer,
-                                               const int* nspec_outer_elastic) {
+              TRANSFER_BOUNDARY_FROM_DEVICE_A)(long* Mesh_pointer) {
 
 // asynchronous transfer from device to host
 
@@ -173,9 +172,7 @@ void FC_FUNC_(transfer_boundary_from_device_a,
 extern EXTERN_LANG
 void FC_FUNC_(transfer_boundary_to_device_a,
               TRANSFER_BOUNDARY_TO_DEVICE_A)(long* Mesh_pointer,
-                                             realw* buffer_recv_vector_ext_mesh,
-                                             const int* num_interfaces_ext_mesh,
-                                             const int* max_nibool_interfaces_ext_mesh) {
+                                             realw* buffer_recv_vector_ext_mesh) {
 
 // asynchronous transfer from host to device
 
@@ -205,10 +202,6 @@ extern EXTERN_LANG
 void FC_FUNC_(transfer_asmbl_accel_to_device,
               TRANSFER_ASMBL_ACCEL_TO_DEVICE)(long* Mesh_pointer,
                                               realw* buffer_recv_vector_ext_mesh,
-                                              const int* num_interfaces_ext_mesh,
-                                              const int* max_nibool_interfaces_ext_mesh,
-                                              const int* nibool_interfaces_ext_mesh,
-                                              const int* ibool_interfaces_ext_mesh,
                                               const int* FORWARD_OR_ADJOINT) {
 TRACE("transfer_asmbl_accel_to_device");
 
@@ -305,10 +298,6 @@ extern EXTERN_LANG
 void FC_FUNC_(transfer_sync_accel_to_device,
               TRANSFER_ASMBL_ACCEL_TO_DEVICE)(long* Mesh_pointer,
                                               realw* buffer_recv_vector_ext_mesh,
-                                              const int* num_interfaces_ext_mesh,
-                                              const int* max_nibool_interfaces_ext_mesh,
-                                              const int* nibool_interfaces_ext_mesh,
-                                              const int* ibool_interfaces_ext_mesh,
                                               const int* FORWARD_OR_ADJOINT) {
 TRACE("transfer_sync_accel_to_device");
 
@@ -422,7 +411,7 @@ TRACE("transfer_sync_accel_to_device");
 //
 //  // ***************************************************************************
 //  // Wait until previous copy stream finishes. We assemble while other compute kernels execute.
-//  cudaStreamSynchronize(mp->copy_stream);
+//  gpuStreamSynchronize(mp->copy_stream);
 //
 //  // Assembling on the copy_stream breaks the solution and it "blows up"
 //  if (*FORWARD_OR_ADJOINT == 1) { //assemble forward accel
@@ -464,7 +453,7 @@ void FC_FUNC_(sync_copy_from_device,
 
     // There have been problems using the pinned-memory with MPI, so
     // we copy the buffer into a non-pinned region.
-    memcpy(send_buffer,mp->h_send_accel_buffer,mp->size_mpi_buffer*sizeof(float));
+    memcpy(send_buffer,mp->h_send_accel_buffer,mp->size_mpi_buffer*sizeof(realw));
   }
   // memory copy is now finished, so non-blocking MPI send can proceed
 }

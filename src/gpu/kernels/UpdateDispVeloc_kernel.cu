@@ -70,7 +70,6 @@ __global__ void UpdateDispVeloc_PML_kernel(realw* displ,
                                            const int NSPEC_CPML,
                                            const int* d_CPML_to_spec,
                                            const int* d_ibool,
-                                           const realw deltat,
                                            const realw deltatsqover2,
                                            const realw deltatover2) {
 
