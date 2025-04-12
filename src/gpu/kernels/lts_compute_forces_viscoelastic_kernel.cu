@@ -200,7 +200,7 @@ __global__ void compute_forces_viscoelastic_cuda_lts_kernel (const int nb_blocks
     } else {
       // regular element
       jacobianl = jacobian_regular;
-      
+
       duxdxl = xix_regular*tempx1l;
       duxdyl = xix_regular*tempx2l;
       duxdzl = xix_regular*tempx3l;
