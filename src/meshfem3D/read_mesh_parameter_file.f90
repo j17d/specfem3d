@@ -303,9 +303,18 @@
   Z_DEPTH_BLOCK = - dabs(DEPTH_BLOCK_KM) * 1000.d0
 
   ! check that parameters computed are consistent
-  if (UTM_X_MIN >= UTM_X_MAX) stop 'horizontal dimension of UTM block incorrect'
-  if (UTM_Y_MIN >= UTM_Y_MAX) stop 'vertical dimension of UTM block incorrect'
-
+  if (myrank == 0) then
+    if (UTM_X_MIN >= UTM_X_MAX) then
+      print *,'Error: UTM_X_MIN ',UTM_X_MIN,' >= UTM_X_MAX ',UTM_X_MAX
+      stop 'UTM_X_MIN >= UTM_X_MAX horizontal (easting) dimension of UTM block incorrect'
+    endif
+    if (UTM_Y_MIN >= UTM_Y_MAX) then
+      print *,'Error: UTM_Y_MIN ',UTM_Y_MIN,' >= UTM_Y_MAX ',UTM_Y_MAX
+      stop 'UTM_Y_MIN >= UTM_Y_MAX vertical (northing) dimension of UTM block incorrect'
+    endif
+  endif
+  call synchronize_all()
+  
   ! set time step and radial distribution of elements
   ! right distribution is determined based upon maximum value of NEX
   NEX_MAX = max(NEX_XI,NEX_ETA)
