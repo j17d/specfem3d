@@ -237,9 +237,12 @@
   if (RECIPROCITY_AND_KH_INTEGRAL) open(unit=158,file='KH_integral',status='unknown')
 
   ! open the file in which we will store the energy curve
-  if (OUTPUT_ENERGY .and. myrank == 0) &
+  if (OUTPUT_ENERGY .and. myrank == 0) then
     open(unit=IOUT_ENERGY,file=trim(OUTPUT_FILES)//'energy.dat',status='unknown',action='write')
-
+    ! format: #timestep #kinetic_energy #potential_energy #total_energy
+    write(IOUT_ENERGY,*) "#timestep  #kinetic_energy  #potential_energy  #total_energy"
+    flush(IOUT_ENERGY)
+  endif
 
 #ifdef VTK_VIS
   ! restart: goto starting point

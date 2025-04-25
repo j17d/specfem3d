@@ -30,7 +30,7 @@
 
 ! calculates damping profiles and auxiliary coefficients on C-PML points
 
-  use constants, only: myrank,ZERO,ONE,TWO,HUGEVAL
+  use constants, only: myrank,ZERO,ONE,TWO,PI,HUGEVAL
 
   use shared_parameters, only: ACOUSTIC_SIMULATION, ELASTIC_SIMULATION
 
@@ -38,7 +38,7 @@
                                     K_store_x,K_store_y,K_store_z,alpha_store_x,alpha_store_y,alpha_store_z,CPML_to_spec, &
                                     CPML_width_x,CPML_width_y,CPML_width_z,min_distance_between_CPML_parameter, &
                                     CUSTOM_REAL,NGLLX,NGLLY,NGLLZ,nspec_cpml,PML_INSTEAD_OF_FREE_SURFACE, &
-                                    IMAIN,CPML_REGIONS,f0_FOR_PML,PI, &
+                                    IMAIN,CPML_REGIONS,f0_FOR_PML, &
                                     CPML_X_ONLY,CPML_Y_ONLY,CPML_Z_ONLY,CPML_XY_ONLY,CPML_XZ_ONLY,CPML_YZ_ONLY,CPML_XYZ, &
                                     SIMULATION_TYPE,SAVE_FORWARD,nspec => NSPEC_AB,is_CPML, &
                                     mask_ibool_interior_domain,nglob_interface_PML_acoustic,points_interface_PML_acoustic, &
@@ -54,7 +54,6 @@
   integer :: i,j,k,ispec,iglob,ispec_CPML,ier
 
   real(kind=CUSTOM_REAL) :: ALPHA_MAX_PML_x,ALPHA_MAX_PML_y,ALPHA_MAX_PML_z
-  real(kind=CUSTOM_REAL), parameter :: K_MAX_PML = ONE,K_MIN_PML= ONE
   real(kind=CUSTOM_REAL) :: pml_damping_profile_l,dist,vp
   real(kind=CUSTOM_REAL) :: xoriginleft,xoriginright,yoriginfront,yoriginback,zoriginbottom,zorigintop
   real(kind=CUSTOM_REAL) :: abscissa_in_PML_x,abscissa_in_PML_y,abscissa_in_PML_z
@@ -72,14 +71,14 @@
                             CPML_width_y_front_max_all,CPML_width_y_back_max_all, &
                             CPML_width_z_top_max_all,CPML_width_z_bottom_max_all, &
                             vp_max,vp_max_all
+  real(kind=CUSTOM_REAL), parameter :: K_MAX_PML = ONE, K_MIN_PML = ONE
 
-! for robust parameter separation of PML damping parameter
+  ! for robust parameter separation of PML damping parameter
   real(kind=CUSTOM_REAL) :: distance_min,distance_min_glob, &
                             const_for_separation_two,const_for_separation_four,maxtemp,mintemp, &
                             min_distance_between_CPML_parameter_glob
   real(kind=CUSTOM_REAL) :: x1,x2,y1,y2,z1,z2
   integer :: iglob1,iglob2
-! for robust parameter separation of PML damping parameter
 
   ! checks number of PML elements
   if (count(is_CPML(:)) /= NSPEC_CPML) then
@@ -143,15 +142,15 @@
   alpha_store_y(:,:,:,:) = ZERO
   alpha_store_z(:,:,:,:) = ZERO
 
-! from Festa and Vilotte (2005)
-! Slight different from them is that we purposely set ALPHA_MAX_PML_x < ALPHA_MAX_PML_y < ALPHA_MAX_PML_z
-! to facilitate the remove of singularities in PML damping parameters.
-  ALPHA_MAX_PML_x = PI*f0_FOR_PML * 0.9_CUSTOM_REAL
-  ALPHA_MAX_PML_y = PI*f0_FOR_PML * ONE
-  ALPHA_MAX_PML_z = PI*f0_FOR_PML * 1.1_CUSTOM_REAL
+  ! from Festa and Vilotte (2005)
+  ! Slightly different from them is that we purposely set ALPHA_MAX_PML_x < ALPHA_MAX_PML_y < ALPHA_MAX_PML_z
+  ! to facilitate the removal of singularities in PML damping parameters.
+  ALPHA_MAX_PML_x = real(PI * f0_FOR_PML * 0.9d0, kind=CUSTOM_REAL)
+  ALPHA_MAX_PML_y = real(PI * f0_FOR_PML * ONE, kind=CUSTOM_REAL)
+  ALPHA_MAX_PML_z = real(PI * f0_FOR_PML * 1.1d0, kind=CUSTOM_REAL)
 
-! Assuming the computational domain is convex and can be approximatly seen as a box
-! Calculation of origin of whole computational domain
+  ! Assuming the computational domain is convex and can be approximatly seen as a box
+  ! Calculation of origin of whole computational domain
   x_min = minval(xstore(:))
   x_max = maxval(xstore(:))
   y_min = minval(ystore(:))
@@ -179,8 +178,8 @@
   y_origin = (y_min_all + y_max_all) / TWO
   z_origin = (z_max_all + z_min_all) / TWO
 
-! Assuming CPML_width_x,CPML_width_y,CPML_width_Z are constants inside PML layer
-! Calculation of width of PML along x, y and z direction, such as CPML_width_x,CPML_width_y,CPML_width_Z
+  ! Assuming CPML_width_x,CPML_width_y,CPML_width_Z are constants inside PML layer
+  ! Calculation of width of PML along x, y and z direction, such as CPML_width_x,CPML_width_y,CPML_width_Z
   CPML_width_x_left   = ZERO
   CPML_width_x_right  = ZERO
   CPML_width_y_front  = ZERO
@@ -203,6 +202,7 @@
 
       iglob = ibool(i,j,k,ispec)
 
+      ! X-sides
       if (CPML_regions(ispec_CPML) == CPML_X_ONLY .or. CPML_regions(ispec_CPML) == CPML_XY_ONLY .or. &
           CPML_regions(ispec_CPML) == CPML_XZ_ONLY .or. CPML_regions(ispec_CPML) == CPML_XYZ) then
         if (xstore(iglob) - x_origin > ZERO) then
@@ -216,6 +216,7 @@
         endif
       endif
 
+      ! Y-sides
       if (CPML_regions(ispec_CPML) == CPML_Y_ONLY .or. CPML_regions(ispec_CPML) == CPML_XY_ONLY .or. &
           CPML_regions(ispec_CPML) == CPML_YZ_ONLY .or. CPML_regions(ispec_CPML) == CPML_XYZ) then
         if (ystore(iglob) - y_origin > ZERO) then
@@ -229,6 +230,7 @@
         endif
       endif
 
+      ! Z-sides
       if (CPML_regions(ispec_CPML) == CPML_Z_ONLY .or. CPML_regions(ispec_CPML) == CPML_YZ_ONLY .or. &
         CPML_regions(ispec_CPML) == CPML_XZ_ONLY .or. CPML_regions(ispec_CPML) == CPML_XYZ) then
         if (zstore(iglob) - z_origin > ZERO) then
@@ -274,7 +276,7 @@
     zorigintop = z_max_all - CPML_width_z_top_max_all
   endif
 
-! Calculation of maximum p velocity inside PML
+  ! Calculation of maximum p velocity inside PML
   vp_max = ZERO
   do ispec_CPML = 1,nspec_cpml
     ispec = CPML_to_spec(ispec_CPML)
@@ -290,8 +292,7 @@
 
   ! user output
   if (myrank == 0) then
-    write(IMAIN,*)
-    write(IMAIN,*) 'Boundary values of X-/Y-/Z-regions:'
+    write(IMAIN,*) '  CPML boundary values of X-/Y-/Z-regions:'
     write(IMAIN,*) '  X: ',x_min_all, x_max_all
     write(IMAIN,*) '  Y: ',y_min_all, y_max_all
     write(IMAIN,*) '  Z: ',z_min_all, z_max_all
@@ -307,7 +308,16 @@
     write(IMAIN,*) '  CPML_width_y: ',CPML_width_y
     write(IMAIN,*) '  CPML_width_z: ',CPML_width_z
     write(IMAIN,*)
-    write(IMAIN,*) '  maximum Vp in C-PML',vp_max_all
+    write(IMAIN,*) '  damping profile:'
+    write(IMAIN,*) '    maximum Vp in C-PML                  =',vp_max_all
+    write(IMAIN,*) '    using reference (dominant) frequency =',sngl(f0_FOR_PML),'Hz'
+    write(IMAIN,*) '                                  period =',sngl(1.d0/f0_FOR_PML),'s'
+    write(IMAIN,*)
+    ! wavelength
+    write(IMAIN,*) '    resulting dominant wavelength : ',sngl(vp_max_all/f0_FOR_PML),'m'
+    write(IMAIN,*) '               ratio CPML_width_x : ',sngl(CPML_width_x / (vp_max_all/f0_FOR_PML))
+    write(IMAIN,*) '               ratio CPML_width_y : ',sngl(CPML_width_y / (vp_max_all/f0_FOR_PML))
+    write(IMAIN,*) '               ratio CPML_width_z : ',sngl(CPML_width_z / (vp_max_all/f0_FOR_PML))
     write(IMAIN,*)
     call flush_IMAIN()
   endif
@@ -324,18 +334,19 @@
 
           ! calculates P-velocity
           if (ispec_is_acoustic(ispec)) then
-! vp = rho_vp(i,j,k,ispec)/rhostore(i,j,k,ispec)
-! For convenience only, when computing the damping profile inside PML,
-! we set the required variable "vp" to be constant and equal to "vp_max_all"
+            ! vp = rho_vp(i,j,k,ispec)/rhostore(i,j,k,ispec)
+            ! For convenience only, when computing the damping profile inside PML,
+            ! we set the required variable "vp" to be constant and equal to "vp_max_all"
             vp = vp_max_all
           else if (ispec_is_elastic(ispec)) then
-! vp = rho_vp(i,j,k,ispec)/rhostore(i,j,k,ispec)
-! For convenience only, when computing the damping profile inside PML,
-! we set the required variable "vp" to be constant and equal to "vp_max_all"
+            ! vp = rho_vp(i,j,k,ispec)/rhostore(i,j,k,ispec)
+            ! For convenience only, when computing the damping profile inside PML,
+            ! we set the required variable "vp" to be constant and equal to "vp_max_all"
             vp = vp_max_all
           else
-            print *,'element index',ispec
-            print *,'C-PML element index ',ispec_CPML
+            print *,'Error: PML is not defined for elements other than acoustic or elastic.'
+            print *,'       element index',ispec
+            print *,'       C-PML element index ',ispec_CPML
             call exit_mpi(myrank,'C-PML error: element has an unvalid P-velocity')
           endif
 
@@ -379,7 +390,7 @@
               endif
 
             else
-              stop "there is error in mesh of CPML-layer x"
+              stop "there is an error in mesh of CPML-layer x"
             endif
 
             !  stores damping profiles and auxiliary coefficients at the C-PML element's GLL points
@@ -435,7 +446,7 @@
               endif
 
             else
-              stop "there is error in mesh of  CPML-layer y"
+              stop "there is an error in mesh of  CPML-layer y"
             endif
 
             !  stores damping profiles and auxiliary coefficients at the C-PML element's GLL points
@@ -495,7 +506,7 @@
               endif
 
             else
-              stop "there is error in mesh of CPML-layer z"
+              stop "there is an error in mesh of CPML-layer z"
             endif
 
             !  stores damping profiles and auxiliary coefficients at the C-PML element's GLL points
@@ -643,7 +654,7 @@
               endif
 
             else
-              stop "there is error in mesh of CPML-layer xy"
+              stop "there is an error in mesh of CPML-layer xy"
             endif
 
             !  stores damping profiles and auxiliary coefficients at the C-PML element's GLL points
@@ -795,7 +806,7 @@
                 K_z = ONE; d_z = ZERO
               endif
             else
-              stop "there is error in mesh of CPML-layer xz"
+              stop "there is an error in mesh of CPML-layer xz"
             endif
 
             !  stores damping profiles and auxiliary coefficients at the C-PML element's GLL points
@@ -947,7 +958,7 @@
               endif
 
             else
-              stop "there is error in mesh of CPML-layer yz"
+              stop "there is an error in mesh of CPML-layer yz"
             endif
 
             !! DK DK define an alias for y and z variable names (which are the same)
@@ -1356,7 +1367,7 @@
               endif
 
             else
-              stop "there is error in mesh of CPML-layer xyz"
+              stop "there is an error in mesh of CPML-layer xyz"
             endif
 
             !! DK DK define an alias for y and z variable names (which are the same)
@@ -1374,22 +1385,21 @@
             K_store_z(i,j,k,ispec_CPML) = K_z
             d_store_z(i,j,k,ispec_CPML) = d_z
             alpha_store_z(i,j,k,ispec_CPML) = alpha_z
-
-
           endif
         enddo
       enddo
     enddo
   enddo !ispec_CPML
 
-! for robust parameter separation of PML damping parameter
+  ! for robust parameter separation of PML damping parameter
   distance_min = HUGEVAL
   distance_min_glob = HUGEVAL
   min_distance_between_CPML_parameter_glob = HUGEVAL
+
   do ispec_CPML = 1,nspec_cpml
     ispec = CPML_to_spec(ispec_CPML)
-  ! loops over all GLL points
-  ! (combines directions to speed up calculations)
+    ! loops over all GLL points
+    ! (combines directions to speed up calculations)
     do k = 1,NGLLZ-1
       do j = 1,NGLLY-1
         do i = 1,NGLLX-1
@@ -1436,6 +1446,7 @@
 
   distance_min = sqrt(distance_min)
   call min_all_all_cr(distance_min,distance_min_glob)
+
   if (myrank == 0) then
     if (distance_min_glob <= 0.0_CUSTOM_REAL) call exit_mpi(myrank,"error: GLL points minimum distance")
   endif
@@ -1449,10 +1460,9 @@
   const_for_separation_two = min_distance_between_CPML_parameter * 2._CUSTOM_REAL
   const_for_separation_four = min_distance_between_CPML_parameter * 4._CUSTOM_REAL
 
-  !min_distance_between_CPML_parameter = min_distance_between_CPML_parameter
+  ! min_distance_between_CPML_parameter = min_distance_between_CPML_parameter
 
-! for robust parameter separation of PML damping parameter
-
+  ! for robust parameter separation of PML damping parameter
   do ispec_CPML = 1,nspec_cpml
     do k = 1,NGLLZ
       do j = 1,NGLLY
@@ -1468,19 +1478,19 @@
             alpha_y = alpha_store_y(i,j,k,ispec_CPML)
 
             if (abs(alpha_x - alpha_y) < min_distance_between_CPML_parameter) then
-              call seperate_two_changeable_value(alpha_x,alpha_y,const_for_separation_two)
+              call separate_two_changeable_value(alpha_x,alpha_y,const_for_separation_two)
             endif
 
             beta_x = alpha_x + d_x / K_x
             beta_y = alpha_y + d_y / K_y
 
             if (abs(beta_x - alpha_y) < min_distance_between_CPML_parameter) then
-              call seperate_two_value_with_one_changeable(beta_x,alpha_y,const_for_separation_two, &
+              call separate_two_value_with_one_changeable(beta_x,alpha_y,const_for_separation_two, &
                                                           const_for_separation_four)
             endif
 
             if (abs(beta_y - alpha_x) < min_distance_between_CPML_parameter) then
-              call seperate_two_value_with_one_changeable(beta_y,alpha_x,const_for_separation_two, &
+              call separate_two_value_with_one_changeable(beta_y,alpha_x,const_for_separation_two, &
                                                           const_for_separation_four)
             endif
 
@@ -1516,19 +1526,19 @@
             alpha_z = alpha_store_z(i,j,k,ispec_CPML)
 
             if (abs(alpha_x - alpha_z) < min_distance_between_CPML_parameter) then
-              call seperate_two_changeable_value(alpha_x,alpha_z,const_for_separation_two)
+              call separate_two_changeable_value(alpha_x,alpha_z,const_for_separation_two)
             endif
 
             beta_x = alpha_x + d_x / K_x
             beta_z = alpha_z + d_z / K_z
 
             if (abs(beta_x - alpha_z) < min_distance_between_CPML_parameter) then
-              call seperate_two_value_with_one_changeable(beta_x,alpha_z,const_for_separation_two, &
+              call separate_two_value_with_one_changeable(beta_x,alpha_z,const_for_separation_two, &
                                                           const_for_separation_four)
             endif
 
             if (abs(beta_z - alpha_x) < min_distance_between_CPML_parameter) then
-              call seperate_two_value_with_one_changeable(beta_z,alpha_x,const_for_separation_two, &
+              call separate_two_value_with_one_changeable(beta_z,alpha_x,const_for_separation_two, &
                                                           const_for_separation_four)
             endif
 
@@ -1564,19 +1574,19 @@
             alpha_z = alpha_store_z(i,j,k,ispec_CPML)
 
             if (abs(alpha_y - alpha_z) < min_distance_between_CPML_parameter) then
-              call seperate_two_changeable_value(alpha_y,alpha_z,const_for_separation_two)
+              call separate_two_changeable_value(alpha_y,alpha_z,const_for_separation_two)
             endif
 
             beta_y = alpha_y + d_y / K_y
             beta_z = alpha_z + d_z / K_z
 
             if (abs(beta_y - alpha_z) < min_distance_between_CPML_parameter) then
-              call seperate_two_value_with_one_changeable(beta_y,alpha_z,const_for_separation_two, &
+              call separate_two_value_with_one_changeable(beta_y,alpha_z,const_for_separation_two, &
                                                           const_for_separation_four)
             endif
 
             if (abs(beta_z - alpha_y) < min_distance_between_CPML_parameter) then
-              call seperate_two_value_with_one_changeable(beta_z,alpha_y,const_for_separation_two, &
+              call separate_two_value_with_one_changeable(beta_z,alpha_y,const_for_separation_two, &
                                                           const_for_separation_four)
             endif
 
@@ -1839,14 +1849,13 @@
 
   enddo
 
-! --------------------------------------------------------------------------------------------
-! for adjoint tomography
-! create the array store the points on interface between PML and interior computational domain
-! --------------------------------------------------------------------------------------------
-
+  ! --------------------------------------------------------------------------------------------
+  ! for adjoint tomography
+  ! create the array store the points on interface between PML and interior computational domain
+  ! --------------------------------------------------------------------------------------------
   if ((SIMULATION_TYPE == 1 .and. SAVE_FORWARD) .or. SIMULATION_TYPE == 3) then
 
-    !mask all points belong interior computational domain
+    ! mask all points belong interior computational domain
     allocate(mask_ibool_interior_domain(NGLOB_AB),stat=ier)
     if (ier /= 0) call exit_MPI_without_rank('error allocating array 850')
     if (ier /= 0) stop 'error allocating array mask_ibool_interior_domain'
@@ -1865,7 +1874,6 @@
     nglob_interface_PML_acoustic = 0
 
     if (ACOUSTIC_SIMULATION) then
-
       do ispec = 1,nspec
         if (ispec_is_acoustic(ispec) .and. is_CPML(ispec)) then
           do k = 1,NGLLZ; do j = 1,NGLLY; do i = 1,NGLLX
@@ -1893,7 +1901,6 @@
           endif
         enddo
       endif
-
     endif
     !------------------------------------------------------
     ! end of acoustic domains
@@ -1905,7 +1912,6 @@
     nglob_interface_PML_elastic = 0
 
     if (ELASTIC_SIMULATION) then
-
       do ispec = 1,nspec
         if (ispec_is_elastic(ispec) .and. is_CPML(ispec)) then
           do k = 1,NGLLZ; do j = 1,NGLLY; do i = 1,NGLLX
@@ -1933,7 +1939,6 @@
           endif
         enddo
       endif
-
     endif
     !------------------------------------------------------
     ! end of elastic domains
@@ -1948,7 +1953,7 @@
 
   function pml_damping_profile_l(myrank,iglob,dist,vp,delta)
 
-  ! defines d, the damping profile at the C-PML element's GLL point for a given:
+  ! defines d, the damping profile at the C-PML element's GLL point for a given
   !   dist:  distance to C-PML/mesh interface
   !   vp:    P-velocity
   !   delta: thickness of the C-PML layer
@@ -1993,7 +1998,7 @@
 !-------------------------------------------------------------------------------------------------
 !
 
-  subroutine seperate_two_changeable_value(value_a,value_b,const_for_separation_two)
+  subroutine separate_two_changeable_value(value_a,value_b,const_for_separation_two)
 
   use generate_databases_par, only: CUSTOM_REAL
 
@@ -2006,13 +2011,13 @@
      value_b = value_a + const_for_separation_two
   endif
 
-  end subroutine seperate_two_changeable_value
+  end subroutine separate_two_changeable_value
 
 !
 !-------------------------------------------------------------------------------------------------
 !
 
-  subroutine seperate_two_value_with_one_changeable(value_a,value_b,const_for_separation_two, &
+  subroutine separate_two_value_with_one_changeable(value_a,value_b,const_for_separation_two, &
                                                     const_for_separation_four)
 
   use generate_databases_par, only: CUSTOM_REAL
@@ -2027,7 +2032,7 @@
     value_a = value_b + const_for_separation_four
   endif
 
-  end subroutine seperate_two_value_with_one_changeable
+  end subroutine separate_two_value_with_one_changeable
 
 
 !
