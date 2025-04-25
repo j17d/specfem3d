@@ -548,9 +548,11 @@
 
   implicit none
 
-  integer :: iunit,ier
-  logical :: suppress_junk
-  character(len=MAX_STRING_LEN) :: string_read
+  integer,intent(in) :: iunit
+  logical,intent(in) :: suppress_junk
+  character(len=MAX_STRING_LEN),intent(inout) :: string_read
+  integer,intent(out) :: ier
+  ! local parameters
   integer :: index_equal_sign
 
   ier = 0

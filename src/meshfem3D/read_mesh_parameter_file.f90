@@ -36,6 +36,7 @@
     CREATE_ABAQUS_FILES,CREATE_DX_FILES,CREATE_VTK_FILES, &
     USE_REGULAR_MESH,NDOUBLINGS,ner_doublings, &
     THICKNESS_OF_X_PML,THICKNESS_OF_Y_PML,THICKNESS_OF_Z_PML, &
+    ADD_PML_AS_EXTRA_MESH_LAYERS,NUMBER_OF_PML_LAYERS_TO_ADD, &
     myrank,sizeprocs,NUMBER_OF_MATERIAL_PROPERTIES, &
     SAVE_MESH_AS_CUBIT
 
@@ -195,6 +196,14 @@
   if (THICKNESS_OF_X_PML < 0.0) stop 'Error invalid negative value THICKNESS_OF_X_PML'
   if (THICKNESS_OF_Y_PML < 0.0) stop 'Error invalid negative value THICKNESS_OF_Y_PML'
   if (THICKNESS_OF_Z_PML < 0.0) stop 'Error invalid negative value THICKNESS_OF_Z_PML'
+
+  ! add PML as extra mesh layers
+  call read_value_logical_mesh(IIN,IGNORE_JUNK,ADD_PML_AS_EXTRA_MESH_LAYERS, 'ADD_PML_AS_EXTRA_MESH_LAYERS', ier)
+  if (ier /= 0) stop 'Error reading Mesh parameter ADD_PML_AS_EXTRA_MESH_LAYERS'
+
+  ! number of PML layers added as extra outer layers
+  call read_value_integer_mesh(IIN,IGNORE_JUNK,NUMBER_OF_PML_LAYERS_TO_ADD, 'NUMBER_OF_PML_LAYERS_TO_ADD', ier)
+  if (ier /= 0) stop 'Error reading Mesh parameter NUMBER_OF_PML_LAYERS_TO_ADD'
 
   ! user output
   if (myrank == 0) then

@@ -422,6 +422,14 @@
       write(IMAIN,*) 'PML thickness in X direction = ',sngl(THICKNESS_OF_X_PML),str_unit
       write(IMAIN,*) 'PML thickness in Y direction = ',sngl(THICKNESS_OF_Y_PML),str_unit
       write(IMAIN,*) 'PML thickness in Z direction = ',sngl(THICKNESS_OF_Z_PML),str_unit
+      write(IMAIN,*)
+      if (ADD_PML_AS_EXTRA_MESH_LAYERS) then
+        write(IMAIN,*) 'PML layers will be added as extra mesh layers around defined mesh region'
+        write(IMAIN,*) 'PML layers to add on each side of the mesh = ',NUMBER_OF_PML_LAYERS_TO_ADD
+      else
+        write(IMAIN,*) 'PML layers determined by selected thicknesses and without adding extra layers'
+      endif
+      write(IMAIN,*)
     endif
     write(IMAIN,*)
     call flush_IMAIN()

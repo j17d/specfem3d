@@ -131,7 +131,7 @@ end module create_meshfem_par
   call cmm_determine_cavity(nglob)
 
   ! CPML initialization
-  call create_CPML_regions(nspec,nglob,nodes_coords)
+  call create_CPML_regions(nglob)
 
   ! user output
   if (myrank == 0) then
@@ -159,7 +159,7 @@ end module create_meshfem_par
                         NSPEC2DMAX_XMIN_XMAX,NSPEC2DMAX_YMIN_YMAX)
 
   ! checks mesh resolution
-  VP_MAX = 0.0
+  VP_MAX = 0.d0
   do imat = 1,NMATERIALS
     domain_id = material_properties(imat,7)
     if (domain_id == IDOMAIN_ACOUSTIC .or. domain_id == IDOMAIN_ELASTIC) then
@@ -193,6 +193,10 @@ end module create_meshfem_par
                         nspec2D_xmin,nspec2D_xmax,nspec2D_ymin,nspec2D_ymax, &
                         ibelm_xmin,ibelm_xmax,ibelm_ymin,ibelm_ymax,ibelm_bottom,ibelm_top)
   endif
+
+  ! re-assign back actual number of elements and nodes
+  NSPEC_AB = nspec
+  NGLOB_AB = nglob
 
   !--- Clean ADIOS. Make sure everything is already written
   if (ADIOS_ENABLED) then

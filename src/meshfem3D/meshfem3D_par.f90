@@ -90,6 +90,8 @@ module meshfem_par
 
   ! CPML
   double precision :: THICKNESS_OF_X_PML,THICKNESS_OF_Y_PML,THICKNESS_OF_Z_PML
+  logical :: ADD_PML_AS_EXTRA_MESH_LAYERS
+  integer :: NUMBER_OF_PML_LAYERS_TO_ADD
   logical, dimension(:), allocatable :: is_CPML
   integer, dimension(:), allocatable :: CPML_to_spec,CPML_regions
   integer :: nspec_CPML

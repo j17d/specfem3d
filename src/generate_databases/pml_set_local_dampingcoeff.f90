@@ -314,11 +314,13 @@
     write(IMAIN,*) '                                  period =',sngl(1.d0/f0_FOR_PML),'s'
     write(IMAIN,*)
     ! wavelength
-    write(IMAIN,*) '    resulting dominant wavelength : ',sngl(vp_max_all/f0_FOR_PML),'m'
-    write(IMAIN,*) '               ratio CPML_width_x : ',sngl(CPML_width_x / (vp_max_all/f0_FOR_PML))
-    write(IMAIN,*) '               ratio CPML_width_y : ',sngl(CPML_width_y / (vp_max_all/f0_FOR_PML))
-    write(IMAIN,*) '               ratio CPML_width_z : ',sngl(CPML_width_z / (vp_max_all/f0_FOR_PML))
-    write(IMAIN,*)
+    if (vp_max_all > 0.d0) then
+      write(IMAIN,*) '    resulting dominant wavelength : ',sngl(vp_max_all/f0_FOR_PML),'m'
+      write(IMAIN,*) '               ratio CPML_width_x : ',sngl(CPML_width_x / (vp_max_all/f0_FOR_PML))
+      write(IMAIN,*) '               ratio CPML_width_y : ',sngl(CPML_width_y / (vp_max_all/f0_FOR_PML))
+      write(IMAIN,*) '               ratio CPML_width_z : ',sngl(CPML_width_z / (vp_max_all/f0_FOR_PML))
+      write(IMAIN,*)
+    endif
     call flush_IMAIN()
   endif
   call synchronize_all()
