@@ -72,6 +72,10 @@ THICKNESS_OF_X_PML              = 100.0d0
 THICKNESS_OF_Y_PML              = 100.0d0
 THICKNESS_OF_Z_PML              = 100.0d0
 
+# add PML layers as extra outer mesh layers
+ADD_PML_AS_EXTRA_MESH_LAYERS    = .false.
+NUMBER_OF_PML_LAYERS_TO_ADD     = 3
+
 #-----------------------------------------------------------
 #
 # Domain materials
