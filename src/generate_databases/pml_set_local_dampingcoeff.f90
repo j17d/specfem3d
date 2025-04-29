@@ -30,7 +30,8 @@
 
 ! calculates damping profiles and auxiliary coefficients on C-PML points
 
-  use constants, only: myrank,ZERO,ONE,TWO,PI,HUGEVAL
+  use constants, only: myrank,ZERO,ONE,TWO,PI,HUGEVAL, &
+    IOUT,NPOWER,CPML_Rcoef,OUTPUT_FILES
 
   use shared_parameters, only: ACOUSTIC_SIMULATION, ELASTIC_SIMULATION
 
@@ -1851,6 +1852,71 @@
 
   enddo
 
+  ! output damping profile samples
+  if (myrank == 0) then
+    open(IOUT,file=trim(OUTPUT_FILES)//'/PML_damping_profiles.txt',status='unknown',action='write')
+    write(IOUT,*) '# PML damping profiles'
+    write(IOUT,*) '# constants:'
+    write(IOUT,*) '#   NPOWER = ',NPOWER
+    write(IOUT,*) '#   R      = ',CPML_Rcoef
+    write(IOUT,*) '#   K_min  = ',K_MIN_PML
+    write(IOUT,*) '#   K_max  = ',K_MAX_PML
+    write(IOUT,*) '# settings:'
+    write(IOUT,*) '#   f0_FOR_PML       = ',f0_FOR_PML
+    write(IOUT,*) '#   Alpha_MAX_PML_x  = ',ALPHA_MAX_PML_x
+    write(IOUT,*) '#   Alpha_MAX_PML_y  = ',ALPHA_MAX_PML_y
+    write(IOUT,*) '#   Alpha_MAX_PML_z  = ',ALPHA_MAX_PML_z
+    write(IOUT,*) '# model:'
+    write(IOUT,*) '#   Vp_max        = ',vp_max_all
+    write(IOUT,*) '#   CPML_width_x  = ',CPML_width_x
+    write(IOUT,*) '#   CPML_width_y  = ',CPML_width_y
+    write(IOUT,*) '#   CPML_width_z  = ',CPML_width_z
+    write(IOUT,*) '# damping profiles:'
+    write(IOUT,*) '# format: #distance #d_x #d_y #d_z  #K_x #K_y #K_z  #alpha_x #alpha_y #alpha_z'
+    ! samples damping profiles along X/Y/Z direction
+    vp = vp_max_all
+    do i = 1,20
+      ! distance to C-PML/mesh interface
+      dist = dble(i-1) / 19.d0       ! sampling between [0.0,1.0]
+      if (dist < 0.0) dist = 0.0
+      if (dist > 1.0) dist = 1.0
+      ! gets damping profile
+      ! X-sides
+      if (CPML_width_x > 0.0) then
+        K_x = K_MIN_PML + (K_MAX_PML - ONE) * dist
+        d_x = pml_damping_profile_l(myrank,1,dist,vp,CPML_width_x)
+        alpha_x = ALPHA_MAX_PML_x * (ONE - dist)
+      else
+        K_x = 1.0
+        d_x = 0.0
+        alpha_x = 0.0
+      endif
+      ! Y-sides
+      if (CPML_width_y > 0.0) then
+        K_y = K_MIN_PML + (K_MAX_PML - ONE) * dist
+        d_y = pml_damping_profile_l(myrank,1,dist,vp,CPML_width_y)
+        alpha_y = ALPHA_MAX_PML_y * (ONE - dist)
+      else
+        K_y = 1.0
+        d_y = 0.0
+        alpha_y = 0.0
+      endif
+      ! Z-sides
+      if (CPML_width_z > 0.0) then
+        K_z = K_MIN_PML + (K_MAX_PML - ONE) * dist
+        d_z = pml_damping_profile_l(myrank,1,dist,vp,CPML_width_z)
+        alpha_z = ALPHA_MAX_PML_z * (ONE - dist)
+      else
+        K_z = 1.0
+        d_z = 0.0
+        alpha_z = 0.0
+      endif
+      ! file output
+      write(IOUT,*) dist,d_x,d_y,d_z,K_x,K_y,K_z,alpha_x,alpha_y,alpha_z
+    enddo
+    close(IOUT)
+  endif
+
   ! --------------------------------------------------------------------------------------------
   ! for adjoint tomography
   ! create the array store the points on interface between PML and interior computational domain
@@ -1988,9 +2054,9 @@
   ! checks coordinates of C-PML points and thickness of C-PML layer
   ! the distance is a relative distance here (a ratio), thus we compare to 1 instead of comparing to the thickness of the PML
   if (dist > 1._CUSTOM_REAL ) then
-    print *,'C-PML point ',iglob
-    print *,'distance to C-PML/mesh interface ',dist
-    print *,'C-PML thickness ',delta
+    print *,'Error: C-PML point ',iglob
+    print *,'       distance to C-PML/mesh interface ',dist
+    print *,'       C-PML thickness ',delta
     call exit_mpi(myrank,'C-PML error: distance to C-PML/mesh interface is bigger than thickness of C-PML layer')
   endif
 

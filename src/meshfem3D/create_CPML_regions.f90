@@ -558,13 +558,9 @@
   logical, dimension(:), allocatable :: is_X_CPML_new,is_Y_CPML_new,is_Z_CPML_new
 
   integer :: nspec_CPML_total,nspec_total
-  integer :: i1,i2,i3,i4,i5,i6,i7,i8
+  integer :: i1,i2,i3,i4
   integer :: ispec,ispec_CPML,ier
   character(len=MAX_STRING_LEN) :: filename
-
-  ! for float comparisons
-  !double precision, parameter :: TOL_EPS = 1.19d-7   ! machine precision for single precision (32-bit) floats
-  !double precision :: rtol                           ! relative tolerance
 
   ! extra layers
   integer :: iloop_on_X_Y_Z_faces,iloop_on_min_face_then_max_face
@@ -572,7 +568,7 @@
   integer :: npoin,nspec_all,nspec_new,npoin_new_max,npoin_new_real
 
   double precision :: xsize,ysize,zsize
-  double precision :: value_min,value_max  !,value_size,sum_of_distances
+  double precision :: value_min,value_max
 
   ! size of each PML element to add when they are added on the Xmin and Xmax faces, Ymin and Ymax faces, Zmin and/or Zmax faces
   double precision :: SIZE_OF_X_ELEMENT_TO_ADD,SIZE_OF_Y_ELEMENT_TO_ADD,SIZE_OF_Z_ELEMENT_TO_ADD
@@ -596,7 +592,6 @@
                       dershape3D(NDIM,NGNOD,NGLLX_M,NGLLY_M,NGLLZ_M)
 
   double precision, dimension(NGNOD) :: xelm,yelm,zelm
-  double precision, dimension(NGNOD) :: x_tmp1,y_tmp1,z_tmp1,x_tmp2,y_tmp2,z_tmp2
   double precision :: jacobian
 
   integer, dimension(:,:,:,:), allocatable :: ibool_new
@@ -611,12 +606,19 @@
   integer, dimension(NGNOD) :: loc_node
   integer, dimension(NGNOD) :: anchor_iax,anchor_iay,anchor_iaz
 
+  ! topology of faces of cube (see similar definition in check_mesh_quality.f90)
+  integer :: faces_topo(4,6),faces_topo_midpoints(5,6)
+  integer :: iface,face_type
+  ! MPI Cartesian topology uses W for West (= XI_MIN), E for East (= XI_MAX), S for South (= ETA_MIN), N for North (= ETA_MAX)
+  integer, parameter :: W = 1,E = 2,S = 3,N = 4,B = 5,T = 6        ! B==Bottom, T==Top
+  integer :: elem_mapping(NGNOD)
+
   integer :: p1,p2,p3,p4,p5,p6,p7,p8,p9,ia,iglob
   integer :: factor_x,factor_y,factor_z
   integer :: iextend,elem_counter
 
   logical :: need_to_extend_this_element
-  logical :: found_a_negative_Jacobian1,found_a_negative_Jacobian2
+  logical :: found_a_negative_Jacobian
 
   ! tolerance for node detection on mesh boundaries
   double precision, parameter :: SMALL_RELATIVE_VALUE = 1.d-5
@@ -636,6 +638,22 @@
   ! sort and re-order new global nodes
   logical, parameter :: DO_MESH_SORTING = .true.
 
+! note: This routine is a slightly simplified version of the utils/CPML/add_CPML_layers_to_an_existing_mesh.f90 tool.
+!
+!       We don't allow for transition element layers, but directly add C-PML elements to the initial existing mesh.
+!       Furthermore, we don't change the materials (like adding high attenuation values) but extend the ones
+!       from the boundary elements.
+!       By default, PML layers will be added to the sides and bottom. An additional top PML layer will only be added
+!       if the in Par_files, the user specifies 'PML_INSTEAD_OF_FREE_SURFACE = .true.'.
+!
+!       The PML element sizes are determined by the thickness and the number of layers specified in the Mesh_Par_file.
+!       That is, the horizontal size of a single PML elements is given e.g. by THICKNESS_OF_X_PML / NUMBER_OF_PML_LAYERS_TO_ADD.
+!
+!       Be careful with the element orientation, CUBIT has a different node ordering than this in-house mesher.
+!       Additionally, in CUBIT elements can be oriented rather arbitrarily, not necessarily having NGLLZ in vertical direction.
+!       Thus, the indexing here is different to the one used in the add_CPML_* tool.
+!       We use an index mapping array elem_mapping() such that the XI_min/.. directions align with the newly extended elements.
+
   ! safety check
   if (.not. PML_CONDITIONS) return
   if (.not. ADD_PML_AS_EXTRA_MESH_LAYERS) return
@@ -651,10 +669,10 @@
   !  stop 'ADD_PML_AS_EXTRA_MESH_LAYERS requires NUMBER_OF_PML_LAYERS_TO_ADD > 0'
 
   ! initializes
-  ADD_ON_THE_XMIN_SURFACE = .true.  ! left side
-  ADD_ON_THE_XMAX_SURFACE = .true.  ! right
-  ADD_ON_THE_YMIN_SURFACE = .true.  ! front
-  ADD_ON_THE_YMAX_SURFACE = .true.  ! back
+  ADD_ON_THE_XMIN_SURFACE = .true.  ! W - left side
+  ADD_ON_THE_XMAX_SURFACE = .true.  ! E - right
+  ADD_ON_THE_YMIN_SURFACE = .true.  ! S - front
+  ADD_ON_THE_YMAX_SURFACE = .true.  ! N - back
   ADD_ON_THE_ZMIN_SURFACE = .true.  ! bottom
   if (PML_INSTEAD_OF_FREE_SURFACE) then
     ADD_ON_THE_ZMAX_SURFACE = .true.  ! top
@@ -665,6 +683,13 @@
   ! sets up node addressing
   call hex_nodes_anchor_ijk_NGLL(NGNOD,anchor_iax,anchor_iay,anchor_iaz,NGLLX_M,NGLLY_M,NGLLZ_M)
 
+  !debug
+  !if (myrank == 0) then
+  !  do ia = 1,NGNOD
+  !    print *,'debug: anchor ia',ia,'iax/iay/iaz',anchor_iax(ia),anchor_iay(ia),anchor_iaz(ia)
+  !  enddo
+  !endif
+
   ! for jacobian testing
   ! set up coordinates of the Gauss-Lobatto-Legendre points
   call zwgljd(xigll,wxgll,NGLLX_M,GAUSSALPHA,GAUSSBETA)
@@ -672,6 +697,103 @@
   call zwgljd(zigll,wzgll,NGLLZ_M,GAUSSALPHA,GAUSSBETA)
   ! get the 3-D shape functions
   call get_shape3D(shape3D,dershape3D,xigll,yigll,zigll,NGNOD,NGLLX_M,NGLLY_M,NGLLZ_M)
+
+  ! define topology of faces of cube
+  ! (see hex_nodes.f90)
+  !
+  !           5 * -------- * 8
+  !            /|         /|
+  !         6 * -------- *7|
+  !           |1* - - -  | * 4                 z
+  !           |/         |/                   |
+  !           * -------- *                    o--> y
+  !          2           3                 x /
+  !
+  ! see save_databases.F90
+  ! interfaces(W) - XI_min:
+  !   ibool(1,1,1,ispec),ibool(1,NGLLY_M,1,ispec),ibool(1,1,NGLLZ_M,ispec),ibool(1,NGLLY_M,NGLLZ_M,ispec)
+  !   -> face i1,i4,i5,i8
+  ! interfaces(E) - XI_max:
+  !   ibool(NGLLX_M,1,1,ispec),ibool(NGLLX_M,NGLLY_M,1,ispec),ibool(NGLLX_M,1,NGLLZ_M,ispec),ibool(NGLLX_M,NGLLY_M,NGLLZ_M,ispec)
+  !   -> face i2,i3,i6,i7
+  ! interfaces(S) - ETA_min:
+  !   ibool(1,1,1,ispec),ibool(NGLLX_M,1,1,ispec),ibool(1,1,NGLLZ_M,ispec),ibool(NGLLX_M,1,NGLLZ_M,ispec)
+  !   -> face i1,i2,i5,i6
+  ! interfaces(N) - ETA_max:
+  !   ibool(NGLLX_M,NGLLY_M,1,ispec),ibool(1,NGLLY_M,1,ispec),ibool(NGLLX_M,NGLLY_M,NGLLZ_M,ispec),ibool(1,NGLLY_M,NGLLZ_M,ispec)
+  !   -> face i3,i4,i7,i8
+
+  ! face - XI_min (W)
+  faces_topo(1,W) = 1
+  faces_topo(2,W) = 4
+  faces_topo(3,W) = 8
+  faces_topo(4,W) = 5
+
+  faces_topo_midpoints(1,W) = 12    ! edge midpoints
+  faces_topo_midpoints(2,W) = 16
+  faces_topo_midpoints(3,W) = 20
+  faces_topo_midpoints(4,W) = 13
+  faces_topo_midpoints(5,W) = 25    ! face midpoint
+
+  ! face - XI_max (E)
+  faces_topo(1,E) = 2
+  faces_topo(2,E) = 3
+  faces_topo(3,E) = 7
+  faces_topo(4,E) = 6
+
+  faces_topo_midpoints(1,E) = 10    ! edge midpoints
+  faces_topo_midpoints(2,E) = 15
+  faces_topo_midpoints(3,E) = 18
+  faces_topo_midpoints(4,E) = 14
+  faces_topo_midpoints(5,E) = 23    ! face midpoint
+
+  ! face - ETA_min (S)
+  faces_topo(1,S) = 1
+  faces_topo(2,S) = 2
+  faces_topo(3,S) = 6
+  faces_topo(4,S) = 5
+
+  faces_topo_midpoints(1,S) = 9     ! edge midpoints
+  faces_topo_midpoints(2,S) = 14
+  faces_topo_midpoints(3,S) = 17
+  faces_topo_midpoints(4,S) = 13
+  faces_topo_midpoints(5,S) = 22    ! face midpoint
+
+  ! face - ETA_max (N)
+  faces_topo(1,N) = 4
+  faces_topo(2,N) = 3
+  faces_topo(3,N) = 7
+  faces_topo(4,N) = 8
+
+  faces_topo_midpoints(1,N) = 11    ! edge midpoints
+  faces_topo_midpoints(2,N) = 15
+  faces_topo_midpoints(3,N) = 19
+  faces_topo_midpoints(4,N) = 16
+  faces_topo_midpoints(5,N) = 24    ! face midpoint
+
+  ! face - bottom
+  faces_topo(1,B) = 1
+  faces_topo(2,B) = 2
+  faces_topo(3,B) = 3
+  faces_topo(4,B) = 4
+
+  faces_topo_midpoints(1,B) = 9     ! edge midpoints
+  faces_topo_midpoints(2,B) = 10
+  faces_topo_midpoints(3,B) = 11
+  faces_topo_midpoints(4,B) = 12
+  faces_topo_midpoints(5,B) = 21    ! face midpoint
+
+  ! face - top
+  faces_topo(1,T) = 5
+  faces_topo(2,T) = 6
+  faces_topo(3,T) = 7
+  faces_topo(4,T) = 8
+
+  faces_topo_midpoints(1,T) = 17    ! edge midpoints
+  faces_topo_midpoints(2,T) = 18
+  faces_topo_midpoints(3,T) = 19
+  faces_topo_midpoints(4,T) = 20
+  faces_topo_midpoints(5,T) = 26    ! face midpoint
 
   ! determine element sizes (all thicknesses given in m here)
   SIZE_OF_X_ELEMENT_TO_ADD = 0.d0
@@ -924,108 +1046,76 @@
       ! loop on the whole mesh
       do ispec = 1,nspec
         ! we can use the 8 corners of the element only for the test here, even if the element is HEX27
+        !
+        ! topology of faces of cube
+        ! (see hex_nodes.f90)
+        !
+        !           5 * -------- * 8
+        !            /|         /|
+        !         6 * -------- *7|
+        !           |1* - - -  | * 4                 z
+        !           |/         |/                   |
+        !           * -------- *                    o--> y
+        !          2           3                 x /
+        !
         ! corner points
-        i1 = ibool(1,1,1,ispec)
-        i2 = ibool(NGLLX_M,1,1,ispec)
-        i3 = ibool(NGLLX_M,NGLLY_M,1,ispec)
-        i4 = ibool(1,NGLLY_M,1,ispec)
-        i5 = ibool(1,1,NGLLZ_M,ispec)
-        i6 = ibool(NGLLX_M,1,NGLLZ_M,ispec)
-        i7 = ibool(NGLLX_M,NGLLY_M,NGLLZ_M,ispec)
-        i8 = ibool(1,NGLLY_M,NGLLZ_M,ispec)
+        !i1 = ibool(1,1,1,ispec)
+        !i2 = ibool(NGLLX_M,1,1,ispec)
+        !i3 = ibool(NGLLX_M,NGLLY_M,1,ispec)
+        !i4 = ibool(1,NGLLY_M,1,ispec)
+        !i5 = ibool(1,1,NGLLZ_M,ispec)
+        !i6 = ibool(NGLLX_M,1,NGLLZ_M,ispec)
+        !i7 = ibool(NGLLX_M,NGLLY_M,NGLLZ_M,ispec)
+        !i8 = ibool(1,NGLLY_M,NGLLZ_M,ispec)
+
+        ! gets anchor nodes
+        do ia = 1,NGNOD
+          iglob = ibool(anchor_iax(ia),anchor_iay(ia),anchor_iaz(ia),ispec)
+          loc_node(ia) = iglob
+        enddo
 
         if (iloop_on_min_face_then_max_face == 1) then
           ! min face
           ! detect elements belonging to the min face
           limit = value_min + elem_size * SMALL_RELATIVE_VALUE
-          ! test face 1 (bottom)
-          if (coord_to_use1(i1) < limit .and. coord_to_use1(i2) < limit .and. &
-              coord_to_use1(i3) < limit .and. coord_to_use1(i4) < limit) then
-            count_elem_faces_to_extend = count_elem_faces_to_extend + 1
-            !sum_of_distances = sum_of_distances + &
-            !    sqrt((coord_to_use3(i1) - coord_to_use3(i2))**2 + (coord_to_use2(i1) - coord_to_use2(i2))**2)
-          endif
-          ! test face 2 (top)
-          if (coord_to_use1(i5) < limit .and. coord_to_use1(i6) < limit .and. &
-              coord_to_use1(i7) < limit .and. coord_to_use1(i8) < limit) then
-            count_elem_faces_to_extend = count_elem_faces_to_extend + 1
-            !sum_of_distances = sum_of_distances + &
-            !    sqrt((coord_to_use3(i5) - coord_to_use3(i6))**2 + (coord_to_use2(i5) - coord_to_use2(i6))**2)
-          endif
-          ! test face 3 (left)
-          if (coord_to_use1(i1) < limit .and. coord_to_use1(i4) < limit .and. &
-              coord_to_use1(i8) < limit .and. coord_to_use1(i5) < limit) then
-            count_elem_faces_to_extend = count_elem_faces_to_extend + 1
-            !sum_of_distances = sum_of_distances + &
-            !    sqrt((coord_to_use3(i1) - coord_to_use3(i4))**2 + (coord_to_use2(i1) - coord_to_use2(i4))**2)
-          endif
-          ! test face 4 (right)
-          if (coord_to_use1(i2) < limit .and. coord_to_use1(i3) < limit .and. &
-              coord_to_use1(i7) < limit .and. coord_to_use1(i6) < limit) then
-            count_elem_faces_to_extend = count_elem_faces_to_extend + 1
-            !sum_of_distances = sum_of_distances + &
-            !    sqrt((coord_to_use3(i2) - coord_to_use3(i3))**2 + (coord_to_use2(i2) - coord_to_use2(i3))**2)
-          endif
-          ! test face 5 (front)
-          if (coord_to_use1(i1) < limit .and. coord_to_use1(i2) < limit .and. &
-              coord_to_use1(i6) < limit .and. coord_to_use1(i5) < limit) then
-            count_elem_faces_to_extend = count_elem_faces_to_extend + 1
-            !sum_of_distances = sum_of_distances + &
-            !    sqrt((coord_to_use3(i1) - coord_to_use3(i2))**2 + (coord_to_use2(i1) - coord_to_use2(i2))**2)
-          endif
-          ! test face 6 (back)
-          if (coord_to_use1(i4) < limit .and. coord_to_use1(i3) < limit .and. &
-              coord_to_use1(i7) < limit .and. coord_to_use1(i8) < limit) then
-            count_elem_faces_to_extend = count_elem_faces_to_extend + 1
-            !sum_of_distances = sum_of_distances + &
-            !    sqrt((coord_to_use3(i4) - coord_to_use3(i3))**2 + (coord_to_use2(i4) - coord_to_use2(i3))**2)
-          endif
+          ! test element faces
+          do iface = 1,6
+            ! face corners
+            i1 = loc_node(faces_topo(1,iface))
+            i2 = loc_node(faces_topo(2,iface))
+            i3 = loc_node(faces_topo(3,iface))
+            i4 = loc_node(faces_topo(4,iface))
+            ! check if element face belongs to extending face plane
+            if (coord_to_use1(i1) < limit .and. coord_to_use1(i2) < limit .and. &
+                coord_to_use1(i3) < limit .and. coord_to_use1(i4) < limit) then
+              count_elem_faces_to_extend = count_elem_faces_to_extend + 1
+              !sum_of_distances = sum_of_distances + &
+              !    sqrt((coord_to_use3(i1) - coord_to_use3(i2))**2 + (coord_to_use2(i1) - coord_to_use2(i2))**2)
+              ! assumes that an element can only have a single face on the extending plane
+              exit
+            endif
+          enddo
         else
           ! max face
           ! detect elements belonging to the max face
           limit = value_max - elem_size * SMALL_RELATIVE_VALUE
-          ! test face 1 (bottom)
-          if (coord_to_use1(i1) > limit .and. coord_to_use1(i2) > limit .and. &
-              coord_to_use1(i3) > limit .and. coord_to_use1(i4) > limit) then
-            count_elem_faces_to_extend = count_elem_faces_to_extend + 1
-            !sum_of_distances = sum_of_distances + &
-            !  sqrt((coord_to_use3(i1) - coord_to_use3(i2))**2 + (coord_to_use2(i1) - coord_to_use2(i2))**2)
-          endif
-          ! test face 2 (top)
-          if (coord_to_use1(i5) > limit .and. coord_to_use1(i6) > limit .and. &
-              coord_to_use1(i7) > limit .and. coord_to_use1(i8) > limit) then
-            count_elem_faces_to_extend = count_elem_faces_to_extend + 1
-            !sum_of_distances = sum_of_distances + &
-            !    sqrt((coord_to_use3(i5) - coord_to_use3(i6))**2 + (coord_to_use2(i5) - coord_to_use2(i6))**2)
-          endif
-          ! test face 3 (left)
-          if (coord_to_use1(i1) > limit .and. coord_to_use1(i4) > limit .and. &
-              coord_to_use1(i8) > limit .and. coord_to_use1(i5) > limit) then
-            count_elem_faces_to_extend = count_elem_faces_to_extend + 1
-            !sum_of_distances = sum_of_distances + &
-            !    sqrt((coord_to_use3(i1) - coord_to_use3(i4))**2 + (coord_to_use2(i1) - coord_to_use2(i4))**2)
-          endif
-          ! test face 4 (right)
-          if (coord_to_use1(i2) > limit .and. coord_to_use1(i3) > limit .and. &
-              coord_to_use1(i7) > limit .and. coord_to_use1(i6) > limit) then
-            count_elem_faces_to_extend = count_elem_faces_to_extend + 1
-            !sum_of_distances = sum_of_distances + &
-            !    sqrt((coord_to_use3(i2) - coord_to_use3(i3))**2 + (coord_to_use2(i2) - coord_to_use2(i3))**2)
-          endif
-          ! test face 5 (front)
-          if (coord_to_use1(i1) > limit .and. coord_to_use1(i2) > limit .and. &
-              coord_to_use1(i6) > limit .and. coord_to_use1(i5) > limit) then
-            count_elem_faces_to_extend = count_elem_faces_to_extend + 1
-            !sum_of_distances = sum_of_distances + &
-            !    sqrt((coord_to_use3(i1) - coord_to_use3(i2))**2 + (coord_to_use2(i1) - coord_to_use2(i2))**2)
-          endif
-          ! test face 6 (back)
-          if (coord_to_use1(i4) > limit .and. coord_to_use1(i3) > limit .and. &
-              coord_to_use1(i7) > limit .and. coord_to_use1(i8) > limit) then
-            count_elem_faces_to_extend = count_elem_faces_to_extend + 1
-            !sum_of_distances = sum_of_distances + &
-            !    sqrt((coord_to_use3(i4) - coord_to_use3(i3))**2 + (coord_to_use2(i4) - coord_to_use2(i3))**2)
-          endif
+          ! test element faces
+          do iface = 1,6
+            ! face corners
+            i1 = loc_node(faces_topo(1,iface))
+            i2 = loc_node(faces_topo(2,iface))
+            i3 = loc_node(faces_topo(3,iface))
+            i4 = loc_node(faces_topo(4,iface))
+            ! check if element face belongs to extending face plane
+            if (coord_to_use1(i1) > limit .and. coord_to_use1(i2) > limit .and. &
+                coord_to_use1(i3) > limit .and. coord_to_use1(i4) > limit) then
+              count_elem_faces_to_extend = count_elem_faces_to_extend + 1
+              !sum_of_distances = sum_of_distances + &
+              !    sqrt((coord_to_use3(i1) - coord_to_use3(i2))**2 + (coord_to_use2(i1) - coord_to_use2(i2))**2)
+              ! assumes that an element can only have a single face on the extending plane
+              exit
+            endif
+          enddo
         endif
       enddo
 
@@ -1044,9 +1134,6 @@
         ! check total
         if (count_elem_faces_to_extend_all == 0) stop 'Error: number of element faces to extend detected is zero!'
       endif
-
-      ! check if anything to do in this slice
-      !if (count_elem_faces_to_extend == 0) cycle      ! make sure to have no more MPI collectives below this in this loop!!!
 
       ! we will add NUMBER_OF_LAYERS_TO_ADD to each of the element faces detected that need to be extended
       nspec_new = nspec + count_elem_faces_to_extend * NUMBER_OF_PML_LAYERS_TO_ADD
@@ -1118,32 +1205,32 @@
 
       ! loop on the whole original mesh
       do ispec = 1,nspec
+        ! topology of faces of cube
+        ! (see hex_nodes.f90)
+        !
+        !           5 * -------- * 8
+        !            /|         /|
+        !         6 * -------- *7|
+        !           |1* - - -  | * 4                 z
+        !           |/         |/                   |
+        !           * -------- *                    o--> y
+        !          2           3                 x /
+        !
+        ! corner points
+        !i1 = ibool(1,1,1,ispec)
+        !i2 = ibool(NGLLX_M,1,1,ispec)
+        !i3 = ibool(NGLLX_M,NGLLY_M,1,ispec)
+        !i4 = ibool(1,NGLLY_M,1,ispec)
+        !i5 = ibool(1,1,NGLLZ_M,ispec)
+        !i6 = ibool(NGLLX_M,1,NGLLZ_M,ispec)
+        !i7 = ibool(NGLLX_M,NGLLY_M,NGLLZ_M,ispec)
+        !i8 = ibool(1,NGLLY_M,NGLLZ_M,ispec)
+
         ! gets anchor nodes
         do ia = 1,NGNOD
           iglob = ibool(anchor_iax(ia),anchor_iay(ia),anchor_iaz(ia),ispec)
           loc_node(ia) = iglob
         enddo
-
-  ! define topology of faces of cube for skewness
-  ! (see hex_nodes.f90)
-  !
-  !           5 * -------- * 8
-  !            /|         /|
-  !         6 * -------- *7|
-  !           |1* - - -  | * 4                 z
-  !           |/         |/                   |
-  !           * -------- *                    o--> y
-  !          2           3                 x /
-
-        ! corner points
-        i1 = ibool(1,1,1,ispec)
-        i2 = ibool(NGLLX_M,1,1,ispec)
-        i3 = ibool(NGLLX_M,NGLLY_M,1,ispec)
-        i4 = ibool(1,NGLLY_M,1,ispec)
-        i5 = ibool(1,1,NGLLZ_M,ispec)
-        i6 = ibool(NGLLX_M,1,NGLLZ_M,ispec)
-        i7 = ibool(NGLLX_M,NGLLY_M,NGLLZ_M,ispec)
-        i8 = ibool(1,NGLLY_M,NGLLZ_M,ispec)
 
         ! reset flag
         need_to_extend_this_element = .false.
@@ -1152,202 +1239,64 @@
           ! min face
           ! detect elements belonging to the min face
           limit = value_min + elem_size * SMALL_RELATIVE_VALUE
-          ! test face 1 (bottom)
-          if (coord_to_use1(i1) < limit .and. coord_to_use1(i2) < limit .and. &
-              coord_to_use1(i3) < limit .and. coord_to_use1(i4) < limit) then
-            need_to_extend_this_element = .true.
-            p1 = i1
-            p2 = i2
-            p3 = i3
-            p4 = i4
-            if (NGNOD == 27) then
-              p5 = loc_node(9)
-              p6 = loc_node(10)
-              p7 = loc_node(11)
-              p8 = loc_node(12)
-              p9 = loc_node(21)
+          ! test element faces
+          do iface = 1,6
+            ! face corners
+            i1 = loc_node(faces_topo(1,iface))
+            i2 = loc_node(faces_topo(2,iface))
+            i3 = loc_node(faces_topo(3,iface))
+            i4 = loc_node(faces_topo(4,iface))
+            ! test face
+            if (coord_to_use1(i1) < limit .and. coord_to_use1(i2) < limit .and. &
+                coord_to_use1(i3) < limit .and. coord_to_use1(i4) < limit) then
+              need_to_extend_this_element = .true.
+              face_type = iface
+              p1 = i1
+              p2 = i2
+              p3 = i3
+              p4 = i4
+              if (NGNOD == 27) then
+                p5 = loc_node(faces_topo_midpoints(1,iface))
+                p6 = loc_node(faces_topo_midpoints(2,iface))
+                p7 = loc_node(faces_topo_midpoints(3,iface))
+                p8 = loc_node(faces_topo_midpoints(4,iface))
+                p9 = loc_node(faces_topo_midpoints(5,iface))
+              endif
+              ! assumes that only a single element face can be on the extending plane
+              exit
             endif
-          endif
-          ! test face 2 (top)
-          if (coord_to_use1(i5) < limit .and. coord_to_use1(i6) < limit .and. &
-              coord_to_use1(i7) < limit .and. coord_to_use1(i8) < limit) then
-            need_to_extend_this_element = .true.
-            p1 = i5
-            p2 = i6
-            p3 = i7
-            p4 = i8
-            if (NGNOD == 27) then
-              p5 = loc_node(17)
-              p6 = loc_node(18)
-              p7 = loc_node(19)
-              p8 = loc_node(20)
-              p9 = loc_node(26)
-            endif
-          endif
-          ! test face 3 (left)
-          if (coord_to_use1(i1) < limit .and. coord_to_use1(i4) < limit .and. &
-              coord_to_use1(i5) < limit .and. coord_to_use1(i8) < limit) then
-            need_to_extend_this_element = .true.
-            p1 = i1
-            p2 = i4
-            p3 = i8
-            p4 = i5
-            if (NGNOD == 27) then
-              p5 = loc_node(12)
-              p6 = loc_node(16)
-              p7 = loc_node(20)
-              p8 = loc_node(13)
-              p9 = loc_node(25)
-            endif
-          endif
-          ! test face 4 (right)
-          if (coord_to_use1(i2) < limit .and. coord_to_use1(i3) < limit .and. &
-              coord_to_use1(i7) < limit .and. coord_to_use1(i6) < limit) then
-            need_to_extend_this_element = .true.
-            p1 = i2
-            p2 = i3
-            p3 = i7
-            p4 = i6
-            if (NGNOD == 27) then
-              p5 = loc_node(10)
-              p6 = loc_node(15)
-              p7 = loc_node(18)
-              p8 = loc_node(14)
-              p9 = loc_node(23)
-            endif
-          endif
-          ! test face 5 (front)
-          if (coord_to_use1(i1) < limit .and. coord_to_use1(i2) < limit .and. &
-              coord_to_use1(i6) < limit .and. coord_to_use1(i5) < limit) then
-            need_to_extend_this_element = .true.
-            p1 = i1
-            p2 = i2
-            p3 = i6
-            p4 = i5
-            if (NGNOD == 27) then
-              p5 = loc_node(9)
-              p6 = loc_node(14)
-              p7 = loc_node(17)
-              p8 = loc_node(13)
-              p9 = loc_node(22)
-            endif
-          endif
-          ! test face 6 (back)
-          if (coord_to_use1(i4) < limit .and. coord_to_use1(i3) < limit .and. &
-              coord_to_use1(i7) < limit .and. coord_to_use1(i8) < limit) then
-            need_to_extend_this_element = .true.
-            p1 = i4
-            p2 = i3
-            p3 = i7
-            p4 = i8
-            if (NGNOD == 27) then
-              p5 = loc_node(11)
-              p6 = loc_node(15)
-              p7 = loc_node(19)
-              p8 = loc_node(16)
-              p9 = loc_node(24)
-            endif
-          endif
+          enddo
         else
           ! max face
           ! detect elements belonging to the max face
           limit = value_max - elem_size * SMALL_RELATIVE_VALUE
-          ! test face 1 (bottom)
-          if (coord_to_use1(i1) > limit .and. coord_to_use1(i2) > limit .and. &
-              coord_to_use1(i3) > limit .and. coord_to_use1(i4) > limit) then
-            need_to_extend_this_element = .true.
-            p1 = i1
-            p2 = i2
-            p3 = i3
-            p4 = i4
-            if (NGNOD == 27) then
-              p5 = loc_node(9)
-              p6 = loc_node(10)
-              p7 = loc_node(11)
-              p8 = loc_node(12)
-              p9 = loc_node(21)
+          ! test element faces
+          do iface = 1,6
+            ! face corners
+            i1 = loc_node(faces_topo(1,iface))
+            i2 = loc_node(faces_topo(2,iface))
+            i3 = loc_node(faces_topo(3,iface))
+            i4 = loc_node(faces_topo(4,iface))
+            ! test face
+            if (coord_to_use1(i1) > limit .and. coord_to_use1(i2) > limit .and. &
+                coord_to_use1(i3) > limit .and. coord_to_use1(i4) > limit) then
+              need_to_extend_this_element = .true.
+              face_type = iface
+              p1 = i1
+              p2 = i2
+              p3 = i3
+              p4 = i4
+              if (NGNOD == 27) then
+                p5 = loc_node(faces_topo_midpoints(1,iface))
+                p6 = loc_node(faces_topo_midpoints(2,iface))
+                p7 = loc_node(faces_topo_midpoints(3,iface))
+                p8 = loc_node(faces_topo_midpoints(4,iface))
+                p9 = loc_node(faces_topo_midpoints(5,iface))
+              endif
+              ! assumes that only a single element face can be on the extending plane
+              exit
             endif
-          endif
-          ! test face 2 (top)
-          if (coord_to_use1(i5) > limit .and. coord_to_use1(i6) > limit .and. &
-              coord_to_use1(i7) > limit .and. coord_to_use1(i8) > limit) then
-            need_to_extend_this_element = .true.
-            p1 = i5
-            p2 = i6
-            p3 = i7
-            p4 = i8
-            if (NGNOD == 27) then
-              p5 = loc_node(17)
-              p6 = loc_node(18)
-              p7 = loc_node(19)
-              p8 = loc_node(20)
-              p9 = loc_node(26)
-            endif
-          endif
-          ! test face 3 (left)
-          if (coord_to_use1(i1) > limit .and. coord_to_use1(i4) > limit .and. &
-              coord_to_use1(i5) > limit .and. coord_to_use1(i8) > limit) then
-            need_to_extend_this_element = .true.
-            p1 = i1
-            p2 = i4
-            p3 = i8
-            p4 = i5
-            if (NGNOD == 27) then
-              p5 = loc_node(12)
-              p6 = loc_node(16)
-              p7 = loc_node(20)
-              p8 = loc_node(13)
-              p9 = loc_node(25)
-            endif
-          endif
-          ! test face 4 (right)
-          if (coord_to_use1(i2) > limit .and. coord_to_use1(i3) > limit .and. &
-              coord_to_use1(i7) > limit .and. coord_to_use1(i6) > limit) then
-            need_to_extend_this_element = .true.
-            p1 = i2
-            p2 = i3
-            p3 = i7
-            p4 = i6
-            if (NGNOD == 27) then
-              p5 = loc_node(10)
-              p6 = loc_node(15)
-              p7 = loc_node(18)
-              p8 = loc_node(14)
-              p9 = loc_node(23)
-            endif
-          endif
-          ! test face 5 (front)
-          if (coord_to_use1(i1) > limit .and. coord_to_use1(i2) > limit .and. &
-              coord_to_use1(i6) > limit .and. coord_to_use1(i5) > limit) then
-            need_to_extend_this_element = .true.
-            p1 = i1
-            p2 = i2
-            p3 = i6
-            p4 = i5
-            if (NGNOD == 27) then
-              p5 = loc_node(9)
-              p6 = loc_node(14)
-              p7 = loc_node(17)
-              p8 = loc_node(13)
-              p9 = loc_node(22)
-            endif
-          endif
-          ! test face 6 (back)
-          if (coord_to_use1(i4) > limit .and. coord_to_use1(i3) > limit .and. &
-              coord_to_use1(i7) > limit .and. coord_to_use1(i8) > limit) then
-            need_to_extend_this_element = .true.
-            p1 = i4
-            p2 = i3
-            p3 = i7
-            p4 = i8
-            if (NGNOD == 27) then
-              p5 = loc_node(11)
-              p6 = loc_node(15)
-              p7 = loc_node(19)
-              p8 = loc_node(16)
-              p9 = loc_node(24)
-            endif
-          endif
+          enddo
         endif
 
         if (need_to_extend_this_element) then
@@ -1355,7 +1304,7 @@
 
           ! very important remark: it is OK to create duplicates of the mesh points in the loop below
           ! (i.e. not to tell the code that many of these points created are in fact shared between adjacent elements)
-          ! because "xdecompose_mesh" will remove them automatically later on, thus no need to remove them here;
+          ! because this will be removed automatically later on, thus no need to remove them here;
           ! this makes this PML mesh extrusion code much simpler to write.
 
           factor_x = 0
@@ -1458,308 +1407,227 @@
               endif
             endif
 
-            ! extend MPI-cut flags
+            ! extend (old) MPI-cut flags
             iMPIcut_xi_new(:,elem_counter) = iMPIcut_xi(:,ispec)
             iMPIcut_eta_new(:,elem_counter) = iMPIcut_eta(:,ispec)
+            ! re-set the outer most element flags
+            if (iloop_on_X_Y_Z_faces == 1) then
+              ! X-sides
+              if (iloop_on_min_face_then_max_face == 1) then
+                ! X-min
+                ! W-interface (XI_min)
+                ! re-set flag on ispec-element as "extended" mesh element is not on outermost boundary anymore
+                iMPIcut_xi_new(1,ispec) = .false.
+                if (iextend == NUMBER_OF_PML_LAYERS_TO_ADD) then
+                  iMPIcut_xi_new(1,elem_counter) = .true.
+                else
+                  iMPIcut_xi_new(1,elem_counter) = .false.
+                endif
+              else
+                ! X-max
+                ! E-interface (XI_max)
+                iMPIcut_xi_new(2,ispec) = .false.
+                if (iextend == NUMBER_OF_PML_LAYERS_TO_ADD) then
+                  iMPIcut_xi_new(2,elem_counter) = .true.
+                else
+                  iMPIcut_xi_new(2,elem_counter) = .false.
+                endif
+              endif
+            else if (iloop_on_X_Y_Z_faces == 2) then
+              ! Y-sides
+              if (iloop_on_min_face_then_max_face == 1) then
+                ! Y-min
+                ! S-interface (ETA_min)
+                iMPIcut_eta_new(1,ispec) = .false.
+                if (iextend == NUMBER_OF_PML_LAYERS_TO_ADD) then
+                  iMPIcut_eta_new(1,elem_counter) = .true.
+                else
+                  iMPIcut_eta_new(1,elem_counter) = .false.
+                endif
+              else
+                ! Y-max
+                ! N-interface (ETA_max)
+                iMPIcut_eta_new(2,ispec) = .false.
+                if (iextend == NUMBER_OF_PML_LAYERS_TO_ADD) then
+                  iMPIcut_eta_new(2,elem_counter) = .true.
+                else
+                  iMPIcut_eta_new(2,elem_counter) = .false.
+                endif
+              endif
+            endif
 
-            ! first create the normal element
-            ! bottom face of HEX8
-            x_tmp1(1) = x(p1) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * iextend
-            y_tmp1(1) = y(p1) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * iextend
-            z_tmp1(1) = z(p1) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * iextend
+            !debug
+            !if (myrank == 0) &
+            !  print *,'debug: ',iloop_on_X_Y_Z_faces,iloop_on_min_face_then_max_face, &
+            !          ' MPI cut elem/ispec',elem_counter,ispec,' xi ',iMPIcut_xi(:,ispec),'eta',iMPIcut_eta(:,ispec)
 
-            x_tmp1(2) = x(p2) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * iextend
-            y_tmp1(2) = y(p2) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * iextend
-            z_tmp1(2) = z(p2) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * iextend
+            ! element index mapping
+            call get_element_index_mapping(face_type,elem_mapping)
 
-            x_tmp1(3) = x(p3) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * iextend
-            y_tmp1(3) = y(p3) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * iextend
-            z_tmp1(3) = z(p3) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * iextend
+            ! create the extended element
+            xelm(:) = 0.d0
+            yelm(:) = 0.d0
+            zelm(:) = 0.d0
 
-            x_tmp1(4) = x(p4) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * iextend
-            y_tmp1(4) = y(p4) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * iextend
-            z_tmp1(4) = z(p4) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * iextend
+            ! extended face of HEX8
+            xelm(elem_mapping(1)) = x(p1) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * iextend
+            yelm(elem_mapping(1)) = y(p1) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * iextend
+            zelm(elem_mapping(1)) = z(p1) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * iextend
 
-            ! top face of HEX8
-            x_tmp1(5) = x(p1) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * (iextend-1)
-            y_tmp1(5) = y(p1) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * (iextend-1)
-            z_tmp1(5) = z(p1) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * (iextend-1)
+            xelm(elem_mapping(2)) = x(p2) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * iextend
+            yelm(elem_mapping(2)) = y(p2) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * iextend
+            zelm(elem_mapping(2)) = z(p2) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * iextend
 
-            x_tmp1(6) = x(p2) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * (iextend-1)
-            y_tmp1(6) = y(p2) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * (iextend-1)
-            z_tmp1(6) = z(p2) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * (iextend-1)
+            xelm(elem_mapping(3)) = x(p3) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * iextend
+            yelm(elem_mapping(3)) = y(p3) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * iextend
+            zelm(elem_mapping(3)) = z(p3) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * iextend
 
-            x_tmp1(7) = x(p3) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * (iextend-1)
-            y_tmp1(7) = y(p3) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * (iextend-1)
-            z_tmp1(7) = z(p3) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * (iextend-1)
+            xelm(elem_mapping(4)) = x(p4) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * iextend
+            yelm(elem_mapping(4)) = y(p4) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * iextend
+            zelm(elem_mapping(4)) = z(p4) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * iextend
 
-            x_tmp1(8) = x(p4) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * (iextend-1)
-            y_tmp1(8) = y(p4) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * (iextend-1)
-            z_tmp1(8) = z(p4) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * (iextend-1)
+            ! previous-extended face of HEX8
+            xelm(elem_mapping(5)) = x(p1) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * (iextend-1)
+            yelm(elem_mapping(5)) = y(p1) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * (iextend-1)
+            zelm(elem_mapping(5)) = z(p1) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * (iextend-1)
+
+            xelm(elem_mapping(6)) = x(p2) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * (iextend-1)
+            yelm(elem_mapping(6)) = y(p2) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * (iextend-1)
+            zelm(elem_mapping(6)) = z(p2) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * (iextend-1)
+
+            xelm(elem_mapping(7)) = x(p3) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * (iextend-1)
+            yelm(elem_mapping(7)) = y(p3) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * (iextend-1)
+            zelm(elem_mapping(7)) = z(p3) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * (iextend-1)
+
+            xelm(elem_mapping(8)) = x(p4) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * (iextend-1)
+            yelm(elem_mapping(8)) = y(p4) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * (iextend-1)
+            zelm(elem_mapping(8)) = z(p4) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * (iextend-1)
 
             if (NGNOD == 27) then
               ! remaining points of bottom face of HEX27
-              x_tmp1(9) = x(p5) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * iextend
-              y_tmp1(9) = y(p5) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * iextend
-              z_tmp1(9) = z(p5) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * iextend
+              xelm(elem_mapping(9)) = x(p5) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * iextend
+              yelm(elem_mapping(9)) = y(p5) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * iextend
+              zelm(elem_mapping(9)) = z(p5) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * iextend
 
-              x_tmp1(10) = x(p6) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * iextend
-              y_tmp1(10) = y(p6) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * iextend
-              z_tmp1(10) = z(p6) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * iextend
+              xelm(elem_mapping(10)) = x(p6) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * iextend
+              yelm(elem_mapping(10)) = y(p6) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * iextend
+              zelm(elem_mapping(10)) = z(p6) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * iextend
 
-              x_tmp1(11) = x(p7) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * iextend
-              y_tmp1(11) = y(p7) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * iextend
-              z_tmp1(11) = z(p7) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * iextend
+              xelm(elem_mapping(11)) = x(p7) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * iextend
+              yelm(elem_mapping(11)) = y(p7) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * iextend
+              zelm(elem_mapping(11)) = z(p7) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * iextend
 
-              x_tmp1(12) = x(p8) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * iextend
-              y_tmp1(12) = y(p8) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * iextend
-              z_tmp1(12) = z(p8) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * iextend
+              xelm(elem_mapping(12)) = x(p8) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * iextend
+              yelm(elem_mapping(12)) = y(p8) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * iextend
+              zelm(elem_mapping(12)) = z(p8) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * iextend
 
-              x_tmp1(21) = x(p9) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * iextend
-              y_tmp1(21) = y(p9) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * iextend
-              z_tmp1(21) = z(p9) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * iextend
-
-              ! remaining points of top face of HEX27
-              x_tmp1(17) = x(p5) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * (iextend-1)
-              y_tmp1(17) = y(p5) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * (iextend-1)
-              z_tmp1(17) = z(p5) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * (iextend-1)
-
-              x_tmp1(18) = x(p6) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * (iextend-1)
-              y_tmp1(18) = y(p6) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * (iextend-1)
-              z_tmp1(18) = z(p6) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * (iextend-1)
-
-              x_tmp1(19) = x(p7) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * (iextend-1)
-              y_tmp1(19) = y(p7) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * (iextend-1)
-              z_tmp1(19) = z(p7) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * (iextend-1)
-
-              x_tmp1(20) = x(p8) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * (iextend-1)
-              y_tmp1(20) = y(p8) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * (iextend-1)
-              z_tmp1(20) = z(p8) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * (iextend-1)
-
-              x_tmp1(26) = x(p9) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * (iextend-1)
-              y_tmp1(26) = y(p9) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * (iextend-1)
-              z_tmp1(26) = z(p9) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * (iextend-1)
-
-              ! remaining points of middle cutplane (middle "face") of HEX27
-              x_tmp1(13) = x(p1) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * (iextend-0.5d0)
-              y_tmp1(13) = y(p1) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * (iextend-0.5d0)
-              z_tmp1(13) = z(p1) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * (iextend-0.5d0)
-
-              x_tmp1(14) = x(p2) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * (iextend-0.5d0)
-              y_tmp1(14) = y(p2) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * (iextend-0.5d0)
-              z_tmp1(14) = z(p2) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * (iextend-0.5d0)
-
-              x_tmp1(15) = x(p3) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * (iextend-0.5d0)
-              y_tmp1(15) = y(p3) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * (iextend-0.5d0)
-              z_tmp1(15) = z(p3) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * (iextend-0.5d0)
-
-              x_tmp1(16) = x(p4) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * (iextend-0.5d0)
-              y_tmp1(16) = y(p4) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * (iextend-0.5d0)
-              z_tmp1(16) = z(p4) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * (iextend-0.5d0)
-
-              x_tmp1(22) = x(p5) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * (iextend-0.5d0)
-              y_tmp1(22) = y(p5) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * (iextend-0.5d0)
-              z_tmp1(22) = z(p5) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * (iextend-0.5d0)
-
-              x_tmp1(23) = x(p6) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * (iextend-0.5d0)
-              y_tmp1(23) = y(p6) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * (iextend-0.5d0)
-              z_tmp1(23) = z(p6) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * (iextend-0.5d0)
-
-              x_tmp1(24) = x(p7) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * (iextend-0.5d0)
-              y_tmp1(24) = y(p7) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * (iextend-0.5d0)
-              z_tmp1(24) = z(p7) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * (iextend-0.5d0)
-
-              x_tmp1(25) = x(p8) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * (iextend-0.5d0)
-              y_tmp1(25) = y(p8) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * (iextend-0.5d0)
-              z_tmp1(25) = z(p8) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * (iextend-0.5d0)
-
-              x_tmp1(27) = x(p9) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * (iextend-0.5d0)
-              y_tmp1(27) = y(p9) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * (iextend-0.5d0)
-              z_tmp1(27) = z(p9) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * (iextend-0.5d0)
-            endif
-
-            ! then create the mirrored element
-            ! bottom face of HEX8
-            x_tmp2(1) = x(p1) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * (iextend-1)
-            y_tmp2(1) = y(p1) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * (iextend-1)
-            z_tmp2(1) = z(p1) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * (iextend-1)
-
-            x_tmp2(2) = x(p2) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * (iextend-1)
-            y_tmp2(2) = y(p2) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * (iextend-1)
-            z_tmp2(2) = z(p2) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * (iextend-1)
-
-            x_tmp2(3) = x(p3) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * (iextend-1)
-            y_tmp2(3) = y(p3) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * (iextend-1)
-            z_tmp2(3) = z(p3) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * (iextend-1)
-
-            x_tmp2(4) = x(p4) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * (iextend-1)
-            y_tmp2(4) = y(p4) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * (iextend-1)
-            z_tmp2(4) = z(p4) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * (iextend-1)
-
-            ! top face of HEX8
-            x_tmp2(5) = x(p1) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * iextend
-            y_tmp2(5) = y(p1) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * iextend
-            z_tmp2(5) = z(p1) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * iextend
-
-            x_tmp2(6) = x(p2) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * iextend
-            y_tmp2(6) = y(p2) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * iextend
-            z_tmp2(6) = z(p2) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * iextend
-
-            x_tmp2(7) = x(p3) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * iextend
-            y_tmp2(7) = y(p3) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * iextend
-            z_tmp2(7) = z(p3) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * iextend
-
-            x_tmp2(8) = x(p4) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * iextend
-            y_tmp2(8) = y(p4) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * iextend
-            z_tmp2(8) = z(p4) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * iextend
-
-            if (NGNOD == 27) then
-              ! remaining points of bottom face of HEX27
-              x_tmp2(9) = x(p5) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * (iextend-1)
-              y_tmp2(9) = y(p5) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * (iextend-1)
-              z_tmp2(9) = z(p5) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * (iextend-1)
-
-              x_tmp2(10) = x(p6) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * (iextend-1)
-              y_tmp2(10) = y(p6) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * (iextend-1)
-              z_tmp2(10) = z(p6) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * (iextend-1)
-
-              x_tmp2(11) = x(p7) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * (iextend-1)
-              y_tmp2(11) = y(p7) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * (iextend-1)
-              z_tmp2(11) = z(p7) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * (iextend-1)
-
-              x_tmp2(12) = x(p8) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * (iextend-1)
-              y_tmp2(12) = y(p8) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * (iextend-1)
-              z_tmp2(12) = z(p8) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * (iextend-1)
-
-              x_tmp2(21) = x(p9) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * (iextend-1)
-              y_tmp2(21) = y(p9) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * (iextend-1)
-              z_tmp2(21) = z(p9) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * (iextend-1)
+              xelm(elem_mapping(21)) = x(p9) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * iextend
+              yelm(elem_mapping(21)) = y(p9) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * iextend
+              zelm(elem_mapping(21)) = z(p9) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * iextend
 
               ! remaining points of top face of HEX27
-              x_tmp2(17) = x(p5) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * iextend
-              y_tmp2(17) = y(p5) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * iextend
-              z_tmp2(17) = z(p5) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * iextend
+              xelm(elem_mapping(17)) = x(p5) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * (iextend-1)
+              yelm(elem_mapping(17)) = y(p5) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * (iextend-1)
+              zelm(elem_mapping(17)) = z(p5) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * (iextend-1)
 
-              x_tmp2(18) = x(p6) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * iextend
-              y_tmp2(18) = y(p6) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * iextend
-              z_tmp2(18) = z(p6) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * iextend
+              xelm(elem_mapping(18)) = x(p6) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * (iextend-1)
+              yelm(elem_mapping(18)) = y(p6) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * (iextend-1)
+              zelm(elem_mapping(18)) = z(p6) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * (iextend-1)
 
-              x_tmp2(19) = x(p7) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * iextend
-              y_tmp2(19) = y(p7) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * iextend
-              z_tmp2(19) = z(p7) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * iextend
+              xelm(elem_mapping(19)) = x(p7) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * (iextend-1)
+              yelm(elem_mapping(19)) = y(p7) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * (iextend-1)
+              zelm(elem_mapping(19)) = z(p7) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * (iextend-1)
 
-              x_tmp2(20) = x(p8) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * iextend
-              y_tmp2(20) = y(p8) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * iextend
-              z_tmp2(20) = z(p8) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * iextend
+              xelm(elem_mapping(20)) = x(p8) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * (iextend-1)
+              yelm(elem_mapping(20)) = y(p8) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * (iextend-1)
+              zelm(elem_mapping(20)) = z(p8) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * (iextend-1)
 
-              x_tmp2(26) = x(p9) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * iextend
-              y_tmp2(26) = y(p9) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * iextend
-              z_tmp2(26) = z(p9) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * iextend
+              xelm(elem_mapping(26)) = x(p9) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * (iextend-1)
+              yelm(elem_mapping(26)) = y(p9) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * (iextend-1)
+              zelm(elem_mapping(26)) = z(p9) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * (iextend-1)
 
               ! remaining points of middle cutplane (middle "face") of HEX27
-              x_tmp2(13) = x(p1) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * (iextend-0.5d0)
-              y_tmp2(13) = y(p1) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * (iextend-0.5d0)
-              z_tmp2(13) = z(p1) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * (iextend-0.5d0)
+              xelm(elem_mapping(13)) = x(p1) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * (iextend-0.5d0)
+              yelm(elem_mapping(13)) = y(p1) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * (iextend-0.5d0)
+              zelm(elem_mapping(13)) = z(p1) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * (iextend-0.5d0)
 
-              x_tmp2(14) = x(p2) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * (iextend-0.5d0)
-              y_tmp2(14) = y(p2) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * (iextend-0.5d0)
-              z_tmp2(14) = z(p2) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * (iextend-0.5d0)
+              xelm(elem_mapping(14)) = x(p2) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * (iextend-0.5d0)
+              yelm(elem_mapping(14)) = y(p2) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * (iextend-0.5d0)
+              zelm(elem_mapping(14)) = z(p2) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * (iextend-0.5d0)
 
-              x_tmp2(15) = x(p3) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * (iextend-0.5d0)
-              y_tmp2(15) = y(p3) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * (iextend-0.5d0)
-              z_tmp2(15) = z(p3) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * (iextend-0.5d0)
+              xelm(elem_mapping(15)) = x(p3) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * (iextend-0.5d0)
+              yelm(elem_mapping(15)) = y(p3) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * (iextend-0.5d0)
+              zelm(elem_mapping(15)) = z(p3) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * (iextend-0.5d0)
 
-              x_tmp2(16) = x(p4) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * (iextend-0.5d0)
-              y_tmp2(16) = y(p4) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * (iextend-0.5d0)
-              z_tmp2(16) = z(p4) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * (iextend-0.5d0)
+              xelm(elem_mapping(16)) = x(p4) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * (iextend-0.5d0)
+              yelm(elem_mapping(16)) = y(p4) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * (iextend-0.5d0)
+              zelm(elem_mapping(16)) = z(p4) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * (iextend-0.5d0)
 
-              x_tmp2(22) = x(p5) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * (iextend-0.5d0)
-              y_tmp2(22) = y(p5) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * (iextend-0.5d0)
-              z_tmp2(22) = z(p5) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * (iextend-0.5d0)
+              xelm(elem_mapping(22)) = x(p5) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * (iextend-0.5d0)
+              yelm(elem_mapping(22)) = y(p5) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * (iextend-0.5d0)
+              zelm(elem_mapping(22)) = z(p5) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * (iextend-0.5d0)
 
-              x_tmp2(23) = x(p6) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * (iextend-0.5d0)
-              y_tmp2(23) = y(p6) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * (iextend-0.5d0)
-              z_tmp2(23) = z(p6) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * (iextend-0.5d0)
+              xelm(elem_mapping(23)) = x(p6) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * (iextend-0.5d0)
+              yelm(elem_mapping(23)) = y(p6) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * (iextend-0.5d0)
+              zelm(elem_mapping(23)) = z(p6) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * (iextend-0.5d0)
 
-              x_tmp2(24) = x(p7) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * (iextend-0.5d0)
-              y_tmp2(24) = y(p7) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * (iextend-0.5d0)
-              z_tmp2(24) = z(p7) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * (iextend-0.5d0)
+              xelm(elem_mapping(24)) = x(p7) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * (iextend-0.5d0)
+              yelm(elem_mapping(24)) = y(p7) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * (iextend-0.5d0)
+              zelm(elem_mapping(24)) = z(p7) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * (iextend-0.5d0)
 
-              x_tmp2(25) = x(p8) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * (iextend-0.5d0)
-              y_tmp2(25) = y(p8) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * (iextend-0.5d0)
-              z_tmp2(25) = z(p8) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * (iextend-0.5d0)
+              xelm(elem_mapping(25)) = x(p8) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * (iextend-0.5d0)
+              yelm(elem_mapping(25)) = y(p8) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * (iextend-0.5d0)
+              zelm(elem_mapping(25)) = z(p8) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * (iextend-0.5d0)
 
-              x_tmp2(27) = x(p9) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * (iextend-0.5d0)
-              y_tmp2(27) = y(p9) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * (iextend-0.5d0)
-              z_tmp2(27) = z(p9) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * (iextend-0.5d0)
+              xelm(elem_mapping(27)) = x(p9) + factor_x * SIZE_OF_X_ELEMENT_TO_ADD * (iextend-0.5d0)
+              yelm(elem_mapping(27)) = y(p9) + factor_y * SIZE_OF_Y_ELEMENT_TO_ADD * (iextend-0.5d0)
+              zelm(elem_mapping(27)) = z(p9) + factor_z * SIZE_OF_Z_ELEMENT_TO_ADD * (iextend-0.5d0)
             endif
-
-            ! now we need to test if the element created is flipped i.e. it has a negative Jacobian,
-            ! and if so we will use the mirrored version of that element, which will then have a positive Jacobian
 
             ! check the element for a negative Jacobian
-            do ia = 1,NGNOD
-              xelm(ia) = x_tmp1(ia)
-              yelm(ia) = y_tmp1(ia)
-              zelm(ia) = z_tmp1(ia)
-            enddo
-            call check_jacobian(xelm,yelm,zelm,dershape3D,found_a_negative_jacobian1,NDIM,NGNOD,NGLLX_M,NGLLY_M,NGLLZ_M,jacobian)
-
-            ! check the mirrored (i.e. flipped/swapped) element for a negative Jacobian
-            ! either this one or the non-mirrored one above should be OK, and thus we will select it
-            do ia = 1,NGNOD
-              xelm(ia) = x_tmp2(ia)
-              yelm(ia) = y_tmp2(ia)
-              zelm(ia) = z_tmp2(ia)
-            enddo
-            call check_jacobian(xelm,yelm,zelm,dershape3D,found_a_negative_jacobian2,NDIM,NGNOD,NGLLX_M,NGLLY_M,NGLLZ_M,jacobian)
+            call check_jacobian(xelm,yelm,zelm,dershape3D,found_a_negative_jacobian,NDIM,NGNOD,NGLLX_M,NGLLY_M,NGLLZ_M,jacobian)
 
             ! this should never happen, it is just a safety test
-            if (found_a_negative_jacobian1 .and. found_a_negative_jacobian2) then
+            if (found_a_negative_jacobian) then
               print *,'Error: rank ',myrank,'found a negative Jacobian that could not be fixed'
               print *,'       iloop_on_X_Y_Z_faces            :',iloop_on_X_Y_Z_faces
               print *,'       iloop_on_min_face_then_max_face :',iloop_on_min_face_then_max_face
               print *,'       iextend                         :',iextend
-              print *,'       new element ',elem_counter
-              print *,'       found negative jacobian: ',found_a_negative_jacobian1,found_a_negative_jacobian2
-              print *,'       tmp1 : ',x_tmp1(1),y_tmp1(1),z_tmp1(1)
-              print *,'       tmp2 : ',x_tmp2(1),y_tmp2(1),z_tmp2(1)
+              print *,'       face type                       :',face_type,'(W = 1,E = 2,S = 3,N = 4,B = 5,T = 6)'
+              print *,'       new element                     :',elem_counter
+              print *,'       index mapping:'
+              do ia = 1,NGNOD
+                print *,'         ',ia,elem_mapping(ia)
+              enddo
+              print *,'       element x/y/z: '
+              do ia = 1,NGNOD
+                print *,'         ',ia,xelm(ia),yelm(ia),zelm(ia)
+              enddo
+              print *,'       found negative jacobian: ',found_a_negative_jacobian
               stop 'Error: found a negative Jacobian that could not be fixed'
             endif
 
-            ! this should also never happen, it is just a second safety test
-            if (.not. found_a_negative_jacobian1 .and. .not. found_a_negative_jacobian2) &
-              stop 'Error: both the element created and its mirrored version have a positive Jacobian!'
+            !debug
+            !if (myrank == 0) &
+            !print *,'debug: ',iloop_on_X_Y_Z_faces,iloop_on_min_face_then_max_face, &
+            !        'extend',iextend,'face',face_type,found_a_negative_jacobian
 
-            ! if we have found that the original element has a negative Jacobian and its mirrored element is fine,
-            ! swap the points so that we use that mirrored element in the final mesh saved to disk instead of the original one
-            ! i.e. implement a mirror symmetry here
-            if (found_a_negative_jacobian1) then
-              do ia = 1,NGNOD
-                npoin_new_real = npoin_new_real + 1
-                !ibool_new(ia,elem_counter) = npoin_new_real
-                ibool_new(anchor_iax(ia),anchor_iay(ia),anchor_iaz(ia),elem_counter) = npoin_new_real
-                x_new(npoin_new_real) = x_tmp2(ia)
-                y_new(npoin_new_real) = y_tmp2(ia)
-                z_new(npoin_new_real) = z_tmp2(ia)
-              enddo
-            else
-              do ia = 1,NGNOD
-                npoin_new_real = npoin_new_real + 1
-                !ibool_new(ia,elem_counter) = npoin_new_real
-                ibool_new(anchor_iax(ia),anchor_iay(ia),anchor_iaz(ia),elem_counter) = npoin_new_real
-                x_new(npoin_new_real) = x_tmp1(ia)
-                y_new(npoin_new_real) = y_tmp1(ia)
-                z_new(npoin_new_real) = z_tmp1(ia)
-              enddo
-            endif
+            ! add element to the final mesh
+            do ia = 1,NGNOD
+              npoin_new_real = npoin_new_real + 1
+              !ibool_new(ia,elem_counter) = npoin_new_real
+              ibool_new(anchor_iax(ia),anchor_iay(ia),anchor_iaz(ia),elem_counter) = npoin_new_real
+              x_new(npoin_new_real) = xelm(ia)
+              y_new(npoin_new_real) = yelm(ia)
+              z_new(npoin_new_real) = zelm(ia)
+            enddo
 
             !debug
             !print *,'debug: iloop_on_X_Y_Z_faces',iloop_on_X_Y_Z_faces, &
             !        'iloop_on_min_face_then_max_face',iloop_on_min_face_then_max_face, &
             !        'iextend ',iextend,'added ',elem_counter,'nspec',nspec,nspec_new,'npoin_new_real',npoin_new_real, &
             !        'nglob',npoin,npoin_new_max, &
-            !        'found jacobian',found_a_negative_jacobian1,found_a_negative_jacobian2
+            !        'found jacobian',found_a_negative_jacobian
           enddo  ! iextend
         endif
       enddo
@@ -1768,6 +1636,19 @@
       !if (minval(ibool_new) /= 1) stop 'Error in minval(ibool_new)'
       if (maxval(ibool_new) > npoin_new_max) stop 'Error in maxval(ibool_new)'
       if (npoin_new_real /= npoin_new_max) stop 'Error in npoin_new_real'
+
+      ! check added elements
+      if (count_elem_faces_to_extend * NUMBER_OF_PML_LAYERS_TO_ADD /= elem_counter - nspec) stop 'Error in adding PML elements'
+
+      !debug
+      !print *,'debug: rank',myrank,'iloop',iloop_on_X_Y_Z_faces,iloop_on_min_face_then_max_face, &
+      !        'MPI cut xi',count(iMPIcut_xi(1,:)),count(iMPIcut_xi(2,:)), &
+      !        'new',count(iMPIcut_xi_new(1,:)),count(iMPIcut_xi_new(2,:))
+
+      !debug
+      !print *,'debug: rank',myrank,'iloop',iloop_on_X_Y_Z_faces,iloop_on_min_face_then_max_face, &
+      !        'MPI cut eta',count(iMPIcut_eta(1,:)),count(iMPIcut_eta(2,:)), &
+      !        'new',count(iMPIcut_eta_new(1,:)),count(iMPIcut_eta_new(2,:))
 
       ! deallocate the original arrays
       deallocate(x,y,z)
@@ -1933,10 +1814,18 @@
     deallocate(ibool)
     allocate(ibool(NGLLX_M,NGLLY_M,NGLLZ_M,nspec),stat=ier)
     if (ier /= 0) stop 'Error allocating sorted ibool'
+    ibool(:,:,:,:) = 0
     ! fill with sorted entries
     do ispec = 1,nspec
       do ia = 1,NGNOD
-        ibool(anchor_iax(ia),anchor_iay(ia),anchor_iaz(ia),ispec) = ibool_tmp(ia,ispec)
+        iglob = ibool_tmp(ia,ispec)
+        ! check
+        if (iglob < 1 .or. iglob > nglob) then
+          print *,'Error: rank',myrank,'has invalid iglob',iglob,'in element',ispec,'out of',nspec,'at anchor node',ia
+          stop 'Error invalid iglob found in new ibool'
+        endif
+        ! store
+        ibool(anchor_iax(ia),anchor_iay(ia),anchor_iaz(ia),ispec) = iglob
       enddo
     enddo
   endif  ! DO_MESH_SORTING
@@ -2094,6 +1983,197 @@
   endif
 
 contains
+
+  subroutine get_element_index_mapping(face_type,elem_mapping)
+
+  implicit none
+  integer, intent(in) :: face_type
+  integer, dimension(NGNOD), intent(out) :: elem_mapping
+
+  ! initializes
+  elem_mapping(:) = 0
+
+  ! topology of faces of cube
+  ! (see hex_nodes.f90)
+  !
+  !           5 * -------- * 8
+  !            /|         /|
+  !         6 * -------- *7|
+  !           |1* - - -  | * 4                 z
+  !           |/         |/                   |
+  !           * -------- *                    o--> y
+  !          2           3                 x /
+  !
+  ! mapping:
+  !   face XI_min (W)  - i1,i4,i8,i5 -> face A-1:  1,4,8,5 / 2,3,7,6 : face A0
+  !   face XI_max (E)  - i2,i3,i7,i6 -> face A+1:  2,3,7,6 / 1,4,8,5 : face A0
+  !   face ETA_min (S) - i1,i2,i6,i5 -> face A-1:  1,2,6,5 / 4,3,7,8 : face A0
+  !   face ETA_max (N) - i4,i3,i7,i8 -> face A+1:  4,3,7,8 / 1,2,6,5 : face A0
+  !   face bottom      - i1,i2,i3,i4 -> face A-1:  1,2,3,4 / 5,6,7,8 : face A0
+  !   face top         - i5,i6,i7,i8 -> face A+1:  5,6,7,8 / 1,2,3,4 : face A0
+
+  ! NGNOD == 8
+  if (face_type == W) then
+    elem_mapping(1:8) = (/ faces_topo(:,W), faces_topo(:,E) /) ! (/ 1,4,8,5, 2,3,7,6 /)
+  else if (face_type == E) then
+    elem_mapping(1:8) = (/ faces_topo(:,E), faces_topo(:,W) /) ! (/ 2,3,7,6, 1,4,8,5 /)
+  else if (face_type == S) then
+    elem_mapping(1:8) = (/ faces_topo(:,S), faces_topo(:,N) /) ! (/ 1,2,6,5, 4,3,7,8 /)
+  else if (face_type == N) then
+    elem_mapping(1:8) = (/ faces_topo(:,N), faces_topo(:,S) /) ! (/ 4,3,7,8, 1,2,6,5 /)
+  else if (face_type == B) then
+    elem_mapping(1:8) = (/ faces_topo(:,B), faces_topo(:,T) /) ! (/ 1,2,3,4, 5,6,7,8 /)
+  else if (face_type == T) then
+    elem_mapping(1:8) = (/ faces_topo(:,T), faces_topo(:,B) /) ! (/ 5,6,7,8, 1,2,3,4 /)
+  else
+    stop 'Invalid face type in adding CPML element'
+  endif
+
+  ! topology 27 (midpoints)
+  !              (5)                    (8)
+  !               * --------20* -------- *
+  !              /|                    / |
+  !           17* |        x26      19*  |
+  !            /13*        24+       /   *16
+  !        (6)* -------18* -------- *(7) |
+  !           |25+|        *        |23+ |                  z
+  !           |(1)* --------12* --- |--- *(4)               |
+  !         14*  /      22+          *15/                   o--> y
+  !           | *9        x21       | *11                x /
+  !           |/                    |/
+  !           * -------10* -------- *
+  !          (2)                   (3)
+
+  ! NGNOD == 27
+  if (NGNOD == 27) then
+    if (face_type == W) then
+      ! points of extended face (A-1/+1) of HEX27
+      elem_mapping(9:12) = faces_topo_midpoints(1:4,W)
+      elem_mapping(21) = faces_topo_midpoints(5,W)
+
+      ! points of previous (non-extended) face (A0) of HEX27
+      elem_mapping(17:20) = faces_topo_midpoints(1:4,E)
+      elem_mapping(26) = faces_topo_midpoints(5,E)
+
+      ! points of middle cutplane (middle "face") of HEX27
+      elem_mapping(13) = faces_topo_midpoints(1,B)  ! edge midpoints
+      elem_mapping(14) = faces_topo_midpoints(3,B)
+      elem_mapping(15) = faces_topo_midpoints(3,T)
+      elem_mapping(16) = faces_topo_midpoints(1,T)
+      elem_mapping(22) = faces_topo_midpoints(5,B)  ! face midpoints
+      elem_mapping(23) = faces_topo_midpoints(5,N)
+      elem_mapping(24) = faces_topo_midpoints(5,T)
+      elem_mapping(25) = faces_topo_midpoints(5,S)
+      elem_mapping(27) = 27                         ! center point
+
+    else if (face_type == E) then
+      ! points of extended face (A-1/+1) of HEX27
+      elem_mapping(9:12) = faces_topo_midpoints(1:4,E)
+      elem_mapping(21) = faces_topo_midpoints(5,E)
+
+      ! points of previous (non-extended) face (A0) of HEX27
+      elem_mapping(17:20) = faces_topo_midpoints(1:4,W)
+      elem_mapping(26) = faces_topo_midpoints(5,W)
+
+      ! points of middle cutplane (middle "face") of HEX27
+      elem_mapping(13) = faces_topo_midpoints(1,B)  ! edge midpoints
+      elem_mapping(14) = faces_topo_midpoints(3,B)
+      elem_mapping(15) = faces_topo_midpoints(3,T)
+      elem_mapping(16) = faces_topo_midpoints(1,T)
+      elem_mapping(22) = faces_topo_midpoints(5,B)  ! face midpoints
+      elem_mapping(23) = faces_topo_midpoints(5,N)
+      elem_mapping(24) = faces_topo_midpoints(5,T)
+      elem_mapping(25) = faces_topo_midpoints(5,S)
+      elem_mapping(27) = 27                         ! center point
+
+
+    else if (face_type == S) then
+      ! points of extended face (A-1/+1) of HEX27
+      elem_mapping(9:12) = faces_topo_midpoints(1:4,S)
+      elem_mapping(21) = faces_topo_midpoints(5,S)
+
+      ! points of previous (non-extended) face (A0) of HEX27
+      elem_mapping(17:20) = faces_topo_midpoints(1:4,N)
+      elem_mapping(26) = faces_topo_midpoints(5,N)
+
+      ! points of middle cutplane (middle "face") of HEX27
+      elem_mapping(13) = faces_topo_midpoints(4,B)  ! edge midpoints
+      elem_mapping(14) = faces_topo_midpoints(2,B)
+      elem_mapping(15) = faces_topo_midpoints(2,T)
+      elem_mapping(16) = faces_topo_midpoints(4,T)
+      elem_mapping(22) = faces_topo_midpoints(5,B)  ! face midpoints
+      elem_mapping(23) = faces_topo_midpoints(5,E)
+      elem_mapping(24) = faces_topo_midpoints(5,T)
+      elem_mapping(25) = faces_topo_midpoints(5,W)
+      elem_mapping(27) = 27                         ! center point
+
+    else if (face_type == N) then
+      ! points of extended face (A-1/+1) of HEX27
+      elem_mapping(9:12) = faces_topo_midpoints(1:4,N)
+      elem_mapping(21) = faces_topo_midpoints(5,N)
+
+      ! points of previous (non-extended) face (A0) of HEX27
+      elem_mapping(17:20) = faces_topo_midpoints(1:4,S)
+      elem_mapping(26) = faces_topo_midpoints(5,S)
+
+      ! points of middle cutplane (middle "face") of HEX27
+      elem_mapping(13) = faces_topo_midpoints(4,B)  ! edge midpoints
+      elem_mapping(14) = faces_topo_midpoints(2,B)
+      elem_mapping(15) = faces_topo_midpoints(2,T)
+      elem_mapping(16) = faces_topo_midpoints(4,T)
+      elem_mapping(22) = faces_topo_midpoints(5,B)  ! face midpoints
+      elem_mapping(23) = faces_topo_midpoints(5,E)
+      elem_mapping(24) = faces_topo_midpoints(5,T)
+      elem_mapping(25) = faces_topo_midpoints(5,W)
+      elem_mapping(27) = 27                         ! center point
+
+    else if (face_type == B) then
+      ! points of extended face (A-1/+1) of HEX27
+      elem_mapping(9:12) = faces_topo_midpoints(1:4,B)
+      elem_mapping(21) = faces_topo_midpoints(5,B)
+
+      ! points of previous (non-extended) face (A0) of HEX27
+      elem_mapping(17:20) = faces_topo_midpoints(1:4,T)
+      elem_mapping(26) = faces_topo_midpoints(5,T)
+
+      ! points of middle cutplane (middle "face") of HEX27
+      elem_mapping(13) = faces_topo_midpoints(4,W)  ! edge midpoints
+      elem_mapping(14) = faces_topo_midpoints(4,E)
+      elem_mapping(15) = faces_topo_midpoints(2,E)
+      elem_mapping(16) = faces_topo_midpoints(2,W)
+      elem_mapping(22) = faces_topo_midpoints(5,S)  ! face midpoints
+      elem_mapping(23) = faces_topo_midpoints(5,E)
+      elem_mapping(24) = faces_topo_midpoints(5,N)
+      elem_mapping(25) = faces_topo_midpoints(5,W)
+      elem_mapping(27) = 27                         ! center point
+
+    else if (face_type == T) then
+      ! points of extended face (A-1/+1) of HEX27
+      elem_mapping(9:12) = faces_topo_midpoints(1:4,T)
+      elem_mapping(21) = faces_topo_midpoints(5,T)
+
+      ! points of previous (non-extended) face (A0) of HEX27
+      elem_mapping(17:20) = faces_topo_midpoints(1:4,B)
+      elem_mapping(26) = faces_topo_midpoints(5,B)
+
+      ! points of middle cutplane (middle "face") of HEX27
+      elem_mapping(13) = faces_topo_midpoints(4,W)  ! edge midpoints
+      elem_mapping(14) = faces_topo_midpoints(4,E)
+      elem_mapping(15) = faces_topo_midpoints(2,E)
+      elem_mapping(16) = faces_topo_midpoints(2,W)
+      elem_mapping(22) = faces_topo_midpoints(5,S)  ! face midpoints
+      elem_mapping(23) = faces_topo_midpoints(5,E)
+      elem_mapping(24) = faces_topo_midpoints(5,N)
+      elem_mapping(25) = faces_topo_midpoints(5,W)
+      elem_mapping(27) = 27                         ! center point
+    else
+      stop 'Invalid face type in adding CPML element'
+    endif
+  endif  ! NGNOD == 27
+
+  end subroutine get_element_index_mapping
+
+  !-------------------------------------------------------------------------
 
   subroutine check_jacobian(xelm,yelm,zelm,dershape3D,found_a_negative_jacobian,NDIM,NGNOD,NGLLX_M,NGLLY_M,NGLLZ_M,jacobian)
 

@@ -72,7 +72,7 @@
 
   ! local parameters
   ! MPI Cartesian topology
-  ! E for East (= XI_MIN), W for West (= XI_MAX), S for South (= ETA_MIN), N for North (= ETA_MAX)
+  ! W for West (= XI_MIN), E for East (= XI_MAX), S for South (= ETA_MIN), N for North (= ETA_MAX)
   integer, parameter :: W = 1,E = 2,S = 3,N = 4,NW = 5,NE = 6,SE = 7,SW = 8
 
   ! CPML
@@ -419,23 +419,23 @@
     ! slices at model boundaries
     if (iproc_xi_current == 0) then
       nb_interfaces =  nb_interfaces -1
-      interfaces(W) = .false.
+      interfaces(W) = .false.   ! XI_min
     endif
     if (iproc_xi_current == NPROC_XI-1) then
       nb_interfaces =  nb_interfaces -1
-      interfaces(E) = .false.
+      interfaces(E) = .false.   ! XI_max
     endif
     if (iproc_eta_current == 0) then
       nb_interfaces =  nb_interfaces -1
-      interfaces(S) = .false.
+      interfaces(S) = .false.   ! ETA_min
     endif
     if (iproc_eta_current == NPROC_ETA-1) then
       nb_interfaces =  nb_interfaces -1
-      interfaces(N) = .false.
+      interfaces(N) = .false.   ! ETA_max
     endif
 
     ! slices in middle of model
-    if ((interfaces(W) .eqv. .true.) .and. (interfaces(N) .eqv. .true.)) then
+    if ((interfaces(N) .eqv. .true.) .and. (interfaces(W) .eqv. .true.)) then
       interfaces(NW) = .true.
       nb_interfaces =  nb_interfaces +1
     endif
@@ -443,20 +443,20 @@
       interfaces(NE) = .true.
       nb_interfaces =  nb_interfaces +1
     endif
-    if ((interfaces(E) .eqv. .true.) .and. (interfaces(S) .eqv. .true.)) then
+    if ((interfaces(S) .eqv. .true.) .and. (interfaces(E) .eqv. .true.)) then
       interfaces(SE) = .true.
       nb_interfaces =  nb_interfaces +1
     endif
-    if ((interfaces(W) .eqv. .true.) .and. (interfaces(S) .eqv. .true.)) then
+    if ((interfaces(S) .eqv. .true.) .and. (interfaces(W) .eqv. .true.)) then
       interfaces(SW) = .true.
       nb_interfaces =  nb_interfaces +1
     endif
 
     nspec_interface(:) = 0
-    if (interfaces(W))  nspec_interface(W) = count(iMPIcut_xi(1,:) .eqv. .true.)
-    if (interfaces(E))  nspec_interface(E) = count(iMPIcut_xi(2,:) .eqv. .true.)
-    if (interfaces(S))  nspec_interface(S) = count(iMPIcut_eta(1,:) .eqv. .true.)
-    if (interfaces(N))  nspec_interface(N) = count(iMPIcut_eta(2,:) .eqv. .true.)
+    if (interfaces(W))  nspec_interface(W) = count(iMPIcut_xi(1,:) .eqv. .true.)    ! XI_min
+    if (interfaces(E))  nspec_interface(E) = count(iMPIcut_xi(2,:) .eqv. .true.)    ! XI_max
+    if (interfaces(S))  nspec_interface(S) = count(iMPIcut_eta(1,:) .eqv. .true.)   ! ETA_min
+    if (interfaces(N))  nspec_interface(N) = count(iMPIcut_eta(2,:) .eqv. .true.)   ! ETA_max
     if (interfaces(NW))  nspec_interface(NW) = count((iMPIcut_xi(1,:) .eqv. .true.) .and. (iMPIcut_eta(2,:) .eqv. .true.))
     if (interfaces(NE))  nspec_interface(NE) = count((iMPIcut_xi(2,:) .eqv. .true.) .and. (iMPIcut_eta(2,:) .eqv. .true.))
     if (interfaces(SE))  nspec_interface(SE) = count((iMPIcut_xi(2,:) .eqv. .true.) .and. (iMPIcut_eta(1,:) .eqv. .true.))
