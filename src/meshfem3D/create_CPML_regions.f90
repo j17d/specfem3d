@@ -609,9 +609,10 @@
   ! topology of faces of cube (see similar definition in check_mesh_quality.f90)
   integer :: faces_topo(4,6),faces_topo_midpoints(5,6)
   integer :: iface,face_type
+  integer :: elem_mapping(NGNOD)
+  logical :: is_mapped(NGNOD)
   ! MPI Cartesian topology uses W for West (= XI_MIN), E for East (= XI_MAX), S for South (= ETA_MIN), N for North (= ETA_MAX)
   integer, parameter :: W = 1,E = 2,S = 3,N = 4,B = 5,T = 6        ! B==Bottom, T==Top
-  integer :: elem_mapping(NGNOD)
 
   integer :: p1,p2,p3,p4,p5,p6,p7,p8,p9,ia,iglob
   integer :: factor_x,factor_y,factor_z
@@ -794,6 +795,30 @@
   faces_topo_midpoints(3,T) = 19
   faces_topo_midpoints(4,T) = 20
   faces_topo_midpoints(5,T) = 26    ! face midpoint
+
+  ! checks face setup
+  do iface = 1,6
+    ! element mapping
+    call get_element_index_mapping(iface,elem_mapping)
+    ! sets node flags to check that mapping is bijective (unique)
+    is_mapped(:) = .false.
+    do ia = 1,NGNOD
+      is_mapped(elem_mapping(ia)) = .true.
+    enddo
+    ! check
+    if (any(is_mapped .eqv. .false.)) then
+      print *,'Error: setup for element mapping is invalid for face type:',iface
+      print *,'       elem_mapping:'
+      do ia = 1,NGNOD
+        print *,'         ',ia,elem_mapping(ia)
+      enddo
+      print *,'       is mapped:'
+      do ia = 1,NGNOD
+        print *,'         ',ia,is_mapped(ia)
+      enddo
+      stop 'Invalid element mapping setup for PML element extension'
+    endif
+  enddo
 
   ! determine element sizes (all thicknesses given in m here)
   SIZE_OF_X_ELEMENT_TO_ADD = 0.d0

@@ -316,10 +316,13 @@
     write(IMAIN,*)
     ! wavelength
     if (vp_max_all > 0.d0) then
-      write(IMAIN,*) '    resulting dominant wavelength : ',sngl(vp_max_all/f0_FOR_PML),'m'
-      write(IMAIN,*) '               ratio CPML_width_x : ',sngl(CPML_width_x / (vp_max_all/f0_FOR_PML))
-      write(IMAIN,*) '               ratio CPML_width_y : ',sngl(CPML_width_y / (vp_max_all/f0_FOR_PML))
-      write(IMAIN,*) '               ratio CPML_width_z : ',sngl(CPML_width_z / (vp_max_all/f0_FOR_PML))
+      write(IMAIN,*) '    resulting dominant wavelength (L) : ',sngl(vp_max_all/f0_FOR_PML),'m'
+      ! suggested PML width ~ lambda * 0.8  for degree N==4
+      write(IMAIN,*) '          suggested minimum PML width : ',sngl((vp_max_all/f0_FOR_PML) * 0.8d0),'m'
+      write(IMAIN,*) '                 ratio CPML_width_x/L : ',sngl(CPML_width_x / (vp_max_all/f0_FOR_PML)), &
+                     '(suggested minimum ~ 0.5-0.8)'
+      write(IMAIN,*) '                 ratio CPML_width_y/L : ',sngl(CPML_width_y / (vp_max_all/f0_FOR_PML))
+      write(IMAIN,*) '                 ratio CPML_width_z/L : ',sngl(CPML_width_z / (vp_max_all/f0_FOR_PML))
       write(IMAIN,*)
     endif
     call flush_IMAIN()
