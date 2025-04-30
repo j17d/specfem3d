@@ -330,6 +330,7 @@
 
       iframe = iframe + 1
 
+      ! user output
       print *
       if (plot_shaking_map) then
         print *,'reading shaking map snapshot'
@@ -344,20 +345,20 @@
       else
         write(outputname,"('/moviedata',i6.6)") it
       endif
-      open(unit=IOUT,file=trim(OUTPUT_FILES)//trim(outputname),status='old', &
+      open(unit=IIN,file=trim(OUTPUT_FILES)//trim(outputname),status='old', &
             action='read',form='unformatted',iostat=ier)
       if (ier /= 0) then
-        print *,'error: ',trim(OUTPUT_FILES)//trim(outputname)
-        stop 'error opening moviedata file'
+        print *,'Error: failed opening ',trim(OUTPUT_FILES)//trim(outputname)
+        stop 'Error opening moviedata file'
       endif
 
-      read(IOUT) store_val_x
-      read(IOUT) store_val_y
-      read(IOUT) store_val_z
-      read(IOUT) store_val_ux
-      read(IOUT) store_val_uy
-      read(IOUT) store_val_uz
-      close(IOUT)
+      read(IIN) store_val_x
+      read(IIN) store_val_y
+      read(IIN) store_val_z
+      read(IIN) store_val_ux
+      read(IIN) store_val_uy
+      read(IIN) store_val_uz
+      close(IIN)
 
       ! clear number of elements kept
       ispec = 0
@@ -546,14 +547,14 @@
       zp_save(:) = zp(:)
 
       ! sort the list based upon coordinates to get rid of multiples
-      print *,'sorting list of points'
+      print *,'  sorting list of points'
       call get_global(npointot,xp,yp,zp,iglob,locval,ifseg,nglob, &
                       dble(minval(store_val_x(:))),dble(maxval(store_val_x(:))))
 
       ! print total number of points found
       print *
-      print *,'found a total of ',nglob,' points'
-      print *,'initial number of points (with multiples) was ',npointot
+      print *,'  found a total of ',nglob,' points'
+      print *,'  initial number of points (with multiples) was ',npointot
 
 
       !  normalize and scale vector field
@@ -565,14 +566,14 @@
       if (plot_shaking_map) then
         ! print minimum and maximum amplitude in current snapshot
         print *
-        print *,'minimum amplitude in current snapshot after removal = ',min_field_current
-        print *,'maximum amplitude in current snapshot after removal = ',max_field_current
+        print *,'  minimum amplitude in current snapshot after removal = ',min_field_current
+        print *,'  maximum amplitude in current snapshot after removal = ',max_field_current
         print *
       else
         ! print minimum and maximum amplitude in current snapshot
         print *
-        print *,'minimum amplitude in current snapshot = ',min_field_current
-        print *,'maximum amplitude in current snapshot = ',max_field_current
+        print *,'  minimum amplitude in current snapshot = ',min_field_current
+        print *,'  maximum amplitude in current snapshot = ',max_field_current
         print *
       endif
 
@@ -586,11 +587,11 @@
           ! Earthquake Spectra, Volume 15, 1999
           !
           ! see: https://www.dtsc-ssfl.com/files/lib_ceqa/ref_draft_peir/Chap4_5-Geology/68331_Wald_et_al_1999.pdf
-          print *,'converting to tabulated Modified Mercalli Intensity (MMI)'
+          print *,'  converting to tabulated Modified Mercalli Intensity (MMI)'
 
           if (inorm == 2) then
             ! tabulated PGV
-            print *,'using PGV table from Wald et al. (1999)'
+            print *,'  using PGV table from Wald et al. (1999)'
             ! loop over all points
             do ipoin = 1,npointot
               val = field_display(ipoin)
@@ -627,7 +628,7 @@
             enddo
           else if (inorm == 3) then
             ! tabulated PGA
-            print *,'using PGA table from Wald et al. (1999)'
+            print *,'  using PGA table from Wald et al. (1999)'
             ! loop over all points
             do ipoin = 1,npointot
               val = field_display(ipoin)
@@ -671,8 +672,8 @@
 
           ! print minimum and maximum MMI in current snapshot
           print *
-          print *,'minimum intensity (MMI) in current snapshot = ',min_field_current
-          print *,'maximum intensity (MMI) in current snapshot = ',max_field_current
+          print *,'  minimum intensity (MMI) in current snapshot = ',min_field_current
+          print *,'  maximum intensity (MMI) in current snapshot = ',max_field_current
           print *
         endif
       endif
@@ -750,15 +751,15 @@
 
         if (USE_OPENDX) then
           write(outputname,"('/DX_shaking_map.dx')")
-          open(unit=11,file=trim(OUTPUT_FILES)//outputname,status='unknown')
-          write(11,*) 'object 1 class array type float rank 1 shape 3 items ',nglob,' data follows'
+          open(unit=IOUT,file=trim(OUTPUT_FILES)//outputname,status='unknown')
+          write(IOUT,*) 'object 1 class array type float rank 1 shape 3 items ',nglob,' data follows'
         else if (USE_AVS) then
           write(outputname,"('/AVS_shaking_map.inp')")
-          open(unit=11,file=trim(OUTPUT_FILES)//outputname,status='unknown')
-          write(11,*) nglob,' ',nspectot_AVS_max,' 1 0 0'
+          open(unit=IOUT,file=trim(OUTPUT_FILES)//outputname,status='unknown')
+          write(IOUT,*) nglob,' ',nspectot_AVS_max,' 1 0 0'
        else if (USE_GMT) then
           write(outputname,"('/gmt_shaking_map.xyz')")
-          open(unit=11,file=trim(OUTPUT_FILES)//outputname,status='unknown')
+          open(unit=IOUT,file=trim(OUTPUT_FILES)//outputname,status='unknown')
         else
           stop 'wrong output format selected'
         endif
@@ -767,15 +768,15 @@
 
         if (USE_OPENDX) then
           write(outputname,"('/DX_movie_',i6.6,'.dx')") ivalue
-          open(unit=11,file=trim(OUTPUT_FILES)//outputname,status='unknown')
-          write(11,*) 'object 1 class array type float rank 1 shape 3 items ',nglob,' data follows'
+          open(unit=IOUT,file=trim(OUTPUT_FILES)//outputname,status='unknown')
+          write(IOUT,*) 'object 1 class array type float rank 1 shape 3 items ',nglob,' data follows'
         else if (USE_AVS) then
           write(outputname,"('/AVS_movie_',i6.6,'.inp')") ivalue
-          open(unit=11,file=trim(OUTPUT_FILES)//outputname,status='unknown')
-          write(11,*) nglob,' ',nspectot_AVS_max,' 1 0 0'
+          open(unit=IOUT,file=trim(OUTPUT_FILES)//outputname,status='unknown')
+          write(IOUT,*) nglob,' ',nspectot_AVS_max,' 1 0 0'
        else if (USE_GMT) then
           write(outputname,"('/gmt_movie_',i6.6,'.xyz')") ivalue
-          open(unit=11,file=trim(OUTPUT_FILES)//outputname,status='unknown')
+          open(unit=IOUT,file=trim(OUTPUT_FILES)//outputname,status='unknown')
         else
           stop 'wrong output format selected'
         endif
@@ -793,7 +794,7 @@
             ibool_number = iglob(ilocnum+ieoff)
             if (.not. mask_point(ibool_number)) then
               call utm_geo(long,lat,xp_save(ilocnum+ieoff),yp_save(ilocnum+ieoff),IUTM2LONGLAT)
-              write(11,*) sngl(long),sngl(lat),sngl(field_display(ilocnum+ieoff))
+              write(IOUT,*) sngl(long),sngl(lat),sngl(field_display(ilocnum+ieoff))
             endif
             mask_point(ibool_number) = .true.
           enddo
@@ -811,10 +812,10 @@
               ipoin = ipoin + 1
               ireorder(ibool_number) = ipoin
               if (USE_OPENDX) then
-                write(11,*) sngl(xp_save(ilocnum+ieoff)),sngl(yp_save(ilocnum+ieoff)),sngl(zp_save(ilocnum+ieoff))
+                write(IOUT,*) sngl(xp_save(ilocnum+ieoff)),sngl(yp_save(ilocnum+ieoff)),sngl(zp_save(ilocnum+ieoff))
               else if (USE_AVS) then
-                write(11,*) ireorder(ibool_number),sngl(xp_save(ilocnum+ieoff)), &
-                            sngl(yp_save(ilocnum+ieoff)),sngl(zp_save(ilocnum+ieoff))
+                write(IOUT,*) ireorder(ibool_number),sngl(xp_save(ilocnum+ieoff)), &
+                              sngl(yp_save(ilocnum+ieoff)),sngl(zp_save(ilocnum+ieoff))
               endif
             endif
             mask_point(ibool_number) = .true.
@@ -822,7 +823,7 @@
         enddo
 
         if (USE_OPENDX) &
-          write(11,*) 'object 2 class array type int rank 1 shape 4 items ',nspectot_AVS_max,' data follows'
+          write(IOUT,*) 'object 2 class array type int rank 1 shape 4 items ',nspectot_AVS_max,' data follows'
 
         ! output list of elements
         do ispec = 1,nspectot_AVS_max
@@ -834,24 +835,24 @@
           ibool_number4 = iglob(ieoff + 4)
           if (USE_OPENDX) then
             ! point order in OpenDX is 1,4,2,3 *not* 1,2,3,4 as in AVS
-            write(11,"(i10,1x,i10,1x,i10,1x,i10)") ireorder(ibool_number1)-1, &
+            write(IOUT,"(i10,1x,i10,1x,i10,1x,i10)") ireorder(ibool_number1)-1, &
               ireorder(ibool_number4)-1,ireorder(ibool_number2)-1,ireorder(ibool_number3)-1
           else
             ! AVS UCD format
-            write(11,"(i10,' 1 quad ',i10,1x,i10,1x,i10,1x,i10)") ispec,ireorder(ibool_number1), &
+            write(IOUT,"(i10,' 1 quad ',i10,1x,i10,1x,i10,1x,i10)") ispec,ireorder(ibool_number1), &
               ireorder(ibool_number4),ireorder(ibool_number2),ireorder(ibool_number3)
           endif
         enddo
 
         if (USE_OPENDX) then
-          write(11,*) 'attribute "element type" string "quads"'
-          write(11,*) 'attribute "ref" string "positions"'
-          write(11,*) 'object 3 class array type float rank 0 items ',nglob,' data follows'
+          write(IOUT,*) 'attribute "element type" string "quads"'
+          write(IOUT,*) 'attribute "ref" string "positions"'
+          write(IOUT,*) 'object 3 class array type float rank 0 items ',nglob,' data follows'
         else
           ! AVS UCD format
           ! dummy text for labels
-          write(11,*) '1 1'
-          write(11,*) 'a, b'
+          write(IOUT,*) '1 1'
+          write(IOUT,*) 'a, b'
         endif
 
         ! output data values
@@ -864,16 +865,16 @@
             if (.not. mask_point(ibool_number)) then
               if (USE_OPENDX) then
                 if (plot_shaking_map) then
-                  write(11,*) sngl(field_display(ilocnum+ieoff))
+                  write(IOUT,*) sngl(field_display(ilocnum+ieoff))
                 else
-                  write(11,*) sngl(field_display(ilocnum+ieoff))
+                  write(IOUT,*) sngl(field_display(ilocnum+ieoff))
                 endif
               else
                 ! AVS UCD format
                 if (plot_shaking_map) then
-                  write(11,*) ireorder(ibool_number),sngl(field_display(ilocnum+ieoff))
+                  write(IOUT,*) ireorder(ibool_number),sngl(field_display(ilocnum+ieoff))
                 else
-                  write(11,*) ireorder(ibool_number),sngl(field_display(ilocnum+ieoff))
+                  write(IOUT,*) ireorder(ibool_number),sngl(field_display(ilocnum+ieoff))
                 endif
               endif
             endif
@@ -883,23 +884,25 @@
 
         ! define OpenDX field
         if (USE_OPENDX) then
-          write(11,*) 'attribute "dep" string "positions"'
-          write(11,*) 'object "irregular positions irregular connections" class field'
-          write(11,*) 'component "positions" value 1'
-          write(11,*) 'component "connections" value 2'
-          write(11,*) 'component "data" value 3'
-          write(11,*) 'end'
+          write(IOUT,*) 'attribute "dep" string "positions"'
+          write(IOUT,*) 'object "irregular positions irregular connections" class field'
+          write(IOUT,*) 'component "positions" value 1'
+          write(IOUT,*) 'component "connections" value 2'
+          write(IOUT,*) 'component "data" value 3'
+          write(IOUT,*) 'end'
         endif
 
       ! end of test for GMT format
       endif
 
-      close(11)
+      close(IOUT)
+      print *,'  file written: ',trim(OUTPUT_FILES)//outputname
 
     ! end of loop and test on all the time steps for all the movie images
     endif
   enddo ! it
 
+  ! final user output
   print *
   print *,'done creating movie or shaking map'
   print *
