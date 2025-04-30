@@ -453,8 +453,8 @@
   ! write the total to disk from the main
   if (myrank == 0) then
     total_energy_glob = kinetic_energy_glob + potential_energy_glob
-    ! format: #timestep #kinetic_energy #potential_energy #total_energy
-    write(IOUT_ENERGY,*) it,sngl(kinetic_energy_glob),sngl(potential_energy_glob),sngl(total_energy_glob)
+    ! format: #timestep #total_energy #kinetic_energy #potential_energy
+    write(IOUT_ENERGY,*) it,sngl(total_energy_glob),sngl(kinetic_energy_glob),sngl(potential_energy_glob)
     ! flush to file
     flush(IOUT_ENERGY)
   endif
@@ -876,8 +876,8 @@
   ! write the total to disk from the main
   if (myrank == 0) then
     total_energy_glob = kinetic_energy_glob + potential_energy_glob
-    ! format: #timestep #kinetic_energy #potential_energy #total_energy
-    write(IOUT_ENERGY,*) it,sngl(kinetic_energy_glob),sngl(potential_energy_glob),sngl(total_energy_glob)
+    ! format: #timestep #total_energy #kinetic_energy #potential_energy
+    write(IOUT_ENERGY,*) it,sngl(total_energy_glob),sngl(kinetic_energy_glob),sngl(potential_energy_glob)
     ! flush to file
     flush(IOUT_ENERGY)
   endif

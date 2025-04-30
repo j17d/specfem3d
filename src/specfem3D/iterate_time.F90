@@ -100,7 +100,7 @@
   if (OUTPUT_ENERGY .and. myrank == 0) then
     open(unit=IOUT_ENERGY,file=trim(OUTPUT_FILES)//'energy.dat',status='unknown',action='write')
     ! format: #timestep #kinetic_energy #potential_energy #total_energy
-    write(IOUT_ENERGY,*) "#timestep  #kinetic_energy  #potential_energy  #total_energy"
+    write(IOUT_ENERGY,*) "#timestep  #total_energy  #kinetic_energy  #potential_energy"
     flush(IOUT_ENERGY)
   endif
 
