@@ -505,6 +505,7 @@
     if (.not. located_target) then
       !stop 'error: point was not located in get_elevation_closest()'
       ! takes first point for estimation
+      ispec = free_surface_ispec(1)
       iglob = ibool(1,1,1,ispec)
       ! elevation (given in z - coordinate)
       target_elevation = zstore(iglob)
