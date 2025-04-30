@@ -579,7 +579,7 @@
   ! initializes MD5 hash values
   ! binary integer part of the sines of integers (Radians) as constants
   do i = 1,64
-    K(i) = floor(2**32 * dabs(dsin((i-1) + 1.d0)))
+    K(i) = floor(2.d0**32 * dabs(dsin((i-1) + 1.d0)))
   enddo
 
   ! magic numbers: the original MD5 algorithm seems to use big endian initializations
