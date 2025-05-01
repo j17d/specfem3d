@@ -109,8 +109,9 @@ module meshfem_par
   integer :: NSPEC2D_A_XI,NSPEC2D_B_XI, &
              NSPEC2D_A_ETA,NSPEC2D_B_ETA, &
              NSPEC2DMAX_XMIN_XMAX,NSPEC2DMAX_YMIN_YMAX, &
-             NSPEC2D_BOTTOM,NSPEC2D_TOP, &
-             NPOIN2DMAX_XMIN_XMAX,NPOIN2DMAX_YMIN_YMAX
+             NSPEC2D_BOTTOM,NSPEC2D_TOP
+
+  !integer :: NPOIN2DMAX_XMIN_XMAX,NPOIN2DMAX_YMIN_YMAX - not needed...
 
   ! interfaces parameters
   integer :: number_of_interfaces,number_of_layers

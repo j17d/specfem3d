@@ -45,8 +45,8 @@ module create_meshfem_par
 
   ! flag indicating whether point is in the sediments
   !  logical point_is_in_sediments
-  logical, dimension(:,:,:,:), allocatable :: flag_sediments
-  logical, dimension(:), allocatable :: not_fully_in_bedrock
+  !logical, dimension(:,:,:,:), allocatable :: flag_sediments  - not used yet..
+  !logical, dimension(:), allocatable :: not_fully_in_bedrock
 
   ! boundary parameters locator
   integer, dimension(:), allocatable :: ibelm_xmin,ibelm_xmax,ibelm_ymin,ibelm_ymax,ibelm_bottom,ibelm_top
@@ -146,7 +146,7 @@ end module create_meshfem_par
                            nspec,nglob, &
                            prname,nodes_coords,ibool,ispec_material_id)
 
-  !! setting up wavefield discontinuity interface
+  ! setting up wavefield discontinuity interface
   if (IS_WAVEFIELD_DISCONTINUITY) then
     call find_wavefield_discontinuity_elements()
   endif
@@ -248,6 +248,7 @@ end module create_meshfem_par
   ! use dynamic allocation to allocate memory for arrays
   allocate(ibool(NGLLX_M,NGLLY_M,NGLLZ_M,nspec),stat=ier)
   if (ier /= 0) call exit_MPI(myrank,'error allocating array 1257')
+  ibool(:,:,:,:) = 0
 
   allocate(xstore(NGLLX_M,NGLLY_M,NGLLZ_M,nspec),stat=ier)
   if (ier /= 0) call exit_MPI(myrank,'error allocating array 1258')
@@ -255,16 +256,19 @@ end module create_meshfem_par
   if (ier /= 0) call exit_MPI(myrank,'error allocating array 1259')
   allocate(zstore(NGLLX_M,NGLLY_M,NGLLZ_M,nspec),stat=ier)
   if (ier /= 0) call exit_MPI(myrank,'error allocating array 1260')
+  xstore(:,:,:,:) = 0.d0; ystore(:,:,:,:) = 0.d0; zstore(:,:,:,:) = 0.d0
 
   ! flag indicating whether point is in the sediments
-  allocate(flag_sediments(NGLLX_M,NGLLY_M,NGLLZ_M,nspec),stat=ier)
-  if (ier /= 0) call exit_MPI(myrank,'error allocating array 1261')
-  allocate(not_fully_in_bedrock(nspec),stat=ier)
-  if (ier /= 0) call exit_MPI(myrank,'error allocating array 1262')
+  !allocate(flag_sediments(NGLLX_M,NGLLY_M,NGLLZ_M,nspec),stat=ier)
+  !if (ier /= 0) call exit_MPI(myrank,'error allocating array 1261')
+  !allocate(not_fully_in_bedrock(nspec),stat=ier)
+  !if (ier /= 0) call exit_MPI(myrank,'error allocating array 1262')
+  !flag_sediments(:,:,:,:) = .false.; not_fully_in_bedrock(:) = .false.
 
   ! boundary locator
   allocate(iboun(6,nspec),stat=ier)
   if (ier /= 0) call exit_MPI(myrank,'error allocating array 1263')
+  iboun(:,:) = .false.
 
   ! boundary parameters locator
   allocate(ibelm_xmin(NSPEC2DMAX_XMIN_XMAX),stat=ier)
@@ -279,15 +283,19 @@ end module create_meshfem_par
   if (ier /= 0) call exit_MPI(myrank,'error allocating array 1268')
   allocate(ibelm_top(NSPEC2D_TOP),stat=ier)
   if (ier /= 0) call exit_MPI(myrank,'error allocating array 1269')
+  ibelm_xmin(:) = 0; ibelm_xmax(:) = 0; ibelm_ymin(:) = 0; ibelm_ymax(:) = 0
+  ibelm_bottom(:) = 0; ibelm_top(:) = 0
 
   ! MPI cut-planes parameters along xi and along eta
   allocate(iMPIcut_xi(2,nspec),stat=ier)
   if (ier /= 0) call exit_MPI(myrank,'error allocating array 1270')
   allocate(iMPIcut_eta(2,nspec),stat=ier)
   if (ier /= 0) call exit_MPI(myrank,'error allocating array 1271')
+  iMPIcut_xi(:,:) = .false.; iMPIcut_eta(:,:) = .false.
 
   allocate(ispec_material_id(nspec),stat=ier)
   if (ier /= 0) call exit_MPI(myrank,'error allocating array 1279')
+  ispec_material_id(:) = 0
 
   ! synchronize
   call synchronize_all()

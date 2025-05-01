@@ -74,7 +74,10 @@
   ! model values
   real(kind=CUSTOM_REAL) :: vs,min_vs,max_vs
 
-  ! checks is USGS Vs30 model interface is provided in folder USGS_VS30/
+  ! initializes
+  USE_MODEL_LAYER_VS30 = .false.
+
+  ! checks if USGS Vs30 model interface is provided in folder USGS_VS30/
   !
   ! the script ./utils/scripts/run_get_USGS_Vs30.py can create an interface file for a given region
   ! and stores it in folder USGS_VS30/ as 'interface_vs30.dat'
@@ -83,7 +86,7 @@
 
   inquire(file=trim(filename),exist=file_exists)
 
-  ! checks is anything to do
+  ! checks if anything to do
   if (.not. file_exists) return
 
   ! user info
