@@ -533,8 +533,10 @@
   use constants_meshfem, only: NGLLX_M,NGLLY_M,NGLLZ_M
 
   use meshfem_par, only: nspec
+
   use create_meshfem_par, only: nodes_coords,ispec_material_id, &
-    iboun,iMPIcut_xi,iMPIcut_eta
+    iboun,iMPIcut_xi,iMPIcut_eta, &
+    ibelm_xmin,ibelm_xmax,ibelm_ymin,ibelm_ymax,ibelm_bottom,ibelm_top
 
   use shared_parameters, only: NGNOD
 
@@ -544,6 +546,9 @@
   use meshfem_par, only: nspec_CPML,is_CPML,CPML_to_spec,CPML_regions, &
     THICKNESS_OF_X_PML,THICKNESS_OF_Y_PML,THICKNESS_OF_Z_PML, &
     ADD_PML_AS_EXTRA_MESH_LAYERS,NUMBER_OF_PML_LAYERS_TO_ADD
+
+  ! boun
+  use meshfem_par, only: NSPEC2DMAX_XMIN_XMAX,NSPEC2DMAX_YMIN_YMAX,NSPEC2D_BOTTOM,NSPEC2D_TOP
 
   implicit none
 
@@ -633,9 +638,9 @@
   logical, dimension(:), allocatable :: ifseg
   double precision, dimension(:), allocatable :: xp,yp,zp
 
-  ! (optional) updates absorbing boundary (iboun) array to move to outermost PML boundary elements
-  ! if .false. then Stacey boundary stays at original mesh boundary
-  logical, parameter :: MOVE_STACEY_ABSORBING_BOUNDARY = .false.
+  ! updates absorbing/free-surface boundary (iboun) array to move to outermost PML boundary elements
+  ! (if .false. then boundary stays at original mesh boundary)
+  logical, parameter :: UPDATE_BOUNDARY_FLAGS = .true.
   ! sort and re-order new global nodes
   logical, parameter :: DO_MESH_SORTING = .true.
 
@@ -1391,47 +1396,88 @@
             ! create the material property for the extended elements
             ispec_material_id_new(elem_counter) = ispec_material_id(ispec)
 
-            ! boundary & MPI
-            iboun_new(:,elem_counter) = .false. ! absorbing boundary for Stacey, can be left at original mesh boundary
-            ! (optional) move absorbing boundary to outermost PML layer
-            if (MOVE_STACEY_ABSORBING_BOUNDARY) then
-              iboun(:,ispec) = .false.  ! reset as old boundary element is inside mesh now
-              if (iextend == NUMBER_OF_PML_LAYERS_TO_ADD) then
-                ! extended element is outer most element
-                if (iloop_on_X_Y_Z_faces == 1) then
-                  ! X-faces
-                  if (iloop_on_min_face_then_max_face == 1) then
-                    ! xmin
+            ! boundary
+            ! updates absorbing/free-surface boundary flags to outermost PML layer
+            if (UPDATE_BOUNDARY_FLAGS) then
+              ! extend (old) boundary flags
+              iboun_new(:,elem_counter) = iboun(:,ispec)
+              ! extended element is outer most element
+              if (iloop_on_X_Y_Z_faces == 1) then
+                ! X-faces
+                if (iloop_on_min_face_then_max_face == 1) then
+                  ! xmin
+                  ! reset as old boundary element is inside mesh now
+                  iboun(1,ispec) = .false.
+                  if (iextend == NUMBER_OF_PML_LAYERS_TO_ADD) then
                     iboun_new(1,elem_counter) = .true.
                   else
-                    ! xmax
-                    iboun_new(2,elem_counter) = .true.
-                  endif
-                else if (iloop_on_X_Y_Z_faces == 2) then
-                  ! Y-faces
-                  if (iloop_on_min_face_then_max_face == 1) then
-                    ! ymin
-                    iboun_new(3,elem_counter) = .true.
-                  else
-                    ! ymax
-                    iboun_new(4,elem_counter) = .true.
+                    ! extended element is still inside mesh
+                    iboun_new(1,elem_counter) = .false.
                   endif
                 else
-                  ! Z-faces
-                  if (iloop_on_min_face_then_max_face == 1) then
-                    ! zmin
-                    iboun_new(5,elem_counter) = .true.
+                  ! xmax
+                  ! reset as old boundary element is inside mesh now
+                  iboun(2,ispec) = .false.
+                  if (iextend == NUMBER_OF_PML_LAYERS_TO_ADD) then
+                    iboun_new(2,elem_counter) = .true.
                   else
-                    ! zmax
-                    iboun_new(6,elem_counter) = .true.
+                    ! extended element is still inside mesh
+                    iboun_new(2,elem_counter) = .false.
+                  endif
+                endif
+              else if (iloop_on_X_Y_Z_faces == 2) then
+                ! Y-faces
+                if (iloop_on_min_face_then_max_face == 1) then
+                  ! ymin
+                  ! reset as old boundary element is inside mesh now
+                  iboun(3,ispec) = .false.
+                  if (iextend == NUMBER_OF_PML_LAYERS_TO_ADD) then
+                    iboun_new(3,elem_counter) = .true.
+                  else
+                    ! extended element is still inside mesh
+                    iboun_new(3,elem_counter) = .false.
+                  endif
+                else
+                  ! ymax
+                  ! reset as old boundary element is inside mesh now
+                  iboun(4,ispec) = .false.
+                  if (iextend == NUMBER_OF_PML_LAYERS_TO_ADD) then
+                    iboun_new(4,elem_counter) = .true.
+                  else
+                    ! extended element is still inside mesh
+                    iboun_new(4,elem_counter) = .false.
                   endif
                 endif
               else
-                ! extended element is still inside mesh
-                iboun_new(:,elem_counter) = .false.
+                ! Z-faces
+                if (iloop_on_min_face_then_max_face == 1) then
+                  ! zmin
+                  ! reset as old boundary element is inside mesh now
+                  iboun(5,ispec) = .false.
+                  if (iextend == NUMBER_OF_PML_LAYERS_TO_ADD) then
+                    iboun_new(5,elem_counter) = .true.
+                  else
+                    ! extended element is still inside mesh
+                    iboun_new(5,elem_counter) = .false.
+                  endif
+                else
+                  ! zmax
+                  ! reset as old boundary element is inside mesh now
+                  iboun(6,ispec) = .false.
+                  if (iextend == NUMBER_OF_PML_LAYERS_TO_ADD) then
+                    iboun_new(6,elem_counter) = .true.
+                  else
+                    ! extended element is still inside mesh
+                    iboun_new(6,elem_counter) = .false.
+                  endif
+                endif
               endif
+            else
+              ! boundary flags left at original mesh boundary
+              iboun_new(:,elem_counter) = .false.
             endif
 
+            ! MPI
             ! extend (old) MPI-cut flags
             iMPIcut_xi_new(:,elem_counter) = iMPIcut_xi(:,ispec)
             iMPIcut_eta_new(:,elem_counter) = iMPIcut_eta(:,ispec)
@@ -1705,8 +1751,10 @@
       ispec_material_id(:) = ispec_material_id_new(:)
       ibool(:,:,:,:) = ibool_new(:,:,:,:)
 
-      ! boundary & MPI
+      ! boundary (absorbing / free surface)
       iboun(:,:) = iboun_new(:,:)
+
+      ! MPI
       iMPIcut_xi(:,:) = iMPIcut_xi_new(:,:)
       iMPIcut_eta(:,:) = iMPIcut_eta_new(:,:)
 
@@ -1714,6 +1762,32 @@
       is_X_CPML(:) = is_X_CPML_new(:)
       is_Y_CPML(:) = is_Y_CPML_new(:)
       is_Z_CPML(:) = is_Z_CPML_new(:)
+
+      ! updates boundary arrays
+      if (UPDATE_BOUNDARY_FLAGS) then
+        ! updates counts
+        NSPEC2DMAX_XMIN_XMAX = max(NSPEC2DMAX_XMIN_XMAX,count(iboun(1,:) .eqv. .true.))
+        NSPEC2DMAX_XMIN_XMAX = max(NSPEC2DMAX_XMIN_XMAX,count(iboun(2,:) .eqv. .true.))
+
+        NSPEC2DMAX_YMIN_YMAX = max(NSPEC2DMAX_YMIN_YMAX,count(iboun(3,:) .eqv. .true.))
+        NSPEC2DMAX_YMIN_YMAX = max(NSPEC2DMAX_YMIN_YMAX,count(iboun(4,:) .eqv. .true.))
+
+        NSPEC2D_BOTTOM = count(iboun(5,:) .eqv. .true.)
+        NSPEC2D_TOP = count(iboun(6,:) .eqv. .true.)
+
+        ! re-allocates boundary parameters locator
+        deallocate(ibelm_xmin,ibelm_xmax,ibelm_ymin,ibelm_ymax,ibelm_bottom,ibelm_top)
+        allocate(ibelm_xmin(NSPEC2DMAX_XMIN_XMAX), &
+                 ibelm_xmax(NSPEC2DMAX_XMIN_XMAX), &
+                 ibelm_ymin(NSPEC2DMAX_YMIN_YMAX), &
+                 ibelm_ymax(NSPEC2DMAX_YMIN_YMAX), &
+                 ibelm_bottom(NSPEC2D_BOTTOM), &
+                 ibelm_top(NSPEC2D_TOP),stat=ier)
+        if (ier /= 0) stop 'Error allocating new ibelm arrays'
+        ! initializes - values will be determined later on when calling store_boundaries() routine
+        ibelm_xmin(:) = 0; ibelm_xmax(:) = 0; ibelm_ymin(:) = 0; ibelm_ymax(:) = 0
+        ibelm_bottom(:) = 0; ibelm_top(:) = 0
+      endif
 
       ! the new number of elements and points becomes the old one, for the same reason
       nspec = nspec_new
