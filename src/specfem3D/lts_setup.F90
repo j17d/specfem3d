@@ -162,7 +162,7 @@
   ! set "global" DT (coarsest step)
   ! DT as given in Par_file is the minimum step in smallest element
   deltat_lts = DT * dble(p_max)
-  deltat = deltat_lts
+  deltat = real(deltat_lts,kind=CUSTOM_REAL)
 
   ! counts number of local time step evaluations
   lts_it_local = 0

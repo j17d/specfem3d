@@ -166,6 +166,7 @@ $O/meshfem3D.mesh.o: ${SETUP}/version.fh
 
 $O/meshfem3D.mesh.o: $O/chunk_earth_mesh_mod.mesh.o
 $O/determine_cavity.mesh.o: $O/create_meshfem_mesh.mesh.o
+$O/create_CPML_regions.mesh.o: $O/create_meshfem_mesh.mesh.o
 
 ## adios
 $O/save_databases_adios.mesh_adios.o: $O/safe_alloc_mod.shared.o $O/adios_manager.shared_adios_module.o

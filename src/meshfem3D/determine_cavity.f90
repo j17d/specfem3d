@@ -537,7 +537,7 @@ cavity: do i_cavity = 1,ncavity
     nodes_coords_old(:,:) = nodes_coords(:,:)
     ispec_material_id_old(:) = ispec_material_id(:)
     ibool_old(:,:,:,:) = ibool(:,:,:,:)
-    iboun_old (:,:)= iboun(:,:)
+    iboun_old (:,:) = iboun(:,:)
     iMPIcut_xi_old(:,:) = iMPIcut_xi(:,:)
     iMPIcut_eta_old(:,:) = iMPIcut_eta(:,:)
 

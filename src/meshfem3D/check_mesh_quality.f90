@@ -127,7 +127,6 @@
     tmp1(:) = 0.0
   endif
 
-
   ! loop on all the elements
   do ispec = 1,NSPEC
      call create_mesh_quality_data_3D(x,y,z,ibool,ispec,NSPEC,NGLOB,VP_MAX,dt_suggested, &
@@ -168,7 +167,6 @@
   call maxloc_all_dp(buf_maxloc_send,buf_maxloc_recv)
   equiangle_skewness_max_MPI = buf_maxloc_recv(1)
   skewness_max_rank = int(buf_maxloc_recv(2))
-
 
   call max_all_dp(stability,stability_max_MPI)
   call min_all_dp(dt_suggested_max,dt_suggested_max_MPI)

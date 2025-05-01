@@ -59,49 +59,62 @@
   ispecb5 = 0
   ispecb6 = 0
 
+  ! boundary element arrays
+  ibelm_xmin(:) = 0
+  ibelm_xmax(:) = 0
+  ibelm_ymin(:) = 0
+  ibelm_ymax(:) = 0
+  ibelm_bottom(:) = 0
+  ibelm_top(:) = 0
+
+  nspec2D_xmin = 0
+  nspec2D_xmax = 0
+  nspec2D_ymin = 0
+  nspec2D_ymax = 0
+
   ! determine if the element falls on a boundary
   do ispec = 1,nspec
 
     ! on boundary: xmin
     if (iboun(1,ispec)) then
-      ispecb1 = ispecb1+1
+      ispecb1 = ispecb1 + 1
       if (ispecb1 > NSPEC2DMAX_XMIN_XMAX) stop 'error NSPEC2DMAX_XMIN_XMAX too small'
-      ibelm_xmin(ispecb1)=ispec
+      ibelm_xmin(ispecb1) = ispec
     endif
 
     ! on boundary: xmax
     if (iboun(2,ispec)) then
-      ispecb2 = ispecb2+1
+      ispecb2 = ispecb2 + 1
       if (ispecb2 > NSPEC2DMAX_XMIN_XMAX) stop 'error NSPEC2DMAX_XMIN_XMAX too small'
-      ibelm_xmax(ispecb2)=ispec
+      ibelm_xmax(ispecb2) = ispec
     endif
 
     ! on boundary: ymin
     if (iboun(3,ispec)) then
-      ispecb3 = ispecb3+1
+      ispecb3 = ispecb3 + 1
       if (ispecb3 > NSPEC2DMAX_YMIN_YMAX) stop 'error NSPEC2DMAX_YMIN_YMAX too small'
-      ibelm_ymin(ispecb3)=ispec
+      ibelm_ymin(ispecb3) = ispec
     endif
 
     ! on boundary: ymax
     if (iboun(4,ispec)) then
-      ispecb4 = ispecb4+1
+      ispecb4 = ispecb4 + 1
       if (ispecb4 > NSPEC2DMAX_YMIN_YMAX) stop 'error NSPEC2DMAX_YMIN_YMAX too small'
-      ibelm_ymax(ispecb4)=ispec
+      ibelm_ymax(ispecb4) = ispec
     endif
 
     ! on boundary: bottom
     if (iboun(5,ispec)) then
-      ispecb5 = ispecb5+1
+      ispecb5 = ispecb5 + 1
       if (ispecb5 > NSPEC2D_BOTTOM) stop 'error NSPEC2D_BOTTOM too small'
-      ibelm_bottom(ispecb5)=ispec
+      ibelm_bottom(ispecb5) = ispec
     endif
 
     ! on boundary: top
     if (iboun(6,ispec)) then
-      ispecb6 = ispecb6+1
+      ispecb6 = ispecb6 + 1
       if (ispecb6 > NSPEC2D_TOP) stop 'error NSPEC2D_TOP too small'
-      ibelm_top(ispecb6)=ispec
+      ibelm_top(ispecb6) = ispec
     endif
 
   enddo

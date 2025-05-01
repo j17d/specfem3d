@@ -193,7 +193,7 @@
                           NSPEC_AB,NSPEC2D_A_XI,NSPEC2D_B_XI, &
                           NSPEC2D_A_ETA,NSPEC2D_B_ETA, &
                           NSPEC2DMAX_XMIN_XMAX,NSPEC2DMAX_YMIN_YMAX,NSPEC2D_BOTTOM,NSPEC2D_TOP, &
-                          NPOIN2DMAX_XMIN_XMAX,NPOIN2DMAX_YMIN_YMAX,NGLOB_AB, &
+                          NGLOB_AB, &
                           USE_REGULAR_MESH,NDOUBLINGS,ner_doublings)
 
   ! check that the code is running with the requested nb of processes
@@ -422,6 +422,14 @@
       write(IMAIN,*) 'PML thickness in X direction = ',sngl(THICKNESS_OF_X_PML),str_unit
       write(IMAIN,*) 'PML thickness in Y direction = ',sngl(THICKNESS_OF_Y_PML),str_unit
       write(IMAIN,*) 'PML thickness in Z direction = ',sngl(THICKNESS_OF_Z_PML),str_unit
+      write(IMAIN,*)
+      if (ADD_PML_AS_EXTRA_MESH_LAYERS) then
+        write(IMAIN,*) 'PML layers will be added as extra mesh layers around defined mesh region'
+        write(IMAIN,*) 'PML layers to add on each side of the mesh = ',NUMBER_OF_PML_LAYERS_TO_ADD
+      else
+        write(IMAIN,*) 'PML layers determined by selected thicknesses and without adding extra layers'
+      endif
+      write(IMAIN,*)
     endif
     write(IMAIN,*)
     call flush_IMAIN()

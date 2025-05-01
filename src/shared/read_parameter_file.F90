@@ -995,6 +995,10 @@
     ! only one absorbing condition is possible
     if (STACEY_ABSORBING_CONDITIONS) &
       stop 'Error for PML, please set STACEY_ABSORBING_CONDITIONS and STACEY_INSTEAD_OF_FREE_SURFACE to .false. in Par_file'
+
+    ! valid reference f0 frequency
+    if (f0_FOR_PML == 0.d0) &
+      stop 'Error for PML, please set f0_FOR_PML to a non-zero value in Par_file'
   endif
 
   ! UNDO_ATT

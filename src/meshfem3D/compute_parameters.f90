@@ -30,7 +30,7 @@
                                 NSPEC_AB,NSPEC2D_A_XI,NSPEC2D_B_XI, &
                                 NSPEC2D_A_ETA,NSPEC2D_B_ETA, &
                                 NSPEC2DMAX_XMIN_XMAX,NSPEC2DMAX_YMIN_YMAX,NSPEC2D_BOTTOM,NSPEC2D_TOP, &
-                                NPOIN2DMAX_XMIN_XMAX,NPOIN2DMAX_YMIN_YMAX,NGLOB_AB, &
+                                NGLOB_AB, &
                                 USE_REGULAR_MESH,NDOUBLINGS,ner_doublings)
 
   use constants
@@ -53,7 +53,6 @@
   integer,intent(out) :: NSPEC2D_A_XI,NSPEC2D_B_XI,NSPEC2D_A_ETA,NSPEC2D_B_ETA
 
   integer,intent(out) :: NSPEC2DMAX_XMIN_XMAX,NSPEC2DMAX_YMIN_YMAX,NSPEC2D_BOTTOM,NSPEC2D_TOP
-  integer,intent(out) :: NPOIN2DMAX_XMIN_XMAX,NPOIN2DMAX_YMIN_YMAX
 
   ! local parameters
   integer :: NGLOB_DOUBLING,NGLOB_DOUBLING_SINGLE
@@ -102,8 +101,9 @@
   NSPEC2DMAX_YMIN_YMAX = 0
   NSPEC2D_BOTTOM = 0
   NSPEC2D_TOP = 0
-  NPOIN2DMAX_XMIN_XMAX = 0
-  NPOIN2DMAX_YMIN_YMAX = 0
+
+  !NPOIN2DMAX_XMIN_XMAX = 0 - not needed..
+  !NPOIN2DMAX_YMIN_YMAX = 0
 
   !
   !--- case of a regular mesh
@@ -152,8 +152,8 @@
 
     ! 2-D addressing and buffers for summation between slices
     ! we add one to number of points because of the flag after the last point
-    NPOIN2DMAX_XMIN_XMAX = NSPEC2DMAX_XMIN_XMAX*NGLLY_M*NGLLZ_M + 1
-    NPOIN2DMAX_YMIN_YMAX = NSPEC2DMAX_YMIN_YMAX*NGLLX_M*NGLLZ_M + 1
+    !NPOIN2DMAX_XMIN_XMAX = NSPEC2DMAX_XMIN_XMAX*NGLLY_M*NGLLZ_M + 1   - not needed..
+    !NPOIN2DMAX_YMIN_YMAX = NSPEC2DMAX_YMIN_YMAX*NGLLX_M*NGLLZ_M + 1
 
     ! exact number of global points per slice
     NGLOB_AB = (NEX_PER_PROC_XI*(NGLLX_M-1)+1) * (NEX_PER_PROC_ETA*(NGLLY_M-1)+1) * (NER*(NGLLZ_M-1)+1)
@@ -402,8 +402,8 @@
 
     ! 2-D addressing and buffers for summation between slices
     ! we add one to number of points because of the flag after the last point
-    NPOIN2DMAX_XMIN_XMAX = NSPEC2DMAX_XMIN_XMAX * NGLLY_M * NGLLZ_M + 1
-    NPOIN2DMAX_YMIN_YMAX = NSPEC2DMAX_YMIN_YMAX * NGLLX_M * NGLLZ_M + 1
+    !NPOIN2DMAX_XMIN_XMAX = NSPEC2DMAX_XMIN_XMAX * NGLLY_M * NGLLZ_M + 1  - not needed..
+    !NPOIN2DMAX_YMIN_YMAX = NSPEC2DMAX_YMIN_YMAX * NGLLX_M * NGLLZ_M + 1
 
     ! exact number of global points
     NGLOB_AB = NGLOB_DOUBLING + NGLOB_NO_DOUBLING
@@ -609,7 +609,6 @@
 !      ! we add one to number of points because of the flag after the last point
 !      NPOIN2DMAX_XMIN_XMAX = NSPEC2DMAX_XMIN_XMAX*NGLLY_M*NGLLZ_M + 1
 !      NPOIN2DMAX_YMIN_YMAX = NSPEC2DMAX_YMIN_YMAX*NGLLX_M*NGLLZ_M + 1
-!
 !
 !      ! exact number of global points
 !
