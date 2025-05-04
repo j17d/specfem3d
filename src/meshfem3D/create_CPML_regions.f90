@@ -1407,7 +1407,7 @@
                 if (iloop_on_min_face_then_max_face == 1) then
                   ! xmin
                   ! reset as old boundary element is inside mesh now
-                  iboun(1,ispec) = .false.
+                  iboun_new(1,ispec) = .false.
                   if (iextend == NUMBER_OF_PML_LAYERS_TO_ADD) then
                     iboun_new(1,elem_counter) = .true.
                   else
@@ -1417,7 +1417,7 @@
                 else
                   ! xmax
                   ! reset as old boundary element is inside mesh now
-                  iboun(2,ispec) = .false.
+                  iboun_new(2,ispec) = .false.
                   if (iextend == NUMBER_OF_PML_LAYERS_TO_ADD) then
                     iboun_new(2,elem_counter) = .true.
                   else
@@ -1430,7 +1430,7 @@
                 if (iloop_on_min_face_then_max_face == 1) then
                   ! ymin
                   ! reset as old boundary element is inside mesh now
-                  iboun(3,ispec) = .false.
+                  iboun_new(3,ispec) = .false.
                   if (iextend == NUMBER_OF_PML_LAYERS_TO_ADD) then
                     iboun_new(3,elem_counter) = .true.
                   else
@@ -1440,7 +1440,7 @@
                 else
                   ! ymax
                   ! reset as old boundary element is inside mesh now
-                  iboun(4,ispec) = .false.
+                  iboun_new(4,ispec) = .false.
                   if (iextend == NUMBER_OF_PML_LAYERS_TO_ADD) then
                     iboun_new(4,elem_counter) = .true.
                   else
@@ -1453,7 +1453,7 @@
                 if (iloop_on_min_face_then_max_face == 1) then
                   ! zmin
                   ! reset as old boundary element is inside mesh now
-                  iboun(5,ispec) = .false.
+                  iboun_new(5,ispec) = .false.
                   if (iextend == NUMBER_OF_PML_LAYERS_TO_ADD) then
                     iboun_new(5,elem_counter) = .true.
                   else
@@ -1463,7 +1463,7 @@
                 else
                   ! zmax
                   ! reset as old boundary element is inside mesh now
-                  iboun(6,ispec) = .false.
+                  iboun_new(6,ispec) = .false.
                   if (iextend == NUMBER_OF_PML_LAYERS_TO_ADD) then
                     iboun_new(6,elem_counter) = .true.
                   else
