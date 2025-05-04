@@ -601,8 +601,9 @@
   deallocate(material_index)
 
   ! setting up wavefield discontinuity interface
-  if (IS_WAVEFIELD_DISCONTINUITY) &
+  if (IS_WAVEFIELD_DISCONTINUITY) then
     call write_wavefield_discontinuity_database()
+  endif
 
   ! user output
   if (myrank == 0) then
