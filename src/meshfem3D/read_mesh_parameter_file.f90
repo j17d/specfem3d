@@ -323,7 +323,7 @@
     endif
   endif
   call synchronize_all()
-  
+
   ! set time step and radial distribution of elements
   ! right distribution is determined based upon maximum value of NEX
   NEX_MAX = max(NEX_XI,NEX_ETA)

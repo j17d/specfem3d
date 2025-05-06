@@ -414,7 +414,7 @@
     call save_arrays_solver_injection_boundary()
   endif
 
-  !! setup wavefield discontinuity interface
+  ! setup wavefield discontinuity interface
   if (IS_WAVEFIELD_DISCONTINUITY) then
     call save_arrays_solver_mesh_wavefield_discontinuity()
   endif
@@ -763,6 +763,32 @@
       call write_VTK_data_points(nglob_unique, &
                                  xstore_unique,ystore_unique,zstore_unique, &
                                  iglob_tmp,NGLLSQUARE*num_free_surface_faces, &
+                                 filename)
+
+      deallocate(iglob_tmp)
+    endif
+
+    ! saves absorbing surface points
+    if (num_abs_boundary_faces > 0) then
+      ! saves free surface interface points
+      allocate(iglob_tmp(NGLLSQUARE*num_abs_boundary_faces),stat=ier)
+      if (ier /= 0) call exit_MPI_without_rank('error allocating array 652b')
+      if (ier /= 0) stop 'error allocating array iglob_tmp'
+      inum = 0
+      iglob_tmp(:) = 0
+      do i = 1,num_abs_boundary_faces
+        do j = 1,NGLLSQUARE
+          inum = inum+1
+          iglob_tmp(inum) = ibool(abs_boundary_ijk(1,j,i), &
+                                  abs_boundary_ijk(2,j,i), &
+                                  abs_boundary_ijk(3,j,i), &
+                                  abs_boundary_ispec(i) )
+        enddo
+      enddo
+      filename = prname(1:len_trim(prname))//'abs_boundary'
+      call write_VTK_data_points(nglob_unique, &
+                                 xstore_unique,ystore_unique,zstore_unique, &
+                                 iglob_tmp,NGLLSQUARE*num_abs_boundary_faces, &
                                  filename)
 
       deallocate(iglob_tmp)

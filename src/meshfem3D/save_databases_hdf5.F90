@@ -41,16 +41,14 @@
 
   use constants_meshfem, only: NGLLX_M,NGLLY_M,NGLLZ_M
 
-  use shared_parameters, only: COUPLE_WITH_INJECTION_TECHNIQUE,NGNOD,NGNOD2D,LOCAL_PATH
+  use shared_parameters, only: NGNOD,NGNOD2D,LOCAL_PATH
 
-  use meshfem_par, only: ibool,xstore,ystore,zstore, &
-    NPROC, &
+  use meshfem_par, only: ibool,NPROC, &
     NMATERIALS,material_properties,material_properties_undef, &
     nspec_CPML,is_CPML,CPML_to_spec,CPML_regions, &
     addressing, &
     iproc_xi_current,iproc_eta_current, &
-    NPROC_XI,NPROC_ETA, &
-    SAVE_MESH_AS_CUBIT
+    NPROC_XI,NPROC_ETA
 
   use manager_hdf5
 #endif
@@ -902,32 +900,6 @@
   call h5_finalize()
 
   call synchronize_all()
-
-  ! CUBIT output
-  if (SAVE_MESH_AS_CUBIT) then
-    ! only for single process at the moment
-    if (NPROC_XI /= 1 .and. NPROC_ETA /= 1) then
-      print *,'Error: SAVE_MESH_AS_CUBIT output requires NPROC_XI == NPROC_ETA == 1'
-      print *,'       using NPROC_XI = ',NPROC_XI,' and NPROC_ETA = ',NPROC_ETA
-      print *,'Please update your Mesh_Par_file and re-run the mesher...'
-      stop 'Invalid NPROC_XI and/or NPROC_ETA for SAVE_MESH_AS_CUBIT output'
-    endif
-
-    !! VM VM add outputs as CUBIT
-    call save_output_mesh_files_as_cubit(nspec,nglob, &
-                                         nodes_coords, ispec_material_id, &
-                                         nspec2D_xmin,nspec2D_xmax,nspec2D_ymin,nspec2D_ymax, &
-                                         ibelm_xmin,ibelm_xmax,ibelm_ymin,ibelm_ymax,ibelm_bottom,ibelm_top, &
-                                         nspec_CPML_total)
-
-    ! output for AxiSEM coupling
-    if (COUPLE_WITH_INJECTION_TECHNIQUE) then
-      call save_output_mesh_files_for_coupled_model(nspec, &
-                                                    nspec2D_xmin,nspec2D_xmax,nspec2D_ymin,nspec2D_ymax, &
-                                                    ibelm_xmin,ibelm_xmax,ibelm_ymin,ibelm_ymax,ibelm_bottom,ibelm_top, &
-                                                    xstore,ystore,zstore)
-    endif
-  endif
 
   deallocate(material_index)
 

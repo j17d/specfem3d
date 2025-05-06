@@ -83,8 +83,12 @@ end module create_meshfem_par
   ! HDF5 file i/o
   use shared_parameters, only: HDF5_ENABLED
 
-  !! setting up wavefield discontinuity interface
+  ! setting up wavefield discontinuity interface
   use shared_parameters, only: IS_WAVEFIELD_DISCONTINUITY
+
+  ! CUBIT output
+  use shared_parameters, only: COUPLE_WITH_INJECTION_TECHNIQUE
+  use meshfem_par, only: SAVE_MESH_AS_CUBIT
 
   implicit none
 
@@ -192,6 +196,28 @@ end module create_meshfem_par
                         nodes_coords,ispec_material_id, &
                         nspec2D_xmin,nspec2D_xmax,nspec2D_ymin,nspec2D_ymax, &
                         ibelm_xmin,ibelm_xmax,ibelm_ymin,ibelm_ymax,ibelm_bottom,ibelm_top)
+  endif
+
+  ! CUBIT output
+  if (SAVE_MESH_AS_CUBIT) then
+    ! add outputs as CUBIT
+    call save_mesh_files_as_cubit(nspec,nglob, &
+                                  nodes_coords, ispec_material_id, &
+                                  nspec2D_xmin,nspec2D_xmax,nspec2D_ymin,nspec2D_ymax, &
+                                  ibelm_xmin,ibelm_xmax,ibelm_ymin,ibelm_ymax,ibelm_bottom,ibelm_top)
+
+    ! output for AxiSEM coupling
+    if (COUPLE_WITH_INJECTION_TECHNIQUE) then
+      call save_mesh_files_for_coupled_model(nspec, &
+                                             nspec2D_xmin,nspec2D_xmax,nspec2D_ymin,nspec2D_ymax, &
+                                             ibelm_xmin,ibelm_xmax,ibelm_ymin,ibelm_ymax,ibelm_bottom,ibelm_top, &
+                                             xstore,ystore,zstore)
+    endif
+  endif
+
+  ! setting up wavefield discontinuity interface
+  if (IS_WAVEFIELD_DISCONTINUITY) then
+    call write_wavefield_discontinuity_database()
   endif
 
   ! re-assign back actual number of elements and nodes
