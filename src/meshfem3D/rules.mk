@@ -64,6 +64,7 @@ meshfem3D_OBJECTS = \
 	$O/read_value_mesh_parameters.mesh.o \
 	$O/save_databases.mesh.o \
 	$O/save_databases_hdf5.mesh_hdf5.o \
+	$O/save_mesh_as_cubit.mesh.o \
 	$O/store_boundaries.mesh.o \
 	$O/store_coords.mesh.o \
 	$(EMPTY_MACRO)

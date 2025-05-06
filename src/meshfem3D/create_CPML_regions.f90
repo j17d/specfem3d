@@ -36,7 +36,7 @@
   ! create the different regions of the mesh
   use constants, only: IMAIN,CUSTOM_REAL,SMALL_PERCENTAGE_TOLERANCE, &
     CPML_X_ONLY,CPML_Y_ONLY,CPML_Z_ONLY,CPML_XY_ONLY,CPML_XZ_ONLY,CPML_YZ_ONLY,CPML_XYZ, &
-    PI,TINYVAL,HUGEVAL,MAX_STRING_LEN,NDIM,myrank
+    PI,HUGEVAL,MAX_STRING_LEN,myrank
 
   use constants_meshfem, only: NGLLX_M,NGLLY_M,NGLLZ_M
 
@@ -434,11 +434,11 @@
     write(IMAIN,*)
     ! converts to degrees
     if (.not. SUPPRESS_UTM_PROJECTION) then
-      write(IMAIN,'(a,f8.5,a,f8.5)') '                       min/max element size along X sides (in degree) = ',&
+      write(IMAIN,'(a,f8.5,a,f8.5)') '                       min/max element size along X sides (in degree) = ', &
                    sngl(elem_size_x_min*METERS_TO_DEGREES),'/',sngl(elem_size_x_max*METERS_TO_DEGREES)
-      write(IMAIN,'(a,f8.5,a,f8.5)') '                       min/max element size along Y sides (in degree) = ',&
+      write(IMAIN,'(a,f8.5,a,f8.5)') '                       min/max element size along Y sides (in degree) = ', &
                    sngl(elem_size_y_min*METERS_TO_DEGREES),'/',sngl(elem_size_y_max*METERS_TO_DEGREES)
-      write(IMAIN,'(a,f8.5,a,f8.5)') '                       min/max element size along Z sides (in degree) = ',&
+      write(IMAIN,'(a,f8.5,a,f8.5)') '                       min/max element size along Z sides (in degree) = ', &
                    sngl(elem_size_z_min*METERS_TO_DEGREES),'/',sngl(elem_size_z_max*METERS_TO_DEGREES)
       write(IMAIN,*)
     endif
@@ -525,9 +525,9 @@
     UTM_X_MIN,UTM_X_MAX
 
   ! create the different regions of the mesh
-  use constants, only: IMAIN,CUSTOM_REAL,SMALL_PERCENTAGE_TOLERANCE, &
+  use constants, only: IMAIN, &
     CPML_X_ONLY,CPML_Y_ONLY,CPML_Z_ONLY,CPML_XY_ONLY,CPML_XZ_ONLY,CPML_YZ_ONLY,CPML_XYZ, &
-    PI,TINYVAL,HUGEVAL,MAX_STRING_LEN,NDIM,myrank, &
+    MAX_STRING_LEN,NDIM,myrank, &
     GAUSSALPHA,GAUSSBETA
 
   use constants_meshfem, only: NGLLX_M,NGLLY_M,NGLLZ_M
@@ -617,7 +617,7 @@
   integer :: elem_mapping(NGNOD)
   logical :: is_mapped(NGNOD)
   ! MPI Cartesian topology uses W for West (= XI_MIN), E for East (= XI_MAX), S for South (= ETA_MIN), N for North (= ETA_MAX)
-  integer, parameter :: W = 1,E = 2,S = 3,N = 4,B = 5,T = 6        ! B==Bottom, T==Top
+  integer, parameter :: W = 1,E = 2,S = 3,N = 4,B = 5,T = 6        ! B == Bottom, T == Top
 
   integer :: p1,p2,p3,p4,p5,p6,p7,p8,p9,ia,iglob
   integer :: factor_x,factor_y,factor_z

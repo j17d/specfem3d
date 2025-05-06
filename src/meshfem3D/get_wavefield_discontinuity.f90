@@ -27,20 +27,25 @@
 
 
   subroutine write_wavefield_discontinuity_database()
+
 ! write data related to wavefield discontinuity to proc*_Database
+
   use meshfem_par, only: nb_wd, boundary_to_ispec_wd, side_wd, prname
   use constants, only: FNAME_WAVEFIELD_DISCONTINUITY_MESH, &
                        IFILE_WAVEFIELD_DISCONTINUITY
   implicit none
-  ! local variables
+
   open(unit=IFILE_WAVEFIELD_DISCONTINUITY, &
        file = prname(1:len_trim(prname))//&
             trim(FNAME_WAVEFIELD_DISCONTINUITY_MESH), &
        form='unformatted', action='write')
+
   write(IFILE_WAVEFIELD_DISCONTINUITY) nb_wd
   write(IFILE_WAVEFIELD_DISCONTINUITY) boundary_to_ispec_wd
   write(IFILE_WAVEFIELD_DISCONTINUITY) side_wd
+
   close(IFILE_WAVEFIELD_DISCONTINUITY)
+
   end subroutine write_wavefield_discontinuity_database
 
 !
@@ -48,21 +53,27 @@
 !
 
   subroutine write_wavefield_discontinuity_file()
+
 ! write wavefield discontinuity interfaces to an ascii file
 ! works only when NPROC = 1
+
   use meshfem_par, only: nb_wd, boundary_to_ispec_wd, side_wd
   use constants, only: IFILE_WAVEFIELD_DISCONTINUITY, &
                        FNAME_WAVEFIELD_DISCONTINUITY_INTERFACE
   implicit none
   ! local variables
   integer :: i
+
   open(unit=IFILE_WAVEFIELD_DISCONTINUITY, &
        file='MESH/'//trim(FNAME_WAVEFIELD_DISCONTINUITY_INTERFACE), &
        form='formatted', action='write')
+
   do i = 1, nb_wd
     write(IFILE_WAVEFIELD_DISCONTINUITY, *) boundary_to_ispec_wd(i), side_wd(i)
   enddo
+
   close(IFILE_WAVEFIELD_DISCONTINUITY)
+
   end subroutine write_wavefield_discontinuity_file
 
 !
@@ -70,8 +81,10 @@
 !
 
   subroutine find_wavefield_discontinuity_elements()
+
 ! read the wavefield_discontinuity_box file
 ! find the wavefield discontinuity interface
+
   use constants, only: IFILE_WAVEFIELD_DISCONTINUITY, &
                        FNAME_WAVEFIELD_DISCONTINUITY_BOX
   use meshfem_par, only: xstore,ystore,zstore,nspec
@@ -90,6 +103,7 @@
   open(unit=IFILE_WAVEFIELD_DISCONTINUITY, &
        file=trim(FNAME_WAVEFIELD_DISCONTINUITY_BOX), &
        form='formatted', action='read')
+
   read(IFILE_WAVEFIELD_DISCONTINUITY, *) IS_TOP_WAVEFIELD_DISCONTINUITY
   read(IFILE_WAVEFIELD_DISCONTINUITY, *) IS_EXTRAPOLATION_MODE
   read(IFILE_WAVEFIELD_DISCONTINUITY, *) x_min
@@ -98,7 +112,9 @@
   read(IFILE_WAVEFIELD_DISCONTINUITY, *) y_max
   read(IFILE_WAVEFIELD_DISCONTINUITY, *) z_min
   read(IFILE_WAVEFIELD_DISCONTINUITY, *) z_max
+
   close(IFILE_WAVEFIELD_DISCONTINUITY)
+
   nb_wd = 0
   do ispec = 1, nspec
     covered(:) = .false.
@@ -473,9 +489,11 @@
       endif
     endif
   enddo
+
   allocate(boundary_to_ispec_wd(nb_wd), side_wd(nb_wd))
   boundary_to_ispec_wd(1:nb_wd) = boundary_to_ispec_wd_temp(1:nb_wd)
   side_wd(1:nb_wd) = side_wd_temp(1:nb_wd)
+
   end subroutine find_wavefield_discontinuity_elements
 
 !
@@ -490,7 +508,9 @@
   double precision :: x_min, x_max, y_min, y_max, z_min, z_max
   double precision :: x, y, z, x_mid, y_mid, z_mid, dx, dy, dz
   logical :: IS_TOP_WAVEFIELD_DISCONTINUITY, IS_EXTRAPOLATION_MODE
+
   is_boundary_wd = .false.
+
   if (IS_EXTRAPOLATION_MODE) then
     if (((x > x_min - dx) .and. (x < x_max + dx) .and. &
          (y > y_min - dy) .and. (y < y_max + dy) .and. &
@@ -510,4 +530,5 @@
          (z_mid < z_max))) &
       is_boundary_wd = .true.
   endif
+
   end function is_boundary_wd

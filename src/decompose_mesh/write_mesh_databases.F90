@@ -202,12 +202,12 @@
   endif
 
 
-  !! setting up wavefield discontinuity boundary
+  ! setting up wavefield discontinuity boundary
   if (IS_WAVEFIELD_DISCONTINUITY) then
     do ipart = 0, nparts-1
       call write_wavefield_discontinuity_database(ipart, outputpath_name, &
-                                      nb_wd, boundary_to_ispec_wd, side_wd, &
-                                                nspec, glob2loc_elmnts, part)
+                                                  nb_wd, boundary_to_ispec_wd, side_wd, &
+                                                  nspec, glob2loc_elmnts, part)
     enddo
   endif
 
