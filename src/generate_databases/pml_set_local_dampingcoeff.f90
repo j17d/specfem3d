@@ -1857,7 +1857,7 @@
 
   ! output damping profile samples
   if (myrank == 0) then
-    open(IOUT,file=trim(OUTPUT_FILES)//'/PML_damping_profiles.txt',status='unknown',action='write')
+    open(IOUT,file=trim(OUTPUT_FILES)//'/PML_damping_profiles.dat',status='unknown',action='write')
     write(IOUT,*) '# PML damping profiles'
     write(IOUT,*) '# constants:'
     write(IOUT,*) '#   NPOWER = ',NPOWER
@@ -1915,7 +1915,7 @@
         alpha_z = 0.0
       endif
       ! file output
-      write(IOUT,*) dist,d_x,d_y,d_z,K_x,K_y,K_z,alpha_x,alpha_y,alpha_z
+      write(IOUT,'(10f14.5)') dist,d_x,d_y,d_z,K_x,K_y,K_z,alpha_x,alpha_y,alpha_z
     enddo
     close(IOUT)
   endif

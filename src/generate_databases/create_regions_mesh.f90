@@ -494,7 +494,8 @@ contains
                                      nodes_coords_ext_mesh,nnodes_ext_mesh, &
                                      elmnts_ext_mesh,nelmnts_ext_mesh)
 
-  use constants, only: myrank,NDIM,NDIM2D,NGLLX,NGLLY,NGLLZ,NGLLSQUARE,IMAIN,GAUSSALPHA,GAUSSBETA, &
+  use constants, only: myrank,NDIM,NDIM2D,NGLLX,NGLLY,NGLLZ,NGLLSQUARE,NGLLCUBE,SIZE_INTEGER,CUSTOM_REAL, &
+    IMAIN,GAUSSALPHA,GAUSSBETA, &
     DO_IRREGULAR_ELEMENT_SEPARATION
 
   use shared_parameters, only: LOCAL_PATH,ANISOTROPY
@@ -521,6 +522,7 @@ contains
   logical :: any_regular_elem
   double precision :: cube_edge_size_squared
   real, dimension(NGNOD) :: xelm_real,yelm_real,zelm_real
+  double precision :: memory_size
 
   ! user output
   if (myrank == 0) then
@@ -627,6 +629,27 @@ contains
   ! model parameters
   ! (full arrays needed for reading in acoustic/elastic/poroelastic velocity models)
 
+  ! evaluates required memory
+  memory_size = 0.d0
+  ! rhostore/kappastore/mustore
+  memory_size = memory_size + 3.d0 * dble(NGLLCUBE) * dble(nspec) * dble(CUSTOM_REAL)
+  ! attenuation
+  memory_size = memory_size + 2.d0 * dble(NGLLCUBE) * dble(nspec) * dble(CUSTOM_REAL)
+  ! Stacey
+  memory_size = memory_size + 2.d0 * dble(NGLLCUBE) * dble(nspec) * dble(CUSTOM_REAL)
+  ! poroelastic
+  memory_size = memory_size + 17.d0 * dble(NGLLCUBE) * dble(nspec) * dble(CUSTOM_REAL)
+  ! irregular_element_number
+  memory_size = memory_size + dble(nspec) * dble(SIZE_INTEGER)
+
+  ! user output
+  if (myrank == 0) then
+    write(IMAIN,*) '    required minimum memory per process for model setup = ',sngl(memory_size / 1024.d0 / 1024.d0),'MB'
+    write(IMAIN,*) '                                                        = ',sngl(memory_size / 1024.d0 / 1024.d0 / 1024.d0),'GB'
+    write(IMAIN,*)
+    call flush_IMAIN()
+  endif
+
   ! acoustic/elastic array with model density
   allocate(rhostore(NGLLX,NGLLY,NGLLZ,nspec),stat=ier)
   if (ier /= 0) call exit_MPI_without_rank('error allocating array 743')
@@ -671,6 +694,8 @@ contains
   if (ier /= 0) call exit_MPI_without_rank('error allocating array 746')
   allocate(kappaarraystore(3,NGLLX,NGLLY,NGLLZ,NSPEC_PORO),stat=ier)
   if (ier /= 0) call exit_MPI_without_rank('error allocating array 747')
+  rhoarraystore(:,:,:,:,:) = 0.0_CUSTOM_REAL; kappaarraystore(:,:,:,:,:) = 0.0_CUSTOM_REAL
+
   allocate(etastore(NGLLX,NGLLY,NGLLZ,NSPEC_PORO),stat=ier)
   if (ier /= 0) call exit_MPI_without_rank('error allocating array 748')
   allocate(tortstore(NGLLX,NGLLY,NGLLZ,NSPEC_PORO),stat=ier)
@@ -683,13 +708,13 @@ contains
   if (ier /= 0) call exit_MPI_without_rank('error allocating array 752')
   allocate(rho_vsI(NGLLX,NGLLY,NGLLZ,NSPEC_PORO),stat=ier)
   if (ier /= 0) call exit_MPI_without_rank('error allocating array 753')
-  allocate(permstore(6,NGLLX,NGLLY,NGLLZ,NSPEC_PORO), stat=ier)
-  if (ier /= 0) call exit_MPI_without_rank('error allocating array 754')
-  if (ier /= 0) call exit_MPI(myrank,'not enough memory to allocate arrays')
-  rhoarraystore(:,:,:,:,:) = 0.0_CUSTOM_REAL; kappaarraystore(:,:,:,:,:) = 0.0_CUSTOM_REAL
   etastore(:,:,:,:) = 0.0_CUSTOM_REAL; tortstore(:,:,:,:) = 0.0_CUSTOM_REAL
   phistore(:,:,:,:) = 0.0_CUSTOM_REAL; rho_vpI(:,:,:,:) = 0.0_CUSTOM_REAL
   rho_vpII(:,:,:,:) = 0.0_CUSTOM_REAL; rho_vsI(:,:,:,:) = 0.0_CUSTOM_REAL
+
+  allocate(permstore(6,NGLLX,NGLLY,NGLLZ,NSPEC_PORO), stat=ier)
+  if (ier /= 0) call exit_MPI_without_rank('error allocating array 754')
+  if (ier /= 0) call exit_MPI(myrank,'not enough memory to allocate arrays')
   permstore(:,:,:,:,:) = 0.0_CUSTOM_REAL
 
   ! mesh arrays
@@ -1121,9 +1146,9 @@ contains
   call min_all_cr(jacobian_min,jacobian_min_glob)
   call max_all_cr(jacobian_max,jacobian_max_glob)
   if (myrank == 0) then
-      write(IMAIN,*) '     mesh jacobian: min/max = ',jacobian_min_glob,'/',jacobian_max_glob
-      write(IMAIN,*)
-      call flush_IMAIN()
+    write(IMAIN,'(a,es12.4,a,es12.4)') '      mesh jacobian: min/max = ',jacobian_min_glob,' / ',jacobian_max_glob
+    write(IMAIN,*)
+    call flush_IMAIN()
   endif
 
   end subroutine crm_ext_setup_jacobian
