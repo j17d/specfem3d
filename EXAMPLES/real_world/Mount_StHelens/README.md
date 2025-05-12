@@ -1,7 +1,12 @@
 # Mount St. Helens - CUBIT mesh example with topography
 
+---
+
+![screenshot of Cubit mesh](mesh-screenshot.jpg)
+
 This example creates a single block model with topography around Mount St. Helens
 using CUBIT, and runs a forward simulation.
+
 
 ## Step-by-step tutorial:
 
