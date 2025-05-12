@@ -41,7 +41,8 @@
 
   use pml_par, only: NSPEC_CPML,is_CPML,spec_to_CPML,CPML_to_spec, &
     pml_convolution_coef_alpha,pml_convolution_coef_beta, &
-    pml_convolution_coef_abar,pml_convolution_coef_strain
+    pml_convolution_coef_abar,pml_convolution_coef_strain, &
+    CPML_THETA
 
   use wavefield_discontinuity_solver, only: prepare_wavefield_discontinuity_GPU
 
@@ -131,7 +132,6 @@
   endif
 
   ! prepares fields on GPU for elastic simulations
-  ! add GPU support for the C-PML routines
   if (ELASTIC_SIMULATION) then
     ! user output
     if (myrank == 0) then
@@ -185,6 +185,7 @@
 
     ! PML
     if (PML_CONDITIONS) then
+      ! add GPU support for the C-PML routines
       ! user output
       if (myrank == 0) then
         write(IMAIN,*) "  loading elastic PML arrays"
@@ -196,7 +197,7 @@
                                       CPML_to_spec,spec_to_CPML, &
                                       pml_convolution_coef_alpha,pml_convolution_coef_beta, &
                                       pml_convolution_coef_abar,pml_convolution_coef_strain, &
-                                      wgll_cube,rhostore)
+                                      wgll_cube,rhostore,CPML_THETA)
     endif
   endif
 

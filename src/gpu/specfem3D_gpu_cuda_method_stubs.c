@@ -707,7 +707,8 @@ void FC_FUNC_(prepare_fields_elastic_pml,
                                           realw* pml_convolution_coef_abar,
                                           realw* pml_convolution_coef_strain,
                                           realw* h_wgll_cube,
-                                          realw* rhostore) {}
+                                          realw* rhostore,
+                                          double* CPML_THETA) {}
 
 void FC_FUNC_(prepare_sim2_or_3_const_device,
               PREPARE_SIM2_OR_3_CONST_DEVICE)(long* Mesh_pointer,int *nadj_rec_local, int* NTSTEP_BETWEEN_READ_ADJSRC,
@@ -1048,10 +1049,10 @@ void FC_FUNC_(unregister_host_array,
 
 void FC_FUNC_(update_displacement_cuda,
               UPDATE_DISPLACMENT_CUDA)(long* Mesh_pointer,
-                                          realw* deltat_F,
-                                          realw* deltatover2_F,
-                                          realw* deltatsqover2_F,
-                                          int* FORWARD_OR_ADJOINT) {}
+                                       realw* deltat_F,
+                                       realw* deltatover2_F,
+                                       realw* deltatsqover2_F,
+                                       int* FORWARD_OR_ADJOINT) {}
 
 void FC_FUNC_(update_displacement_ac_cuda,
               UPDATE_DISPLACEMENT_AC_CUDA)(long* Mesh_pointer,

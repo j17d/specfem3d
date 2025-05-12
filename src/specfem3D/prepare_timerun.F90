@@ -932,9 +932,9 @@
 
     subroutine compute_convolution_coef(bb,coef0,coef1,coef2)
 
-    use constants, only: CUSTOM_REAL
+    use constants, only: CUSTOM_REAL,CPML_FIRST_ORDER_CONVOLUTION
     use specfem_par, only: deltat
-    use pml_par, only: FIRST_ORDER_CONVOLUTION,min_distance_between_CPML_parameter
+    use pml_par, only: min_distance_between_CPML_parameter
 
     implicit none
 
@@ -1001,7 +1001,7 @@
     coef0 = temp*temp
 
     if (abs(bb) >= min_distance_between_CPML_parameter) then
-      if (FIRST_ORDER_CONVOLUTION) then
+      if (CPML_FIRST_ORDER_CONVOLUTION) then
         ! first-order scheme
         coef1 = (1._CUSTOM_REAL - coef0) / bb
         coef2 = 0._CUSTOM_REAL
@@ -1018,7 +1018,7 @@
       endif
     else
       ! approximation for small beta values
-      if (FIRST_ORDER_CONVOLUTION) then
+      if (CPML_FIRST_ORDER_CONVOLUTION) then
         coef1 = deltat
         coef2 = 0._CUSTOM_REAL
       else

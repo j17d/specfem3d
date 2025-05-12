@@ -38,10 +38,10 @@
 extern EXTERN_LANG
 void FC_FUNC_(update_displacement_cuda,
               UPDATE_DISPLACMENT_CUDA)(long* Mesh_pointer,
-                                          realw* deltat_F,
-                                          realw* deltatover2_F,
-                                          realw* deltatsqover2_F,
-                                          int* FORWARD_OR_ADJOINT) {
+                                       realw* deltat_F,
+                                       realw* deltatover2_F,
+                                       realw* deltatsqover2_F,
+                                       int* FORWARD_OR_ADJOINT) {
 
   TRACE("update_displacement_cuda");
 
@@ -108,7 +108,8 @@ void FC_FUNC_(update_displacement_cuda,
                                                                             mp->d_PML_displ_old,
                                                                             mp->NSPEC_CPML,mp->d_CPML_to_spec,
                                                                             mp->d_ibool,
-                                                                            deltatsqover2,deltatover2);
+                                                                            deltatsqover2,deltatover2,
+                                                                            mp->pml_theta);
       }
 #endif
 #ifdef USE_HIP
@@ -118,7 +119,8 @@ void FC_FUNC_(update_displacement_cuda,
                                                                           mp->d_PML_displ_old,
                                                                           mp->NSPEC_CPML,mp->d_CPML_to_spec,
                                                                           mp->d_ibool,
-                                                                          deltatsqover2,deltatover2);
+                                                                          deltatsqover2,deltatover2,
+                                                                          mp->pml_theta);
       }
 #endif
     }
@@ -149,7 +151,8 @@ void FC_FUNC_(update_displacement_cuda,
                                                                             mp->d_PML_displ_new,
                                                                             mp->NSPEC_CPML,mp->d_CPML_to_spec,
                                                                             mp->d_ibool,
-                                                                            deltatsqover2,deltatover2);
+                                                                            deltatsqover2,deltatover2,
+                                                                            mp->pml_theta);
       }
 #endif
 #ifdef USE_HIP
@@ -159,7 +162,8 @@ void FC_FUNC_(update_displacement_cuda,
                                                                           mp->d_PML_displ_new,
                                                                           mp->NSPEC_CPML,mp->d_CPML_to_spec,
                                                                           mp->d_ibool,
-                                                                          deltatsqover2,deltatover2);
+                                                                          deltatsqover2,deltatover2,
+                                                                          mp->pml_theta);
       }
 #endif
 
