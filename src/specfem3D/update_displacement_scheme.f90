@@ -239,7 +239,7 @@
 
   use specfem_par, only: NGLLX,NGLLY,NGLLZ,CUSTOM_REAL,ibool,NGLOB_AB,PML_CONDITIONS
   !use specfem_par_acoustic
-  use pml_par, only: NSPEC_CPML,CPML_to_spec,THETA
+  use pml_par, only: NSPEC_CPML,CPML_to_spec,ONE_MINUS_THETA,ONE_MINUS_TWO_THETA
 
   implicit none
 
@@ -262,8 +262,8 @@
           do k = 1, NGLLZ
              iglob = ibool(i,j,k,ispec)
              PML_potential_acoustic(i,j,k,ispec_cpml) = potential_acoustic(iglob) &
-                                  + deltatover2 * (1._CUSTOM_REAL - 2.0_CUSTOM_REAL * THETA) * potential_dot_acoustic(iglob) &
-                                  + deltatsqover2 * (1._CUSTOM_REAL - THETA) * potential_dot_dot_acoustic(iglob)
+                                  + deltatover2 * ONE_MINUS_TWO_THETA * potential_dot_acoustic(iglob) &
+                                  + deltatsqover2 * ONE_MINUS_THETA * potential_dot_dot_acoustic(iglob)
           enddo
        enddo
     enddo
@@ -421,7 +421,7 @@
   use constants, only: NDIM,NGLLX,NGLLY,NGLLZ,CUSTOM_REAL
   use specfem_par, only: ibool,NGLOB_AB,PML_CONDITIONS
   !use specfem_par_acoustic
-  use pml_par, only: NSPEC_CPML,CPML_to_spec,THETA
+  use pml_par, only: NSPEC_CPML,CPML_to_spec,ONE_MINUS_THETA,ONE_MINUS_TWO_THETA
 
   implicit none
 
@@ -445,8 +445,8 @@
         do i = 1, NGLLX
           iglob = ibool(i,j,k,ispec)
           PML_displ(:,i,j,k,ispec_cpml) = displ(:,iglob) &
-                                        + deltatover2 * (1._CUSTOM_REAL - 2._CUSTOM_REAL * THETA) * veloc(:,iglob) &
-                                        + deltatsqover2 * (1._CUSTOM_REAL - THETA) * accel(:,iglob)
+                                        + deltatover2 * ONE_MINUS_TWO_THETA * veloc(:,iglob) &
+                                        + deltatsqover2 * ONE_MINUS_THETA * accel(:,iglob)
         enddo
       enddo
     enddo

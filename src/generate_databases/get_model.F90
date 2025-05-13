@@ -438,15 +438,15 @@
     ! note: for example, in tomography models a single element might have GLL points assigned to both, acoustic and elastic velocities.
     !       here we assign a single domain to the element. in cases where an element has velocities from both domains, the element
     !       will be treated as fully elastic - and similar for mixed poroelastic/elastic/acoustic elements.
-    if (any(ispec_domain(:,:,:) == 3)) then
+    if (any(ispec_domain(:,:,:) == IDOMAIN_POROELASTIC)) then
       ! poroelastic
-      idomain_id = 3
-    else if (any(ispec_domain(:,:,:) == 2)) then
+      idomain_id = IDOMAIN_POROELASTIC
+    else if (any(ispec_domain(:,:,:) == IDOMAIN_ELASTIC)) then
       ! elastic
-      idomain_id = 2
+      idomain_id = IDOMAIN_ELASTIC
     else
       ! acoustic
-      idomain_id = 1
+      idomain_id = IDOMAIN_ACOUSTIC
     endif
 
     select case (idomain_id)

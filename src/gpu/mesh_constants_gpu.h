@@ -737,6 +737,8 @@ typedef struct mesh_ {
   realw* d_pml_convolution_coef_strain;
   realw* d_pml_convolution_coef_abar;
 
+  realw pml_theta;  // passed from constants.h (by default CPML_THETA = 1.0 / 8.0)
+
   // ------------------------------------------------------------------ //
   // acoustic wavefield
   // ------------------------------------------------------------------ //

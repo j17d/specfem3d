@@ -1202,7 +1202,8 @@ void FC_FUNC_(prepare_fields_elastic_pml,
                                           realw* pml_convolution_coef_abar,
                                           realw* pml_convolution_coef_strain,
                                           realw* h_wgll_cube,
-                                          realw* rhostore) {
+                                          realw* rhostore,
+                                          double* CPML_THETA) {
 
   TRACE("prepare_fields_elastic_pml");
   int size;
@@ -1212,7 +1213,11 @@ void FC_FUNC_(prepare_fields_elastic_pml,
   // checks if anything to do
   if (! mp->pml_conditions) return;
 
+  // PML elements
   mp->NSPEC_CPML = *NSPEC_CPML;
+
+  // PML time scheme factor (passed as argument to be consistent with chosen setting in constants.h)
+  mp->pml_theta = (realw) *CPML_THETA;
 
   gpuCreateCopy_todevice_int((void**)&mp->d_is_CPML,is_CPML,mp->NSPEC_AB);
 

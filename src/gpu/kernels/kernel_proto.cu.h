@@ -1305,7 +1305,8 @@ __global__ void UpdateDispVeloc_PML_kernel(realw* displ,
                                            const int* d_CPML_to_spec,
                                            const int* d_ibool,
                                            const realw deltatsqover2,
-                                           const realw deltatover2) ;
+                                           const realw deltatover2,
+                                           const realw pml_theta) ;
 
 
 //

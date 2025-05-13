@@ -29,20 +29,32 @@
   subroutine pml_set_local_dampingcoeff(xstore,ystore,zstore)
 
 ! calculates damping profiles and auxiliary coefficients on C-PML points
+!
+! for reference see:
+!    Xie et al. (2014),
+!    Improved forward wave propagation and adjoint-based sensitivity kernel calculations
+!    using a numerically stable finite-element PML,
+!    GJI, 198, p. 1714-1747. https://doi.org/10.1093/gji/ggu219
 
-  use constants, only: myrank,ZERO,ONE,TWO,PI,HUGEVAL, &
-    IOUT,NPOWER,CPML_Rcoef,OUTPUT_FILES
+  use constants, only: myrank,ZERO,ONE,TWO,PI,HUGEVAL,IMAIN,IOUT,OUTPUT_FILES,CUSTOM_REAL,NGLLX,NGLLY,NGLLZ, &
+    CPML_NPOWER,CPML_Rcoef,CPML_K_MIN,CPML_K_MAX, &
+    CPML_X_ONLY,CPML_Y_ONLY,CPML_Z_ONLY,CPML_XY_ONLY,CPML_XZ_ONLY,CPML_YZ_ONLY,CPML_XYZ, &
+    CPML_THETA,CPML_FIRST_ORDER_CONVOLUTION
 
   use shared_parameters, only: ACOUSTIC_SIMULATION, ELASTIC_SIMULATION
 
-  use generate_databases_par, only: ibool,NGLOB_AB,d_store_x,d_store_y,d_store_z, &
-                                    K_store_x,K_store_y,K_store_z,alpha_store_x,alpha_store_y,alpha_store_z,CPML_to_spec, &
-                                    CPML_width_x,CPML_width_y,CPML_width_z,min_distance_between_CPML_parameter, &
-                                    CUSTOM_REAL,NGLLX,NGLLY,NGLLZ,nspec_cpml,PML_INSTEAD_OF_FREE_SURFACE, &
-                                    IMAIN,CPML_REGIONS,f0_FOR_PML, &
-                                    CPML_X_ONLY,CPML_Y_ONLY,CPML_Z_ONLY,CPML_XY_ONLY,CPML_XZ_ONLY,CPML_YZ_ONLY,CPML_XYZ, &
-                                    SIMULATION_TYPE,SAVE_FORWARD,nspec => NSPEC_AB,is_CPML, &
-                                    mask_ibool_interior_domain,nglob_interface_PML_acoustic,points_interface_PML_acoustic, &
+  use generate_databases_par, only: ibool,NGLOB_AB, &
+                                    SIMULATION_TYPE,SAVE_FORWARD, &
+                                    f0_FOR_PML,PML_INSTEAD_OF_FREE_SURFACE, &
+                                    d_store_x,d_store_y,d_store_z, &
+                                    K_store_x,K_store_y,K_store_z, &
+                                    alpha_store_x,alpha_store_y,alpha_store_z, &
+                                    CPML_width_x,CPML_width_y,CPML_width_z, &
+                                    min_distance_between_CPML_parameter, &
+                                    nspec_cpml,is_CPML,CPML_to_spec,CPML_REGIONS, &
+                                    nspec => NSPEC_AB, &
+                                    mask_ibool_interior_domain, &
+                                    nglob_interface_PML_acoustic,points_interface_PML_acoustic, &
                                     nglob_interface_PML_elastic,points_interface_PML_elastic
 
   use create_regions_mesh_ext_par, only: rhostore,rho_vp,ispec_is_acoustic,ispec_is_elastic
@@ -72,7 +84,6 @@
                             CPML_width_y_front_max_all,CPML_width_y_back_max_all, &
                             CPML_width_z_top_max_all,CPML_width_z_bottom_max_all, &
                             vp_max,vp_max_all
-  real(kind=CUSTOM_REAL), parameter :: K_MAX_PML = ONE, K_MIN_PML = ONE
 
   ! for robust parameter separation of PML damping parameter
   real(kind=CUSTOM_REAL) :: distance_min,distance_min_glob, &
@@ -80,6 +91,24 @@
                             min_distance_between_CPML_parameter_glob
   real(kind=CUSTOM_REAL) :: x1,x2,y1,y2,z1,z2
   integer :: iglob1,iglob2
+
+  ! note: the damping profile d uses a damping coefficient d_0 that depends on the maximum Vp velocity
+  !       (see Xie et al. 2014, eqs. 74 and 75):
+  !         d = C_x * d_0 * dist**N_x
+  !       and
+  !         d_0 = - (N_x + 1) * cp_max * log(R_coef) / (2 L )
+  !       With the default setting C_x == 1 and N_x == CPML_NPOWER the damping coefficients become
+  !         d = - (NPOWER + 1) * cp_max * log(R_coef) / (2 L ) * dist**NPOWER
+  !
+  !       The implementation here computes these damping coefficients in routine pml_damping_profile_l(),
+  !       which uses a slightly modified version of this damping profile (as suggested by an INRIA report) with:
+  !         d = - (NPOWER + 1) * vp_max * log(R_coef) / (2 * L) * dist**(1.2 * NPOWER)
+  !
+  !       The maximum Vp by default will be constant and determined by the maximum velocity found over all CPML elements.
+  !
+  ! for comparison, turn this flag on to use the maximum Vp in each element
+  ! instead of using the maximum Vp found in all CPML elements
+  logical, parameter :: USE_ELEMENTAL_VP_MAX = .false.
 
   ! checks number of PML elements
   if (count(is_CPML(:)) /= NSPEC_CPML) then
@@ -92,6 +121,10 @@
     ispec = CPML_to_spec(ispec_CPML)
     if (.not. is_CPML(ispec)) stop 'Error found C-PML element with invalid PML flag'
   enddo
+
+  ! checks scaling factors K
+  if (CPML_K_MIN < 1.d0) stop 'Error invalid CPML_K_MIN factor: must be >= 1'
+  if (CPML_K_MAX < 1.d0) stop 'Error invalid CPML_K_MAX factor: must be >= 1'
 
   ! stores damping profiles
   if (nspec_cpml > 0) then
@@ -277,6 +310,8 @@
     zorigintop = z_max_all - CPML_width_z_top_max_all
   endif
 
+  ! For convenience only, when computing the damping profile inside PML,
+  ! we set the required variable "vp" to be constant and equal to "vp_max_all"
   ! Calculation of maximum p velocity inside PML
   vp_max = ZERO
   do ispec_CPML = 1,nspec_cpml
@@ -288,7 +323,6 @@
       endif
     enddo; enddo; enddo
   enddo
-
   call max_all_all_cr(vp_max,vp_max_all)
 
   ! user output
@@ -329,10 +363,23 @@
   endif
   call synchronize_all()
 
+! Note: The implementation in SPECFEM2D is slightly different.
+!       By default, it uses NPOWER == 2 and the scaling factors K are computed by
+!         K_x = K_MIN + (K_MAX - ONE) * abscissa_normalized**NPOWER
+!       as compared here
+!         K_x = K_MIN + (K_MAX - ONE) * dist
+!       However, given that the default setting for K_MAX == 1 in both SPECFEM2D and here in constants.h,
+!       this difference won't affect the scaling factors.
+
   ! loops over all C-PML elements
   do ispec_CPML = 1,nspec_cpml
 
     ispec = CPML_to_spec(ispec_CPML)
+
+    ! for comparison, use maximum Vp for this element instead of global Vp_max for damping profile
+    if (USE_ELEMENTAL_VP_MAX) then
+      vp_max_all = maxval( rho_vp(:,:,:,ispec) / rhostore(:,:,:,ispec) )
+    endif
 
     do k = 1,NGLLZ
       do j = 1,NGLLY
@@ -370,7 +417,7 @@
               dist = abscissa_in_PML_x / CPML_width_x
 
               ! gets damping profile at the C-PML element's GLL point
-              K_x = K_MIN_PML + (K_MAX_PML - ONE) * dist
+              K_x = CPML_K_MIN + (CPML_K_MAX - ONE) * dist
               d_x = pml_damping_profile_l(myrank,iglob,dist,vp,CPML_width_x)
               alpha_x = ALPHA_MAX_PML_x * (ONE - dist)
 
@@ -387,7 +434,7 @@
               dist = abscissa_in_PML_x / CPML_width_x
 
               ! gets damping profile at the C-PML grid point
-              K_x = K_MIN_PML + (K_MAX_PML - ONE) * dist
+              K_x = CPML_K_MIN + (CPML_K_MAX - ONE) * dist
               d_x = pml_damping_profile_l(myrank,iglob,dist,vp,CPML_width_x)
               alpha_x = ALPHA_MAX_PML_x * (ONE - dist)
 
@@ -427,7 +474,7 @@
               dist = abscissa_in_PML_y / CPML_width_y
 
               ! gets damping profile at the C-PML element's GLL point
-              K_y = K_MIN_PML + (K_MAX_PML - ONE) * dist
+              K_y = CPML_K_MIN + (CPML_K_MAX - ONE) * dist
               d_y = pml_damping_profile_l(myrank,iglob,dist,vp,CPML_width_y)
               alpha_y = ALPHA_MAX_PML_y * (ONE - dist)
 
@@ -443,7 +490,7 @@
               dist = abscissa_in_PML_y / CPML_width_y
 
               ! gets damping profile at the C-PML element's GLL point
-              K_y = K_MIN_PML + (K_MAX_PML - ONE) * dist
+              K_y = CPML_K_MIN + (CPML_K_MAX - ONE) * dist
               d_y = pml_damping_profile_l(myrank,iglob,dist,vp,CPML_width_y)
               alpha_y = ALPHA_MAX_PML_y * (ONE - dist)
 
@@ -485,7 +532,7 @@
                 dist = abscissa_in_PML_z / CPML_width_z
 
                 ! gets damping profile at the C-PML element's GLL point
-                K_z = K_MIN_PML + (K_MAX_PML - ONE) * dist
+                K_z = CPML_K_MIN + (CPML_K_MAX - ONE) * dist
                 d_z = pml_damping_profile_l(myrank,iglob,dist,vp,CPML_width_z)
                 alpha_z = ALPHA_MAX_PML_z * (ONE - dist)
 
@@ -503,7 +550,7 @@
               dist = abscissa_in_PML_z / CPML_width_z
 
               ! gets damping profile at the C-PML element's GLL point
-              K_z = K_MIN_PML + (K_MAX_PML - ONE) * dist
+              K_z = CPML_K_MIN + (CPML_K_MAX - ONE) * dist
               d_z = pml_damping_profile_l(myrank,iglob,dist,vp,CPML_width_z)
               alpha_z = ALPHA_MAX_PML_z * (ONE - dist)
 
@@ -543,7 +590,7 @@
               dist = abscissa_in_PML_x / CPML_width_x
 
               ! gets damping profile at the C-PML element's GLL point
-              K_x = K_MIN_PML + (K_MAX_PML - ONE) * dist
+              K_x = CPML_K_MIN + (CPML_K_MAX - ONE) * dist
               d_x = pml_damping_profile_l(myrank,iglob,dist,vp,CPML_width_x)
               alpha_x = ALPHA_MAX_PML_x * (ONE - dist)
 
@@ -554,7 +601,7 @@
               dist = abscissa_in_PML_y / CPML_width_y
 
               ! gets damping profile at the C-PML element's GLL point
-              K_y = K_MIN_PML + (K_MAX_PML - ONE) * dist
+              K_y = CPML_K_MIN + (CPML_K_MAX - ONE) * dist
               d_y = pml_damping_profile_l(myrank,iglob,dist,vp,CPML_width_y)
               alpha_y = ALPHA_MAX_PML_y * (ONE - dist)
 
@@ -574,7 +621,7 @@
               dist = abscissa_in_PML_x / CPML_width_x
 
               ! gets damping profile at the C-PML element's GLL point
-              K_x = K_MIN_PML + (K_MAX_PML - ONE) * dist
+              K_x = CPML_K_MIN + (CPML_K_MAX - ONE) * dist
               d_x = pml_damping_profile_l(myrank,iglob,dist,vp,CPML_width_x)
               alpha_x = ALPHA_MAX_PML_x * (ONE - dist)
 
@@ -585,7 +632,7 @@
               dist = abscissa_in_PML_y / CPML_width_y
 
               ! gets damping profile at the C-PML element's GLL point
-              K_y = K_MIN_PML + (K_MAX_PML - ONE) * dist
+              K_y = CPML_K_MIN + (CPML_K_MAX - ONE) * dist
               d_y = pml_damping_profile_l(myrank,iglob,dist,vp,CPML_width_y)
               alpha_y = ALPHA_MAX_PML_y * (ONE - dist)
 
@@ -605,7 +652,7 @@
               dist = abscissa_in_PML_x / CPML_width_x
 
               ! gets damping profile at the C-PML element's GLL point
-              K_x = K_MIN_PML + (K_MAX_PML - ONE) * dist
+              K_x = CPML_K_MIN + (CPML_K_MAX - ONE) * dist
               d_x = pml_damping_profile_l(myrank,iglob,dist,vp,CPML_width_x)
               alpha_x = ALPHA_MAX_PML_x * (ONE - dist)
 
@@ -616,7 +663,7 @@
               dist = abscissa_in_PML_y / CPML_width_y
 
               ! gets damping profile at the C-PML element's GLL point
-              K_y = K_MIN_PML + (K_MAX_PML - ONE) * dist
+              K_y = CPML_K_MIN + (CPML_K_MAX - ONE) * dist
               d_y = pml_damping_profile_l(myrank,iglob,dist,vp,CPML_width_y)
               alpha_y = ALPHA_MAX_PML_y * (ONE - dist)
 
@@ -636,7 +683,7 @@
               dist = abscissa_in_PML_x / CPML_width_x
 
               ! gets damping profile at the C-PML element's GLL point
-              K_x = K_MIN_PML + (K_MAX_PML - ONE) * dist
+              K_x = CPML_K_MIN + (CPML_K_MAX - ONE) * dist
               d_x = pml_damping_profile_l(myrank,iglob,dist,vp,CPML_width_x)
               alpha_x = ALPHA_MAX_PML_x * (ONE - dist)
 
@@ -649,7 +696,7 @@
               ! gets damping profile at the C-PML element's GLL point
               d_y = pml_damping_profile_l(myrank,iglob,dist,vp,CPML_width_y)
               alpha_y = ALPHA_MAX_PML_y * (ONE - dist)
-              K_y = K_MIN_PML + (K_MAX_PML - ONE) * dist
+              K_y = CPML_K_MIN + (CPML_K_MAX - ONE) * dist
 
               if (K_x < ONE .or. d_x < ZERO) then
                 K_x = ONE; d_x = ZERO
@@ -692,7 +739,7 @@
                 dist = abscissa_in_PML_x / CPML_width_x
 
                 ! gets damping profile at the C-PML element's GLL point
-                K_x = K_MIN_PML + (K_MAX_PML - ONE) * dist
+                K_x = CPML_K_MIN + (CPML_K_MAX - ONE) * dist
                 d_x = pml_damping_profile_l(myrank,iglob,dist,vp,CPML_width_x)
                 alpha_x = ALPHA_MAX_PML_x * (ONE - dist)
 
@@ -703,7 +750,7 @@
                 dist = abscissa_in_PML_z / CPML_width_z
 
                 ! gets damping profile at the C-PML element's GLL point
-                K_z = K_MIN_PML + (K_MAX_PML - ONE) * dist
+                K_z = CPML_K_MIN + (CPML_K_MAX - ONE) * dist
                 d_z = pml_damping_profile_l(myrank,iglob,dist,vp,CPML_width_z)
                 alpha_z = ALPHA_MAX_PML_z * (ONE - dist)
 
@@ -725,7 +772,7 @@
               dist = abscissa_in_PML_x / CPML_width_x
 
               ! gets damping profile at the C-PML element's GLL point
-              K_x = K_MIN_PML + (K_MAX_PML - ONE) * dist
+              K_x = CPML_K_MIN + (CPML_K_MAX - ONE) * dist
               d_x = pml_damping_profile_l(myrank,iglob,dist,vp,CPML_width_x)
               alpha_x = ALPHA_MAX_PML_x * (ONE - dist)
 
@@ -736,7 +783,7 @@
               dist = abscissa_in_PML_z / CPML_width_z
 
               ! gets damping profile at the C-PML element's GLL point
-              K_z = K_MIN_PML + (K_MAX_PML - ONE) * dist
+              K_z = CPML_K_MIN + (CPML_K_MAX - ONE) * dist
               d_z = pml_damping_profile_l(myrank,iglob,dist,vp,CPML_width_z)
               alpha_z = ALPHA_MAX_PML_z * (ONE - dist)
 
@@ -757,7 +804,7 @@
                 dist = abscissa_in_PML_x / CPML_width_x
 
                 ! gets damping profile at the C-PML element's GLL point
-                K_x = K_MIN_PML + (K_MAX_PML - ONE) * dist
+                K_x = CPML_K_MIN + (CPML_K_MAX - ONE) * dist
                 d_x = pml_damping_profile_l(myrank,iglob,dist,vp,CPML_width_x)
                 alpha_x = ALPHA_MAX_PML_x * (ONE - dist)
 
@@ -768,7 +815,7 @@
                 dist = abscissa_in_PML_z / CPML_width_z
 
                 ! gets damping profile at the C-PML element's GLL point
-                K_z = K_MIN_PML + (K_MAX_PML - ONE) * dist
+                K_z = CPML_K_MIN + (CPML_K_MAX - ONE) * dist
                 d_z = pml_damping_profile_l(myrank,iglob,dist,vp,CPML_width_z)
                 alpha_z = ALPHA_MAX_PML_z * (ONE - dist)
 
@@ -789,7 +836,7 @@
               dist = abscissa_in_PML_x / CPML_width_x
 
               ! gets damping profile at the C-PML element's GLL point
-              K_x = K_MIN_PML + (K_MAX_PML - ONE) * dist
+              K_x = CPML_K_MIN + (CPML_K_MAX - ONE) * dist
               d_x = pml_damping_profile_l(myrank,iglob,dist,vp,CPML_width_x)
               alpha_x = ALPHA_MAX_PML_x * (ONE - dist)
 
@@ -800,7 +847,7 @@
               dist = abscissa_in_PML_z / CPML_width_z
 
               ! gets damping profile at the C-PML element's GLL point
-              K_z = K_MIN_PML + (K_MAX_PML - ONE) * dist
+              K_z = CPML_K_MIN + (CPML_K_MAX - ONE) * dist
               d_z = pml_damping_profile_l(myrank,iglob,dist,vp,CPML_width_z)
               alpha_z = ALPHA_MAX_PML_z * (ONE - dist)
 
@@ -844,7 +891,7 @@
                 dist = abscissa_in_PML_y / CPML_width_y
 
                 ! gets damping profile at the C-PML element's GLL point
-                K_y = K_MIN_PML + (K_MAX_PML - ONE) * dist
+                K_y = CPML_K_MIN + (CPML_K_MAX - ONE) * dist
                 d_y = pml_damping_profile_l(myrank,iglob,dist,vp,CPML_width_y)
                 alpha_y = ALPHA_MAX_PML_y * (ONE - dist)
 
@@ -855,7 +902,7 @@
                 dist = abscissa_in_PML_z / CPML_width_z
 
                 ! gets damping profile at the C-PML element's GLL point
-                K_z = K_MIN_PML + (K_MAX_PML - ONE) * dist
+                K_z = CPML_K_MIN + (CPML_K_MAX - ONE) * dist
                 d_z = pml_damping_profile_l(myrank,iglob,dist,vp,CPML_width_z)
                 alpha_z = ALPHA_MAX_PML_z * (ONE - dist)
 
@@ -876,7 +923,7 @@
               dist = abscissa_in_PML_y / CPML_width_y
 
               ! gets damping profile at the C-PML element's GLL point
-              K_y = K_MIN_PML + (K_MAX_PML - ONE) * dist
+              K_y = CPML_K_MIN + (CPML_K_MAX - ONE) * dist
               d_y = pml_damping_profile_l(myrank,iglob,dist,vp,CPML_width_y)
               alpha_y = ALPHA_MAX_PML_y * (ONE - dist)
 
@@ -887,7 +934,7 @@
               dist = abscissa_in_PML_z / CPML_width_z
 
               ! gets damping profile at the C-PML element's GLL point
-              K_z = K_MIN_PML + (K_MAX_PML - ONE) * dist
+              K_z = CPML_K_MIN + (CPML_K_MAX - ONE) * dist
               d_z = pml_damping_profile_l(myrank,iglob,dist,vp,CPML_width_z)
               alpha_z = ALPHA_MAX_PML_z * (ONE - dist)
 
@@ -908,7 +955,7 @@
                 dist = abscissa_in_PML_y / CPML_width_y
 
                 ! gets damping profile at the C-PML element's GLL point
-                K_y = K_MIN_PML + (K_MAX_PML - ONE) * dist
+                K_y = CPML_K_MIN + (CPML_K_MAX - ONE) * dist
                 d_y = pml_damping_profile_l(myrank,iglob,dist,vp,CPML_width_y)
                 alpha_y = ALPHA_MAX_PML_y * (ONE - dist)
 
@@ -919,7 +966,7 @@
                 dist = abscissa_in_PML_z / CPML_width_z
 
                 ! gets damping profile at the C-PML element's GLL point
-                K_z = K_MIN_PML + (K_MAX_PML - ONE) * dist
+                K_z = CPML_K_MIN + (CPML_K_MAX - ONE) * dist
                 d_z = pml_damping_profile_l(myrank,iglob,dist,vp,CPML_width_z)
                 alpha_z = ALPHA_MAX_PML_z * (ONE - dist)
 
@@ -940,7 +987,7 @@
               dist = abscissa_in_PML_y / CPML_width_y
 
               ! gets damping profile at the C-PML element's GLL point
-              K_y = K_MIN_PML + (K_MAX_PML - ONE) * dist
+              K_y = CPML_K_MIN + (CPML_K_MAX - ONE) * dist
               d_y = pml_damping_profile_l(myrank,iglob,dist,vp,CPML_width_y)
               alpha_y = ALPHA_MAX_PML_y * (ONE - dist)
 
@@ -951,7 +998,7 @@
               dist = abscissa_in_PML_z / CPML_width_z
 
               ! gets damping profile at the C-PML element's GLL point
-              K_z = K_MIN_PML + (K_MAX_PML - ONE) * dist
+              K_z = CPML_K_MIN + (CPML_K_MAX - ONE) * dist
               d_z = pml_damping_profile_l(myrank,iglob,dist,vp,CPML_width_z)
               alpha_z = ALPHA_MAX_PML_z * (ONE - dist)
 
@@ -997,7 +1044,7 @@
                 dist = abscissa_in_PML_x / CPML_width_x
 
                 ! gets damping profile at the C-PML grid point
-                K_x = K_MIN_PML + (K_MAX_PML - ONE) * dist
+                K_x = CPML_K_MIN + (CPML_K_MAX - ONE) * dist
                 d_x = pml_damping_profile_l(myrank,iglob,dist,vp,CPML_width_x)
                 alpha_x = ALPHA_MAX_PML_x * (ONE - dist)
 
@@ -1008,7 +1055,7 @@
                 dist = abscissa_in_PML_y / CPML_width_y
 
                 ! gets damping profile at the C-PML element's GLL point
-                K_y = K_MIN_PML + (K_MAX_PML - ONE) * dist
+                K_y = CPML_K_MIN + (CPML_K_MAX - ONE) * dist
                 d_y = pml_damping_profile_l(myrank,iglob,dist,vp,CPML_width_y)
                 alpha_y = ALPHA_MAX_PML_y * (ONE - dist)
 
@@ -1019,7 +1066,7 @@
                 dist = abscissa_in_PML_z / CPML_width_z
 
                 ! gets damping profile at the C-PML element's GLL point
-                K_z = K_MIN_PML + (K_MAX_PML - ONE) * dist
+                K_z = CPML_K_MIN + (CPML_K_MAX - ONE) * dist
                 d_z = pml_damping_profile_l(myrank,iglob,dist,vp,CPML_width_z)
                 alpha_z = ALPHA_MAX_PML_z * (ONE - dist)
 
@@ -1046,7 +1093,7 @@
               dist = abscissa_in_PML_x / CPML_width_x
 
               ! gets damping profile at the C-PML grid point
-              K_x = K_MIN_PML + (K_MAX_PML - ONE) * dist
+              K_x = CPML_K_MIN + (CPML_K_MAX - ONE) * dist
               d_x = pml_damping_profile_l(myrank,iglob,dist,vp,CPML_width_x)
               alpha_x = ALPHA_MAX_PML_x * (ONE - dist)
 
@@ -1057,7 +1104,7 @@
               dist = abscissa_in_PML_y / CPML_width_y
 
               ! gets damping profile at the C-PML element's GLL point
-              K_y = K_MIN_PML + (K_MAX_PML - ONE) * dist
+              K_y = CPML_K_MIN + (CPML_K_MAX - ONE) * dist
               d_y = pml_damping_profile_l(myrank,iglob,dist,vp,CPML_width_y)
               alpha_y = ALPHA_MAX_PML_y * (ONE - dist)
 
@@ -1068,7 +1115,7 @@
               dist = abscissa_in_PML_z / CPML_width_z
 
               ! gets damping profile at the C-PML element's GLL point
-              K_z = K_MIN_PML + (K_MAX_PML - ONE) * dist
+              K_z = CPML_K_MIN + (CPML_K_MAX - ONE) * dist
               d_z = pml_damping_profile_l(myrank,iglob,dist,vp,CPML_width_z)
               alpha_z = ALPHA_MAX_PML_z * (ONE - dist)
 
@@ -1094,7 +1141,7 @@
                 dist = abscissa_in_PML_x / CPML_width_x
 
                 ! gets damping profile at the C-PML element's GLL point
-                K_x = K_MIN_PML + (K_MAX_PML - ONE) * dist
+                K_x = CPML_K_MIN + (CPML_K_MAX - ONE) * dist
                 d_x = pml_damping_profile_l(myrank,iglob,dist,vp,CPML_width_x)
                 alpha_x = ALPHA_MAX_PML_x * (ONE - dist)
 
@@ -1105,7 +1152,7 @@
                 dist = abscissa_in_PML_y / CPML_width_y
 
                 ! gets damping profile at the C-PML element's GLL point
-                K_y = K_MIN_PML + (K_MAX_PML - ONE) * dist
+                K_y = CPML_K_MIN + (CPML_K_MAX - ONE) * dist
                 d_y = pml_damping_profile_l(myrank,iglob,dist,vp,CPML_width_y)
                 alpha_y = ALPHA_MAX_PML_y * (ONE - dist)
 
@@ -1116,7 +1163,7 @@
                 dist = abscissa_in_PML_z / CPML_width_z
 
                 ! gets damping profile at the C-PML element's GLL point
-                K_z = K_MIN_PML + (K_MAX_PML - ONE) * dist
+                K_z = CPML_K_MIN + (CPML_K_MAX - ONE) * dist
                 d_z = pml_damping_profile_l(myrank,iglob,dist,vp,CPML_width_z)
                 alpha_z = ALPHA_MAX_PML_z * (ONE - dist)
 
@@ -1142,7 +1189,7 @@
               dist = abscissa_in_PML_x / CPML_width_x
 
               ! gets damping profile at the C-PML element's GLL point
-              K_x = K_MIN_PML + (K_MAX_PML - ONE) * dist
+              K_x = CPML_K_MIN + (CPML_K_MAX - ONE) * dist
               d_x = pml_damping_profile_l(myrank,iglob,dist,vp,CPML_width_x)
               alpha_x = ALPHA_MAX_PML_x * (ONE - dist)
 
@@ -1153,7 +1200,7 @@
               dist = abscissa_in_PML_y / CPML_width_y
 
               ! gets damping profile at the C-PML element's GLL point
-              K_y = K_MIN_PML + (K_MAX_PML - ONE) * dist
+              K_y = CPML_K_MIN + (CPML_K_MAX - ONE) * dist
               d_y = pml_damping_profile_l(myrank,iglob,dist,vp,CPML_width_y)
               alpha_y = ALPHA_MAX_PML_y * (ONE - dist)
 
@@ -1164,7 +1211,7 @@
               dist = abscissa_in_PML_z / CPML_width_z
 
               ! gets damping profile at the C-PML element's GLL point
-              K_z = K_MIN_PML + (K_MAX_PML - ONE) * dist
+              K_z = CPML_K_MIN + (CPML_K_MAX - ONE) * dist
               d_z = pml_damping_profile_l(myrank,iglob,dist,vp,CPML_width_z)
               alpha_z = ALPHA_MAX_PML_z * (ONE - dist)
 
@@ -1190,7 +1237,7 @@
                 dist = abscissa_in_PML_x / CPML_width_x
 
                 ! gets damping profile at the C-PML grid point
-                K_x = K_MIN_PML + (K_MAX_PML - ONE) * dist
+                K_x = CPML_K_MIN + (CPML_K_MAX - ONE) * dist
                 d_x = pml_damping_profile_l(myrank,iglob,dist,vp,CPML_width_x)
                 alpha_x = ALPHA_MAX_PML_x * (ONE - dist)
 
@@ -1201,7 +1248,7 @@
                 dist = abscissa_in_PML_y / CPML_width_y
 
                 ! gets damping profile at the C-PML element's GLL point
-                K_y = K_MIN_PML + (K_MAX_PML - ONE) * dist
+                K_y = CPML_K_MIN + (CPML_K_MAX - ONE) * dist
                 d_y = pml_damping_profile_l(myrank,iglob,dist,vp,CPML_width_y)
                 alpha_y = ALPHA_MAX_PML_y * (ONE - dist)
 
@@ -1212,7 +1259,7 @@
                 dist = abscissa_in_PML_z / CPML_width_z
 
                 ! gets damping profile at the C-PML element's GLL point
-                K_z = K_MIN_PML + (K_MAX_PML - ONE) * dist
+                K_z = CPML_K_MIN + (CPML_K_MAX - ONE) * dist
                 d_z = pml_damping_profile_l(myrank,iglob,dist,vp,CPML_width_z)
                 alpha_z = ALPHA_MAX_PML_z * (ONE - dist)
 
@@ -1238,7 +1285,7 @@
               dist = abscissa_in_PML_x / CPML_width_x
 
               ! gets damping profile at the C-PML grid point
-              K_x = K_MIN_PML + (K_MAX_PML - ONE) * dist
+              K_x = CPML_K_MIN + (CPML_K_MAX - ONE) * dist
               d_x = pml_damping_profile_l(myrank,iglob,dist,vp,CPML_width_x)
               alpha_x = ALPHA_MAX_PML_x * (ONE - dist)
 
@@ -1249,7 +1296,7 @@
               dist = abscissa_in_PML_y / CPML_width_y
 
               ! gets damping profile at the C-PML element's GLL point
-              K_y = K_MIN_PML + (K_MAX_PML - ONE) * dist
+              K_y = CPML_K_MIN + (CPML_K_MAX - ONE) * dist
               d_y = pml_damping_profile_l(myrank,iglob,dist,vp,CPML_width_y)
               alpha_y = ALPHA_MAX_PML_y * (ONE - dist)
 
@@ -1260,7 +1307,7 @@
               dist = abscissa_in_PML_z / CPML_width_z
 
               ! gets damping profile at the C-PML element's GLL point
-              K_z = K_MIN_PML + (K_MAX_PML - ONE) * dist
+              K_z = CPML_K_MIN + (CPML_K_MAX - ONE) * dist
               d_z = pml_damping_profile_l(myrank,iglob,dist,vp,CPML_width_z)
               alpha_z = ALPHA_MAX_PML_z * (ONE - dist)
 
@@ -1286,7 +1333,7 @@
                 dist = abscissa_in_PML_x / CPML_width_x
 
                 ! gets damping profile at the C-PML element's GLL point
-                K_x = K_MIN_PML + (K_MAX_PML - ONE) * dist
+                K_x = CPML_K_MIN + (CPML_K_MAX - ONE) * dist
                 d_x = pml_damping_profile_l(myrank,iglob,dist,vp,CPML_width_x)
                 alpha_x = ALPHA_MAX_PML_x * (ONE - dist)
 
@@ -1297,7 +1344,7 @@
                 dist = abscissa_in_PML_y / CPML_width_y
 
                 ! gets damping profile at the C-PML element's GLL point
-                K_y = K_MIN_PML + (K_MAX_PML - ONE) * dist
+                K_y = CPML_K_MIN + (CPML_K_MAX - ONE) * dist
                 d_y = pml_damping_profile_l(myrank,iglob,dist,vp,CPML_width_y)
                 alpha_y = ALPHA_MAX_PML_y * (ONE - dist)
 
@@ -1308,7 +1355,7 @@
                 dist = abscissa_in_PML_z / CPML_width_z
 
                 ! gets damping profile at the C-PML element's GLL point
-                K_z = K_MIN_PML + (K_MAX_PML - ONE) * dist
+                K_z = CPML_K_MIN + (CPML_K_MAX - ONE) * dist
                 d_z = pml_damping_profile_l(myrank,iglob,dist,vp,CPML_width_z)
                 alpha_z = ALPHA_MAX_PML_z * (ONE - dist)
 
@@ -1334,7 +1381,7 @@
               dist = abscissa_in_PML_x / CPML_width_x
 
               ! gets damping profile at the C-PML element's GLL point
-              K_x = K_MIN_PML + (K_MAX_PML - ONE) * dist
+              K_x = CPML_K_MIN + (CPML_K_MAX - ONE) * dist
               d_x = pml_damping_profile_l(myrank,iglob,dist,vp,CPML_width_x)
               alpha_x = ALPHA_MAX_PML_x * (ONE - dist)
 
@@ -1345,7 +1392,7 @@
               dist = abscissa_in_PML_y / CPML_width_y
 
               ! gets damping profile at the C-PML element's GLL point
-              K_y = K_MIN_PML + (K_MAX_PML - ONE) * dist
+              K_y = CPML_K_MIN + (CPML_K_MAX - ONE) * dist
               d_y = pml_damping_profile_l(myrank,iglob,dist,vp,CPML_width_y)
               alpha_y = ALPHA_MAX_PML_y * (ONE - dist)
 
@@ -1356,7 +1403,7 @@
               dist = abscissa_in_PML_z / CPML_width_z
 
               ! gets damping profile at the C-PML element's GLL point
-              K_z = K_MIN_PML + (K_MAX_PML - ONE) * dist
+              K_z = CPML_K_MIN + (CPML_K_MAX - ONE) * dist
               d_z = pml_damping_profile_l(myrank,iglob,dist,vp,CPML_width_z)
               alpha_z = ALPHA_MAX_PML_z * (ONE - dist)
 
@@ -1857,13 +1904,15 @@
 
   ! output damping profile samples
   if (myrank == 0) then
-    open(IOUT,file=trim(OUTPUT_FILES)//'/PML_damping_profiles.txt',status='unknown',action='write')
+    open(IOUT,file=trim(OUTPUT_FILES)//'/PML_damping_profiles.dat',status='unknown',action='write')
     write(IOUT,*) '# PML damping profiles'
     write(IOUT,*) '# constants:'
-    write(IOUT,*) '#   NPOWER = ',NPOWER
+    write(IOUT,*) '#   NPOWER = ',CPML_NPOWER
     write(IOUT,*) '#   R      = ',CPML_Rcoef
-    write(IOUT,*) '#   K_min  = ',K_MIN_PML
-    write(IOUT,*) '#   K_max  = ',K_MAX_PML
+    write(IOUT,*) '#   K_min  = ',CPML_K_MIN
+    write(IOUT,*) '#   K_max  = ',CPML_K_MAX
+    write(IOUT,*) '#   THETA  = ',CPML_THETA
+    write(IOUT,*) '#   FIRST_ORDER_CONVOLUTION = ',CPML_FIRST_ORDER_CONVOLUTION
     write(IOUT,*) '# settings:'
     write(IOUT,*) '#   f0_FOR_PML       = ',f0_FOR_PML
     write(IOUT,*) '#   Alpha_MAX_PML_x  = ',ALPHA_MAX_PML_x
@@ -1886,7 +1935,7 @@
       ! gets damping profile
       ! X-sides
       if (CPML_width_x > 0.0) then
-        K_x = K_MIN_PML + (K_MAX_PML - ONE) * dist
+        K_x = CPML_K_MIN + (CPML_K_MAX - ONE) * dist
         d_x = pml_damping_profile_l(myrank,1,dist,vp,CPML_width_x)
         alpha_x = ALPHA_MAX_PML_x * (ONE - dist)
       else
@@ -1896,7 +1945,7 @@
       endif
       ! Y-sides
       if (CPML_width_y > 0.0) then
-        K_y = K_MIN_PML + (K_MAX_PML - ONE) * dist
+        K_y = CPML_K_MIN + (CPML_K_MAX - ONE) * dist
         d_y = pml_damping_profile_l(myrank,1,dist,vp,CPML_width_y)
         alpha_y = ALPHA_MAX_PML_y * (ONE - dist)
       else
@@ -1906,7 +1955,7 @@
       endif
       ! Z-sides
       if (CPML_width_z > 0.0) then
-        K_z = K_MIN_PML + (K_MAX_PML - ONE) * dist
+        K_z = CPML_K_MIN + (CPML_K_MAX - ONE) * dist
         d_z = pml_damping_profile_l(myrank,1,dist,vp,CPML_width_z)
         alpha_z = ALPHA_MAX_PML_z * (ONE - dist)
       else
@@ -1915,7 +1964,7 @@
         alpha_z = 0.0
       endif
       ! file output
-      write(IOUT,*) dist,d_x,d_y,d_z,K_x,K_y,K_z,alpha_x,alpha_y,alpha_z
+      write(IOUT,'(10f14.5)') dist,d_x,d_y,d_z,K_x,K_y,K_z,alpha_x,alpha_y,alpha_z
     enddo
     close(IOUT)
   endif
@@ -2029,7 +2078,7 @@
   !   vp:    P-velocity
   !   delta: thickness of the C-PML layer
 
-  use generate_databases_par, only: CUSTOM_REAL,SIZE_REAL,NPOWER,CPML_Rcoef,TWO
+  use constants, only: CUSTOM_REAL,SIZE_REAL,CPML_NPOWER,CPML_Rcoef,TWO
 
   implicit none
 
@@ -2040,18 +2089,18 @@
   real(kind=CUSTOM_REAL) :: pml_damping_profile_l
 
   ! gets damping profile
-  if (NPOWER >= 1) then
+  if (CPML_NPOWER >= 1) then
      ! In INRIA research report section 6.1:  http://hal.inria.fr/docs/00/07/32/19/PDF/RR-3471.pdf
-     ! pml_damping_profile_l = - ((NPOWER + 1) * vp * log(CPML_Rcoef) / (TWO * delta)) * dist**(NPOWER)
+     ! pml_damping_profile_l = - ((NPOWER + 1) * vp * log(Rcoef) / (TWO * delta)) * dist**(NPOWER)
      ! based on tests it is more accurate to use the following definition when NPOWER = 1 as defined in constants.h.in
     if (CUSTOM_REAL == SIZE_REAL) then
-      pml_damping_profile_l = - sngl(((NPOWER + 1.d0) * dble(vp) * log(CPML_Rcoef) / &
-                                          (TWO * dble(delta))) * dble(dist)**(1.2d0 * NPOWER))
+      pml_damping_profile_l = - sngl(((CPML_NPOWER + 1.d0) * dble(vp) * log(CPML_Rcoef) / &
+                                          (TWO * dble(delta))) * dble(dist)**(1.2d0 * CPML_NPOWER))
     else
-      pml_damping_profile_l = - ((NPOWER + 1.d0) * vp * log(CPML_Rcoef) / (TWO * delta)) * dist**(1.2d0 * NPOWER)
+      pml_damping_profile_l = - ((CPML_NPOWER + 1.d0) * vp * log(CPML_Rcoef) / (TWO * delta)) * dist**(1.2d0 * CPML_NPOWER)
     endif
   else
-    call exit_mpi(myrank,'C-PML error: NPOWER must be greater than or equal to 1')
+    call exit_mpi(myrank,'C-PML error: CPML_NPOWER must be greater than or equal to 1')
   endif
 
   ! checks coordinates of C-PML points and thickness of C-PML layer
