@@ -213,7 +213,7 @@
   character(len=*), intent(in) :: adj_source_file
 
   ! local
-  integer :: icomp, itime, ier, it_start, it_end, it_sub_adj
+  integer :: icomp, itime, ier, it_start, it_end, it_sub_adj, index_i
   real(kind=CUSTOM_REAL), dimension(NTSTEP_BETWEEN_READ_ADJSRC) :: adj_source_asdf
   real(kind=CUSTOM_REAL) :: val,junk
   ! note: should have same order as orientation in write_seismograms_to_file()
@@ -244,8 +244,12 @@
 
       ! store the block we need
       do itime = it_start, it_end
+
+        ! index will run from 1 to NTSTEP_BETWEEN_READ_ADJSRC
+        index_i = itime - it_start + 1
+
         ! store adjoint trace
-        source_adjoint(icomp,irec_local,itime-it_start+1) = adj_source_asdf(itime-it_start+1)
+        source_adjoint(icomp,irec_local,index_i) = adj_source_asdf(index_i)
       enddo
     enddo
 
@@ -278,8 +282,11 @@
           call exit_MPI(myrank,'file '//trim(filename)//' has wrong length, please check with your simulation duration (2)')
         endif
 
+        ! index will run from 1 to NTSTEP_BETWEEN_READ_ADJSRC
+        index_i = itime - it_start + 1
+
         ! store adjoint trace
-        source_adjoint(icomp,irec_local,itime-it_start+1) = val
+        source_adjoint(icomp,irec_local,index_i) = val
       enddo
 
       close(IIN)

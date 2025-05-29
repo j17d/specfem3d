@@ -211,6 +211,9 @@
 
       ! adds source term
       if (it < NSTEP) then
+        ! time step index for adjoint source (time-reversed)
+        it_index = NTSTEP_BETWEEN_READ_ADJSRC - mod(it-1,NTSTEP_BETWEEN_READ_ADJSRC)
+
         ! receivers act as sources
         do irec_local = 1, nadj_rec_local
           irec = number_adjsources_global(irec_local)
@@ -224,9 +227,6 @@
                   iglob = ibool(i,j,k,ispec)
 
                   hlagrange = hxir_adjstore(i,irec_local) * hetar_adjstore(j,irec_local) * hgammar_adjstore(k,irec_local)
-
-                  ! time step index
-                  it_index = NTSTEP_BETWEEN_READ_ADJSRC - mod(it-1,NTSTEP_BETWEEN_READ_ADJSRC)
 
                   ! beware, for acoustic medium, a pressure source would be taking the negative
                   ! and divide by Kappa of the fluid;

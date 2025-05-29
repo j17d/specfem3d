@@ -70,7 +70,7 @@
   double precision :: stf,time_source_dble,time_t
   double precision,external :: get_stf_viscoelastic
 
-  integer :: isource,iglob,i,j,k,ispec,it_sub_adj
+  integer :: isource,iglob,i,j,k,ispec,it_sub_adj,it_index
   integer :: irec_local,irec
 
   character(len=MAX_STRING_LEN) :: adj_source_file
@@ -230,6 +230,9 @@
 
       ! adds source term
       if (it < NSTEP) then
+        ! time step index for adjoint source (time-reversed)
+        it_index = NTSTEP_BETWEEN_READ_ADJSRC - mod(it-1,NTSTEP_BETWEEN_READ_ADJSRC)
+
         ! receivers act as sources
         do irec_local = 1, nadj_rec_local
           irec = number_adjsources_global(irec_local)
@@ -244,8 +247,7 @@
 
                   hlagrange = hxir_adjstore(i,irec_local) * hetar_adjstore(j,irec_local) * hgammar_adjstore(k,irec_local)
 
-                  accel(:,iglob) = accel(:,iglob) &
-                    + source_adjoint(:,irec_local,NTSTEP_BETWEEN_READ_ADJSRC - mod(it-1,NTSTEP_BETWEEN_READ_ADJSRC)) * hlagrange
+                  accel(:,iglob) = accel(:,iglob) + source_adjoint(:,irec_local,it_index) * hlagrange
                 enddo
               enddo
             enddo
