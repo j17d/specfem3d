@@ -717,8 +717,7 @@ class mesh(mesh_tools):
                 else:
                     m2km = 1.
                 vp = vel / m2km
-                rho = (1.6612 * vp - 0.472 * vp**2 + 0.0671 * vp **
-                       3 - 0.0043 * vp**4 + 0.000106 * vp**4) * m2km
+                rho = (1.6612 * vp - 0.472 * vp**2 + 0.0671 * vp**3 - 0.0043 * vp**4 + 0.000106 * vp**5) * m2km
                 txt = '%1i %3i %20f %20f %20f %1i %1i\n' % (
                    properties[0], properties[1], rho, vel, vel / (3**.5), 0, 0)
             elif type(vel) != str and vel != 0.0:

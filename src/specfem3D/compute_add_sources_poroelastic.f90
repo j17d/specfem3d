@@ -59,7 +59,7 @@
   double precision,external :: get_stf_poroelastic
 
   logical :: ibool_read_adj_arrays
-  integer :: isource,iglob,i,j,k,ispec,it_sub_adj
+  integer :: isource,iglob,i,j,k,ispec,it_sub_adj,it_index
   integer :: irec_local,irec
   real(kind=CUSTOM_REAL) :: phil,tortl,rhol_s,rhol_f,rhol_bar
   real(kind=CUSTOM_REAL) :: fac_s,fac_w
@@ -247,6 +247,9 @@
       endif ! if (ibool_read_adj_arrays)
 
       if (it < NSTEP) then
+        ! time step index for adjoint source (time-reversed)
+        it_index = NTSTEP_BETWEEN_READ_ADJSRC - mod(it-1,NTSTEP_BETWEEN_READ_ADJSRC)
+
         ! receivers act as sources
         do irec_local = 1, nadj_rec_local
           irec = number_adjsources_global(irec_local)
@@ -271,12 +274,11 @@
 
                   ! solid phase
                   accels_poroelastic(:,iglob) = accels_poroelastic(:,iglob) &
-                    + source_adjoint(:,irec_local,NTSTEP_BETWEEN_READ_ADJSRC - mod(it-1,NTSTEP_BETWEEN_READ_ADJSRC)) * hlagrange
+                                              + source_adjoint(:,irec_local,it_index) * hlagrange
                   !
                   ! fluid phase
                   accelw_poroelastic(:,iglob) = accelw_poroelastic(:,iglob) &
-                    - rhol_f/rhol_bar &
-                    * source_adjoint(:,irec_local,NTSTEP_BETWEEN_READ_ADJSRC - mod(it-1,NTSTEP_BETWEEN_READ_ADJSRC)) * hlagrange
+                                              - rhol_f/rhol_bar * source_adjoint(:,irec_local,it_index) * hlagrange
                 enddo
               enddo
             enddo
@@ -363,10 +365,10 @@
 
                 ! solid phase
                 b_accels_poroelastic(:,iglob) = b_accels_poroelastic(:,iglob) &
-                             + fac_s * sourcearrays(isource,:,i,j,k)*stf_used
+                                              + fac_s * sourcearrays(isource,:,i,j,k)*stf_used
                 ! fluid phase
                 b_accelw_poroelastic(:,iglob) = b_accelw_poroelastic(:,iglob) &
-                             + fac_w * sourcearrays(isource,:,i,j,k)*stf_used
+                                              + fac_w * sourcearrays(isource,:,i,j,k)*stf_used
               enddo
             enddo
           enddo
