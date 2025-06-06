@@ -138,6 +138,9 @@ toposcale = 0.1
 ## local data directory
 datadir = 'topo_data'
 
+# AVS boundaries file, add selected country borders
+gmt_country = ''  # for Switzerland: '-ECH'
+
 #########################################################################
 
 # globals
@@ -629,7 +632,7 @@ def plot_map(gmt_region,gridfile="ptopo.sampled.grd"):
 def create_AVS_file():
     global datadir
     global utm_zone
-    global gmt_region
+    global gmt_region,gmt_country
 
     print("*******************************")
     print("creating AVS border file ...")
@@ -642,7 +645,12 @@ def create_AVS_file():
 
     # GMT segment file
     name = "map_segment.dat"
-    cmd = 'gmt pscoast ' + gmt_region + ' -Dh -W -M > ' + name + ';'
+    if len(gmt_country) > 0:
+        # uses country border (w/ full resolution -Df)
+        cmd = 'gmt pscoast ' + gmt_region + ' ' + gmt_country + ' -Df -M > ' + name + ';'
+    else:
+        # shore lines (w/ high resolution -Dh)
+        cmd = 'gmt pscoast ' + gmt_region + ' -W -Dh -M > ' + name + ';'
     status = subprocess.call(cmd, shell=True)
     check_status(status)
     print("  GMT segment file plotted in file: ",name)

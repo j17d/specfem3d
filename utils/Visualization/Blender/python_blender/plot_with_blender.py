@@ -126,6 +126,12 @@ world_background_color = (1,1,1,1)  # white
 transformer_to_utm = None
 utm_zone = None
 
+# timing info
+time_string = None
+
+# material appearance
+use_matte_material = False
+
 # class to avoid long stdout output by renderer
 # see: https://stackoverflow.com/questions/24277488/in-python-how-to-capture-the-stdout-from-a-c-shared-library-to-a-variable/29834357
 class SuppressStream(object):
@@ -532,6 +538,27 @@ def setup_color_table(colormap, data_min, data_max):
             [0.99, 0.52, 0.0 ], # VIII    darkorange
             [0.98, 0.0,  0.0 ], # IX      red
             [0.7, 0.0,  0.0 ],  # X+      darkred
+        ]
+
+    elif colormap == 16:
+        # custom shake
+        # starts with dark colors than more light - similar to gist_earth, perceptually uniform
+        print("  color map: gist_earth")
+        colors_rgb = [
+            [0.0,  0.06,  0.08],  # dark
+            #[ 0.00, 0.13, 0.45 ],
+            [ 0.00, 0.18, 0.40 ],
+            [ 0.00, 0.25, 0.32 ],
+            [ 0.00, 0.33, 0.25 ],
+            [ 0.00, 0.41, 0.18 ],
+            [ 0.02, 0.49, 0.15 ],
+            [ 0.40, 0.56, 0.18 ],
+            [ 0.63, 0.62, 0.28 ],
+            [ 0.81, 0.68, 0.42 ],
+            [ 0.96, 0.75, 0.59 ],
+            [ 1.00, 0.84, 0.77 ],
+            #[ 1.00, 0.95, 0.95 ],
+            [ 1.00, 1.0, 1.0 ], # white
         ]
 
     else:
@@ -945,6 +972,8 @@ def convert_vtk_to_obj(vtk_file: str="", colormap: int=0, color_max=None) -> str
     return obj_file
 
 def create_blender_setup(obj_file: str="") -> None:
+    global use_matte_material
+
     ## Blender setup
     print("blender setup:")
     print("")
@@ -1088,9 +1117,17 @@ def create_blender_setup(obj_file: str="") -> None:
     if bsdf == None:
         bsdf = nodes.new(type='ShaderNodeBsdfPrincipled')
 
-    bsdf.inputs['Metallic'].default_value = 0.4 # 0.1
-    bsdf.inputs['Roughness'].default_value = 0.5 # 0.8
-    bsdf.inputs['Specular'].default_value = 0.2 # 0.3
+    if use_matte_material:
+        # more matte material appearance
+        print("  using matte material appearance")
+        bsdf.inputs['Metallic'].default_value = 0.1
+        bsdf.inputs['Roughness'].default_value = 0.8
+        bsdf.inputs['Specular'].default_value = 0.3
+    else:
+        # default material w/ more glossy appearance
+        bsdf.inputs['Metallic'].default_value = 0.4
+        bsdf.inputs['Roughness'].default_value = 0.5
+        bsdf.inputs['Specular'].default_value = 0.2
 
     # (default) color map from vtk file
     links.new(bsdf.inputs['Base Color'],color_attribute.outputs['Color'])
@@ -1328,6 +1365,178 @@ def add_blender_buildings(buildings_file: str="") -> None:
 
     print("  blender buildings mesh done")
     print("")
+
+def add_borders(borders_file: str="") -> None:
+    """
+    adds AVS boundary borders given by input .inp file
+    """
+    global mesh_origin,mesh_scale_factor
+
+    # checks if anything to do
+    if len(borders_file) == 0: return
+
+    print("borders file: ",borders_file)
+    print("")
+
+    # check file
+    if not os.path.exists(borders_file):
+        print("Error: borders file specified not found...")
+        sys.exit(1)
+
+    # borders need to be given as .inp (AVS UCD) format file
+    print("  reading in .inp mesh...")
+
+    # gets file extension
+    extension = os.path.splitext(vtk_file)[1]
+    # reads the vtk file
+    if extension == '.inp':
+        # AVS .inp
+        #reader = vtk.vtkSimplePointsReader()
+        reader = vtk.vtkAVSucdReader()
+        reader.SetFileName(borders_file)
+        reader.Update()
+    else:
+        print("unknown borders file extension ",extension," - exiting...")
+        sys.exit(1)
+
+    #debug
+    #print(reader)
+
+    # convert to .ply data file
+    # Get the unstructured grid data
+    unstructured_grid = reader.GetOutput()
+
+    # convert the data to polydata
+    geometry_filter = vtk.vtkGeometryFilter()
+    geometry_filter.SetInputData(unstructured_grid)
+    geometry_filter.Update()
+    # creates a new polydata object
+    polydata = geometry_filter.GetOutput()
+
+    # checks if we have points
+    if polydata.GetNumberOfPoints() == 0:
+        print("  unstructured grid: number of points",unstructured_grid.GetNumberOfPoints())
+        if unstructured_grid.GetNumberOfPoints() > 0:
+            points = unstructured_grid.GetPoints()
+            polydata.SetPoints(points)
+        else:
+            print("no points found.")
+            return
+
+    print("  polydata: number of points",polydata.GetNumberOfPoints())
+    print("  polydata: number of lines",polydata.GetNumberOfLines())
+    # not interested in cells, point data, etc.
+    #print("  polydata: number of verts",polydata.GetNumberOfVerts())
+    #print("  polydata: number of cells",polydata.GetNumberOfCells())
+    #print("  polydata: number of strips",polydata.GetNumberOfStrips())
+    #print("  polydata: number of data arrays",polydata.GetPointData().GetNumberOfArrays())
+    print("")
+
+    if polydata.GetNumberOfPoints() == 0:
+        print("no points found in the AVS UCD file after extracting edges.")
+        return
+
+    if polydata.GetNumberOfLines() == 0:
+        print("no lines found in the AVS UCD file after extracting edges.")
+        return
+
+    # moves and scales UTM point locations
+    # need to translate and scale the UTM point location to place it within the vtk mesh
+    print("  UTM points: moving & scaling mesh...")
+    print("              mesh origin       = ",mesh_origin)
+    print("              mesh scale factor = ",mesh_scale_factor)
+    print("")
+
+    # Loop through each point, scale its coordinates, and add it to the new points array
+    points_vtk = polydata.GetPoints()
+    num_points = polydata.GetNumberOfPoints()
+    for i in range(num_points):
+        # Get the current coordinates of the point
+        # translation by origin
+        point = np.array(points_vtk.GetPoint(i)) - mesh_origin
+        # uniform scaling
+        point *= mesh_scale_factor
+        # Define the point of interest (X, Y, Z coordinates)
+        vpoint = Vector((point[0], point[1], point[2]))
+        # get elevation
+        elevation = get_mesh_elevation(vpoint)
+        # checks if valid
+        if elevation is None: elevation = 0.1 # sets a default height
+        # debug
+        #print(f"    mesh elevation at point {point} = {elevation}")
+        # set to vertical elevation
+        point[2] = elevation
+        # set modified coordinates back
+        points_vtk.SetPoint(i,point)
+
+    # Create a new curve datablock
+    print("  creating Blender curve objects...")
+    curve_data = bpy.data.curves.new(name='Borders', type='CURVE')
+    curve_data.dimensions = '3D'
+    curve_data.resolution_u = 2  # Resolution of the curve in viewport/render
+
+    # Create a new object with the curve datablock
+    curve_obj = bpy.data.objects.new('Borders', curve_data)
+
+    # Link the object to the scene collection
+    bpy.context.collection.objects.link(curve_obj)
+
+    # Organize into a specific collection
+    target_collection = bpy.data.collections.new('AVS_Borders_Lines')
+    bpy.context.scene.collection.children.link(target_collection)
+    print("    created new collection: 'AVS_Borders_Lines'")
+
+    # Link the object to the target collection
+    target_collection.objects.link(curve_obj)
+
+    # Unlink from the default scene collection if it's there
+    # This prevents the object from appearing in multiple collections simultaneously if it was already linked
+    if curve_obj.name in bpy.context.collection.objects and bpy.context.collection != target_collection:
+        bpy.context.collection.objects.unlink(curve_obj)
+        #print(f"  unlinked '{curve_obj.name}' from default scene collection.")
+
+    # Iterate through each polyline/line in the VTK data
+    # VTK lines are stored as a connectivity list.
+    # Each entry starts with the number of points in the polyline,
+    # followed by the point indices.
+    lines_vtk = polydata.GetLines()
+
+    # Reset cursor for lines iteration
+    lines_vtk.InitTraversal()
+
+    id_list = vtk.vtkIdList()
+    num_splines_created = 0
+
+    while lines_vtk.GetNextCell(id_list):
+        num_points_in_line = id_list.GetNumberOfIds()
+        # A line needs at least 2 points
+        if num_points_in_line < 2:
+            continue
+
+        # Create a new spline for each line/polyline
+        spline = curve_data.splines.new('POLY') # Use 'POLY' for straight line segments
+        spline.points.add(num_points_in_line - 1) # Add points (one is already there)
+
+        for i in range(num_points_in_line):
+            point_index = id_list.GetId(i)
+            # VTK points are float[3]
+            x, y, z = points_vtk.GetPoint(point_index)
+            # Set the coordinates for the spline point
+            # Blender spline points are (x, y, z, w) where w is weight for NURBS, not needed for POLY
+            spline.points[i].co = (x, y, z, 1.0) # Set weight to 1.0 for POLY
+
+        num_splines_created += 1
+
+    # Make lines renderable (e.g., as tubes)
+    borders_line_thickness = 0.002
+
+    curve_data.bevel_depth = borders_line_thickness  # Thickness of the tube
+    curve_data.bevel_resolution = 2 # Smoothness of the tube
+    curve_data.fill_mode = 'FULL' # Make it a solid tube
+
+    print(f"    created Blender curve 'Borders' with {num_splines_created} splines.")
+    print("")
+    return
 
 
 def get_mesh_elevation(point_of_interest: Vector) -> float:
@@ -1643,7 +1852,7 @@ def add_title(title: str="") -> None:
     global centered_view
 
     if len(title) > 0:
-        print("  adding text object:")
+        print("  adding title text object")
         print("    title = ",title)
 
         # Create a new text object
@@ -1653,7 +1862,7 @@ def add_title(title: str="") -> None:
 
         # Set text properties (font, size, etc.)
         text_object.data.size = 0.2  # Adjust the font size
-
+        text_object.name = "Title_Text"
         #debug
         #print("  blender fonts available: ",bpy.data.fonts.keys())
 
@@ -1753,11 +1962,24 @@ def add_location_labels(locations_file: str="") -> None:
             print(f"  Skipping malformed line: {line}")
             continue
 
-
         # Convert latitude and longitude to UTM / 3D coordinates
         x_utm, y_utm = convert_latlon_to_UTM(lat, lon)
 
-        print(f"  location label:  {loc_name} - lat/lon {lat}/{lon}")
+        # sets marker type (or label type)
+        if loc_name == "-":
+            # marker only
+            is_marker_only = True
+        else:
+            # label type
+            is_marker_only = False
+
+        # info
+        if is_marker_only:
+            # marker only
+            print(f"  location label: marker at lat/lon {lat}/{lon}")
+        else:
+            # label text
+            print(f"  location label: {loc_name} - lat/lon {lat}/{lon}")
 
         # Translate the vertices (example: translating by (1, 0, 0))
         x = x_utm - mesh_origin[0]
@@ -1776,15 +1998,27 @@ def add_location_labels(locations_file: str="") -> None:
         else:
             z = 0.001
 
+        # use text "-" for markers only (no text)
+        if is_marker_only:
+            # marker, smaller radius
+            r = 0.005
+        else:
+            # default sphere lable radius
+            r = 0.02
+
         # Create a small sphere (circle) to represent the location
-        bpy.ops.mesh.primitive_uv_sphere_add(radius=0.02, location=(x, y, z))
+        bpy.ops.mesh.primitive_uv_sphere_add(radius=r, location=(x, y, z))
         sphere = bpy.context.object
         sphere.name = f"{loc_name}_Marker"
 
         # Set marker material
         sphere_material = bpy.data.materials.new(name="TextMaterial")
         sphere_material.use_nodes = True
-        sphere_material.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (0.1, 0.05, 0.05, 1)
+        if is_marker_only:
+            color = (1.0, 1.0, 1.0, 1)
+        else:
+            color = (0.1, 0.05, 0.05, 1)
+        sphere_material.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = color
         sphere_material.node_tree.nodes["Principled BSDF"].inputs["Alpha"].default_value = 0.5   # transparency
         sphere_material.node_tree.nodes["Principled BSDF"].inputs["Specular"].default_value = 0  # Reduce shine
         sphere_material.shadow_method = 'NONE'  # Blender 3.x
@@ -1792,52 +2026,132 @@ def add_location_labels(locations_file: str="") -> None:
         sphere.data.materials.append(sphere_material)
 
         # Create a new text object
-        bpy.ops.object.text_add()
-        text_object = bpy.context.object
-        text_object.data.body = loc_name  # Set the text content
-        text_object.name = f"{loc_name}_Label"
-        #text_object.data.use_shadow = False  # Disable text's own shadow
+        if not is_marker_only:
+            # location text
+            bpy.ops.object.text_add()
+            text_object = bpy.context.object
+            text_object.data.body = loc_name  # Set the text content
+            text_object.name = f"{loc_name}_Label"
+            #text_object.data.use_shadow = False  # Disable text's own shadow
 
-        # Set text properties (font, size, etc.)
-        text_object.data.size = 0.05  # Adjust the font size
-        #text_object.rotation_euler = (0, 0, np.radians(90))
+            # Set text properties (font, size, etc.)
+            text_object.data.size = 0.05  # Adjust the font size
+            #text_object.rotation_euler = (0, 0, np.radians(90))
 
-        if 'Bfont' in bpy.data.fonts:
-            text_object.data.font = bpy.data.fonts['Bfont']  # Use a specific default font
-        elif 'Bfont Regular' in bpy.data.fonts:
-            text_object.data.font = bpy.data.fonts['Bfont Regular']  # Use a specific default font
-        elif 'Arial Regular' in bpy.data.fonts:
-            text_object.data.font = bpy.data.fonts['Arial Regular']
+            if 'Bfont' in bpy.data.fonts:
+                text_object.data.font = bpy.data.fonts['Bfont']  # Use a specific default font
+            elif 'Bfont Regular' in bpy.data.fonts:
+                text_object.data.font = bpy.data.fonts['Bfont Regular']  # Use a specific default font
+            elif 'Arial Regular' in bpy.data.fonts:
+                text_object.data.font = bpy.data.fonts['Arial Regular']
 
-        # Adjust the location as needed
-        # align to center
-        text_object.data.align_x = 'CENTER'
-        text_object.data.align_y = 'BOTTOM_BASELINE'
+            # Adjust the location as needed
+            # align to center
+            text_object.data.align_x = 'CENTER'
+            text_object.data.align_y = 'BOTTOM_BASELINE'
 
-        # get dimensions of text
-        #bbox_size = text_object.dimensions
-        #print("    text dimensions = ",bbox_size[0],"/",bbox_size[1],"/",bbox_size[2])
+            # get dimensions of text
+            #bbox_size = text_object.dimensions
+            #print("    text dimensions = ",bbox_size[0],"/",bbox_size[1],"/",bbox_size[2])
 
-        x_text = x
-        y_text = y + 0.03
-        z_text = z + 0.01   # shift above mesh by tiny bit
+            x_text = x
+            y_text = y + 0.03
+            z_text = z + 0.01   # shift above mesh by tiny bit
 
-        #debug
-        #print("    mesh location = ",x_text,"/",y_text,"/",z_text)
+            #debug
+            #print("    mesh location = ",x_text,"/",y_text,"/",z_text)
 
-        text_object.location = (x_text, y_text, z_text)
+            text_object.location = (x_text, y_text, z_text)
 
-        # Set text material
-        text_material = bpy.data.materials.new(name="TextMaterial")
-        text_material.use_nodes = True
-        text_material.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = location_labels_color
-        text_material.node_tree.nodes["Principled BSDF"].inputs["Alpha"].default_value = 1   # transparency
-        text_material.node_tree.nodes["Principled BSDF"].inputs["Specular"].default_value = 0  # Reduce shine
-        text_material.shadow_method = 'NONE'  # Blender 3.x
-        text_material.blend_method = 'BLEND'  # 'Alpha Blend'
-        text_object.data.materials.append(text_material)
+            # Set text material
+            text_material = bpy.data.materials.new(name="TextMaterial")
+            text_material.use_nodes = True
+            text_material.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = location_labels_color
+            text_material.node_tree.nodes["Principled BSDF"].inputs["Alpha"].default_value = 1   # transparency
+            text_material.node_tree.nodes["Principled BSDF"].inputs["Specular"].default_value = 0  # Reduce shine
+            text_material.shadow_method = 'NONE'  # Blender 3.x
+            text_material.blend_method = 'BLEND'  # 'Alpha Blend'
+            text_object.data.materials.append(text_material)
 
     print("")
+
+def add_time_text():
+    """
+    adds a time string
+    """
+    global time_string
+
+    # check if anything to do
+    if time_string is None: return
+
+    print("  adding time info")
+    print("    time string: ",time_string)
+
+    if len(time_string) == 0: return
+
+    # time text
+    bpy.ops.object.text_add()
+    text_object = bpy.context.object
+
+    text_object.data.body = time_string  # text
+    #text_object.data.extrude = 0.01         # Small extrusion for visibility
+    text_object.name = "Time_Label"
+
+    # Set text properties (font, size, etc.)
+    text_object.data.size = 0.05  # Adjust the font size
+    #text_object.rotation_euler = (0, 0, np.radians(90))
+
+    # load fonts
+    font_dir = bpy.context.preferences.filepaths.font_directory
+    for file in os.listdir(font_dir):
+        if file.endswith(".ttf"):
+            bpy.data.fonts.load(font_dir + file)
+    # show fonts info
+    #for font in bpy.data.fonts:
+    #    print("    available font: ",font)
+    #print("")
+
+    # Use a specific default font
+    if 'DIN-Regular Regular' in bpy.data.fonts:
+        print("    using font: ",'DIN-Regular Regular')
+        text_object.data.font = bpy.data.fonts['DIN-Regular Regular']
+    elif 'Orbitron Regular' in bpy.data.fonts:
+        print("    using font: ",'Orbitron Regular')
+        text_object.data.font = bpy.data.fonts['Orbitron Regular']
+    elif 'Arial Regular' in bpy.data.fonts:
+        print("    using font: ",'Arial Regular')
+        text_object.data.font = bpy.data.fonts['Arial Regular']
+    elif 'Bfont' in bpy.data.fonts:
+        print("    using font: ",'Bfont')
+        text_object.data.font = bpy.data.fonts['Bfont']
+    elif 'Bfont Regular' in bpy.data.fonts:
+        print("    using font: ",'Bfont Regular')
+        text_object.data.font = bpy.data.fonts['Bfont Regular']
+
+    # Adjust the location as needed
+    text_object.data.align_x = 'LEFT'
+    text_object.data.align_y = 'BOTTOM_BASELINE'
+
+    # get dimensions of text
+    #bbox_size = text_object.dimensions
+    #print("    text dimensions = ",bbox_size[0],"/",bbox_size[1],"/",bbox_size[2])
+
+    location = (1.02, 0.0, 0.01)  # shift above sea-level by tiny bit
+    print("    time text location: ",location)
+    print("")
+    text_object.location = location
+
+    # Set text material
+    text_material = bpy.data.materials.new(name="TimeTextMaterial")
+    text_material.use_nodes = True
+    text_material.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (0.8, 0.8, 0.8, 1)
+    text_material.node_tree.nodes["Principled BSDF"].inputs["Alpha"].default_value = 1   # transparency
+    text_material.node_tree.nodes["Principled BSDF"].inputs["Specular"].default_value = 0  # Reduce shine
+    text_material.shadow_method = 'NONE'  # Blender 3.x
+    text_material.blend_method = 'BLEND'  # 'Alpha Blend'
+    text_object.data.materials.append(text_material)
+    #text_object.hide_render = False # Ensure it's not hidden from render
+
 
 def set_scene() -> None:
     """
@@ -2248,6 +2562,9 @@ def render_blender_scene(title: str="", animation: bool=False) -> None:
     ## background plane
     add_plane()
 
+    # time
+    add_time_text()
+
     # text object
     add_title(title)
 
@@ -2276,7 +2593,7 @@ def render_blender_scene(title: str="", animation: bool=False) -> None:
 
 # main routine
 def plot_with_blender(vtk_file: str="", image_title: str="", colormap: int=0, color_max: float=None,
-                      buildings_file: str="", locations_file: str="", animation: bool=False) -> None:
+                      buildings_file: str="", borders_file: str="", locations_file: str="", animation: bool=False) -> None:
     """
     renders image for (earth) sphere with textures
     """
@@ -2294,6 +2611,9 @@ def plot_with_blender(vtk_file: str="", image_title: str="", colormap: int=0, co
     # add buildings
     add_blender_buildings(buildings_file)
 
+    # add borders
+    add_borders(borders_file)
+
     # add locations
     add_location_labels(locations_file)
 
@@ -2303,10 +2623,10 @@ def plot_with_blender(vtk_file: str="", image_title: str="", colormap: int=0, co
 
 def usage() -> None:
     print("usage: ./plot_with_blender.py [--vtk_file=file] [--title=my_mesh_name] [--colormap=val] [--color-max=val] [--vertical-exaggeration=val]")
-    print("                              [--buildings=file] [--shift-buildings=val]")
-    print("                              [--locations=file] [--utm-zone=ZoneNumber]")
+    print("                              [--buildings=file] [--shift-buildings=val] [--borders=file]")
+    print("                              [--locations=file] [--utm-zone=ZoneNumber] [--time='val']")
     print("                              [--no-sea-level] [--transparent-sea-level] [--sea-level-separation=val]")
-    print("                              [--centered] [--closeup] [--small] [--anim]")
+    print("                              [--centered] [--closeup] [--small] [--anim] [--matte]")
     print("                              [--with-cycles/--no-cycles] [--suppress]")
     print("                              [--help]")
     print("  with")
@@ -2314,14 +2634,17 @@ def usage() -> None:
     print("     --title                   - title text (added to image rendering)")
     print("     --colormap                - color map type: 0==VTK        / 1==topo      / 2==lisbon    / 3==lajolla       / 4==lipari")
     print("                                                 5==davos      / 6==turku     / 7==berlin    / 8==grayC         / 9==snow")
-    print("                                                10==shakeGreen /11==shakeRed  /12==shakeUSGS /13==shakeUSGSgray")
+    print("                                                10==shakeGreen /11==shakeRed  /12==shakeUSGS /13==shakeUSGSgray /14==shakeUSGSblack")
+    print("                                                15==shakeBlack /16==gist_earth")
     print("                                                 (default is shakeUSGSgray for shakemaps)")
     print("     --color-max               - fixes maximum value of colormap for moviedata to val, e.g., 1.e-7)")
     print("     --vertical-exaggeration   - factor to scales vertical dimension")
     print("")
     print("     --buildings               - mesh file (.ply) with buildings to visualize for the area")
     print("     --shift-buildings         - moves buildings up, e.g., a factor 0.0005 (default is no shift==0.0)")
+    print("     --borders                 - AVS borders file (.inp) with UTM border lines to visualize on mesh")
     print("     --locations               - file with location labels (using a format: #name #lat #lon)")
+    print("     --time                    - a time string to add to the display (e.g. '13:24:00')")
     print("     --white-labels            - use white text for location labels")
     print("     --utm_zone                - use specified UTM zone number (1-60) with (+) for Northern (-) for Southern hemisphere (e.g., -58)")
     print("     --no-sea-level            - turns off sea-level plane")
@@ -2332,6 +2655,7 @@ def usage() -> None:
     print("     --closeup                 - sets camera view closer to center of model")
     print("     --small                   - turns on small images size (400x600px) for preview")
     print("     --anim                    - turns on movie animation (dive-in and rotation by default, use --no-rotation or --no-dive-in to turn off)")
+    print("     --matte                   - uses matte material appearance for mesh")
     print("")
     print("     --with-cycles/--no-cycles - turns on/off CYCLES renderer (default is off, using BLENDER_EEVEE)")
     print("     --suppress                - suppress renderer output (default is off)")
@@ -2349,6 +2673,7 @@ if __name__ == '__main__':
     sea_level_separation_shift = None
     buildings_file = ""
     locations_file = ""
+    borders_file = ""
     animation = False
 
     # reads arguments
@@ -2362,6 +2687,14 @@ if __name__ == '__main__':
             usage()
         elif "--anim" in arg:
             animation = True
+        elif "--background-dark" in arg:
+            world_background_color = (0.05,0.05,0.05,1)  # dark world background
+        elif "--background-blue" in arg:
+            world_background_color = (0.05,0.05,0.1,1)   # dark-blue world background
+        elif "--background-black" in arg:
+            world_background_color = (0,0,0,1)           # black world background
+        elif "--borders=" in arg:
+            borders_file = arg.split('=')[1]
         elif "--buildings=" in arg:
             buildings_file = arg.split('=')[1]
         elif "--centered" in arg:
@@ -2372,41 +2705,33 @@ if __name__ == '__main__':
             color_max = float(arg.split('=')[1])
         elif "--colormap" in arg:
             colormap = int(arg.split('=')[1])
-        elif "--with-cycles" in arg:
-            use_cycles_renderer = True
+        elif "--locations=" in arg:
+            locations_file = arg.split('=')[1]
+        elif "--matte" in arg:
+            use_matte_material = True
         elif "--no-cycles" in arg:
             use_cycles_renderer = False
         elif "--no-dive-in" in arg:
             use_animation_dive_in = False
         elif "--no-rotation" in arg:
             use_animation_rotation = False
+        elif "--no-sea-level" in arg:
+            use_sea_level_plane = False
+        elif "--sea-level-separation=" in arg:
+            sea_level_separation = float(arg.split('=')[1])
+        elif "--shift-buildings" in arg:
+            shift_building_baseline = float(arg.split('=')[1])
         elif "--small" in arg:
             blender_img_resolution_X = 600
             blender_img_resolution_Y = 400
-        elif "--shift-buildings" in arg:
-            shift_building_baseline = float(arg.split('=')[1])
         elif "--suppress" in arg:
             suppress_renderer_output = True
+        elif "--time=" in arg:
+            time_string = arg.split('=')[1]
         elif "--title=" in arg:
             image_title = arg.split('=')[1]
-        elif "--no-sea-level" in arg:
-            use_sea_level_plane = False
         elif "--transparent-sea-level" in arg:
             use_transparent_sea_level_plane = True
-        elif "--sea-level-separation=" in arg:
-            sea_level_separation = float(arg.split('=')[1])
-        elif "--vtk_file=" in arg:
-            vtk_file = arg.split('=')[1]
-        elif "--background-dark" in arg:
-            world_background_color = (0.05,0.05,0.05,1)  # dark world background
-        elif "--background-blue" in arg:
-            world_background_color = (0.05,0.05,0.1,1)   # dark-blue world background
-        elif "--background-black" in arg:
-            world_background_color = (0,0,0,1)           # black world background
-        elif "--locations=" in arg:
-            locations_file = arg.split('=')[1]
-        elif "--white-labels" in arg:
-            location_labels_color = (0.9,0.9,0.9,1)      # white location labels
         elif "--utm_zone=" in arg:
             utm_zone = int(arg.split('=')[1])
             if abs(utm_zone) < 1 or utm_zone > 60:
@@ -2414,6 +2739,12 @@ if __name__ == '__main__':
                 sys.exit(1)
         elif "--vertical-exaggeration=" in arg:
             vertical_exaggeration = float(arg.split('=')[1])
+        elif "--vtk_file=" in arg:
+            vtk_file = arg.split('=')[1]
+        elif "--white-labels" in arg:
+            location_labels_color = (0.9,0.9,0.9,1)      # white location labels
+        elif "--with-cycles" in arg:
+            use_cycles_renderer = True
         elif i >= 8:
             print("argument not recognized: ",arg)
 
@@ -2434,4 +2765,4 @@ if __name__ == '__main__':
       print("command logged to file: " + filename)
 
     # main routine
-    plot_with_blender(vtk_file,image_title,colormap,color_max,buildings_file,locations_file,animation)
+    plot_with_blender(vtk_file,image_title,colormap,color_max,buildings_file,borders_file,locations_file,animation)
