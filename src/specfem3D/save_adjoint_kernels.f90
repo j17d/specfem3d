@@ -1282,13 +1282,15 @@
   integer :: irec_local,ier
   character(len=MAX_STRING_LEN) :: outputname
 
+  ! only for CMT sources
+  if (USE_FORCE_POINT_SOURCE) return
+
   ! checks
-  if (ADIOS_FOR_KERNELS ) stop 'Source derivative kernels not implemented yet for ADIOS'
+  if (ADIOS_FOR_KERNELS) stop 'Source derivative kernels not implemented yet for ADIOS'
 
   ! writes out derivative kernels
   do irec_local = 1, nrec_local
-    write(outputname,'(a,i6.6)') OUTPUT_FILES(1:len_trim(OUTPUT_FILES)) // &
-        '/src_frechet.',number_receiver_global(irec_local)
+    write(outputname,'(a,i6.6)') trim(OUTPUT_FILES) // '/src_frechet.',number_receiver_global(irec_local)
 
     open(unit=IOUT,file=trim(outputname),status='unknown',iostat=ier)
     if (ier /= 0) then

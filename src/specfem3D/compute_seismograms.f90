@@ -534,7 +534,7 @@
     hprime_xx,hprime_yy,hprime_zz, &
     hxir_store,hetar_store,hgammar_store, &
     hpxir_store,hpetar_store,hpgammar_store, &
-    ELASTIC_SIMULATION
+    ELASTIC_SIMULATION,USE_FORCE_POINT_SOURCE
 
   use specfem_par, only: GPU_MODE, Mesh_pointer
 
@@ -569,6 +569,10 @@
   ! checks if anything to do
   if (SIMULATION_TYPE /= 2) return
   if (.not. ELASTIC_SIMULATION) return
+
+  ! only for CMT sources
+  if (USE_FORCE_POINT_SOURCE) return
+  if (nrec_local == 0) return
 
   ! strain and moment derivatives are computed here on CPU routines,
   ! thus transfers displacement to the CPU
