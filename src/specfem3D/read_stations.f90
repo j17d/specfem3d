@@ -53,6 +53,9 @@
       read(IIN,"(a)",iostat=ier) line
       if (ier /= 0) call exit_mpi(myrank, 'Error reading station file '//trim(rec_filename))
 
+      ! suppress white space
+      line = trim(adjustl(line))
+
       ! skip comment lines
       if (len_trim(line) > 0 .and. line(1:1) /= '#') then
         line = trim(line)

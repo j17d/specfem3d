@@ -275,9 +275,11 @@
 
   subroutine save_kernels_elastic_iso()
 
-  use specfem_par, only: CUSTOM_REAL,NSPEC_AB,NSPEC_ADJOINT,ibool,mustore,kappastore, &
-                         ADIOS_FOR_KERNELS,IOUT,prname, &
-                         myrank,IMAIN
+  use constants, only: myrank,CUSTOM_REAL,IMAIN,IOUT
+  use specfem_par, only: NSPEC_AB,NSPEC_ADJOINT, &
+                         ibool,mustore,kappastore,rhostore, &
+                         ADIOS_FOR_KERNELS,prname
+
   use specfem_par_elastic
 
   implicit none
@@ -318,10 +320,11 @@
             iglob = ibool(i,j,k,ispec)
 
             ! Store local material values
-            rhol = rho_vs(i,j,k,ispec)*rho_vs(i,j,k,ispec) / mustore(i,j,k,ispec)
             mul = mustore(i,j,k,ispec)
             kappal = kappastore(i,j,k,ispec)
+            rhol = rhostore(i,j,k,ispec)
 
+            ! density kernel
             rho_kl(i,j,k,ispec) = - rhol * rho_kl(i,j,k,ispec)
 
             ! shear modulus kernel
@@ -720,8 +723,9 @@
     else
       ! fully anisotropic kernels
       ! note: the C_ij and density kernels are not for relative perturbations
-      ! (delta ln( m_i) = delta m_i / m_i),
-      !          but absolute perturbations (delta m_i = m_i - m_0).
+      !           (delta ln( m_i) = delta m_i / m_i),
+      !       but absolute perturbations
+      !           (delta m_i = m_i - m_0).
       open(unit=IOUT,file=trim(prname)//'rho_kernel.bin',status='unknown',form='unformatted',action='write')
       write(IOUT) - rho_kl
       close(IOUT)
@@ -1282,13 +1286,15 @@
   integer :: irec_local,ier
   character(len=MAX_STRING_LEN) :: outputname
 
+  ! only for CMT sources
+  if (USE_FORCE_POINT_SOURCE) return
+
   ! checks
-  if (ADIOS_FOR_KERNELS ) stop 'Source derivative kernels not implemented yet for ADIOS'
+  if (ADIOS_FOR_KERNELS) stop 'Source derivative kernels not implemented yet for ADIOS'
 
   ! writes out derivative kernels
   do irec_local = 1, nrec_local
-    write(outputname,'(a,i6.6)') OUTPUT_FILES(1:len_trim(OUTPUT_FILES)) // &
-        '/src_frechet.',number_receiver_global(irec_local)
+    write(outputname,'(a,i6.6)') trim(OUTPUT_FILES) // '/src_frechet.',number_receiver_global(irec_local)
 
     open(unit=IOUT,file=trim(outputname),status='unknown',iostat=ier)
     if (ier /= 0) then

@@ -418,9 +418,9 @@
         ny = abs_boundary_normal(2,igll,iface)
         nz = abs_boundary_normal(3,igll,iface)
 
-        vn = deltatover2*(nx+ny+nz)
+        vn = deltatover2 * (nx+ny+nz)
 
-        ! C*deltat/2 contributions
+        ! C * DT/2 contributions
         tx = rho_vp(i,j,k,ispec)*vn*nx + rho_vs(i,j,k,ispec)*(deltatover2-vn*nx)
         ty = rho_vp(i,j,k,ispec)*vn*ny + rho_vs(i,j,k,ispec)*(deltatover2-vn*ny)
         tz = rho_vp(i,j,k,ispec)*vn*nz + rho_vs(i,j,k,ispec)*(deltatover2-vn*nz)
@@ -506,7 +506,7 @@
         k = abs_boundary_ijk(3,igll,iface)
 
         ! C * DT/2 contribution
-        sn = deltatover2/rho_vp(i,j,k,ispec)
+        sn = deltatover2 / rho_vp(i,j,k,ispec)
 
         ! gets associated, weighted jacobian
         jacobianw = abs_boundary_jacobian2Dw(igll,iface)
