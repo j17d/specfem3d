@@ -143,8 +143,11 @@
   write(IOUT) gammazstore
   write(IOUT) jacobianstore
 
+  ! these arrays are needed for acoustic and elastic simulations (and ..)
+  ! thus we allocate it and read it in all cases (whether the simulation is acoustic, elastic, or acoustic/elastic, ..)
   write(IOUT) kappastore
   write(IOUT) mustore
+  write(IOUT) rhostore
 
   write(IOUT) ispec_is_acoustic
   write(IOUT) ispec_is_elastic
@@ -158,10 +161,6 @@
   if (ACOUSTIC_SIMULATION) then
     write(IOUT) rmass_acoustic
   endif
-
-  ! this array is needed for acoustic simulations but also for elastic simulations with CPML,
-  ! thus we allocate it and read it in all cases (whether the simulation is acoustic, elastic, or acoustic/elastic)
-  write(IOUT) rhostore
 
   ! elastic
   if (ELASTIC_SIMULATION) then

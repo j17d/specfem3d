@@ -58,8 +58,7 @@
 
         ! computes contribution from top element
         call compute_boundary_kernel_elem(kernel_moho_top, &
-                                          mustore(i,j,k,ispec_top), &
-                                          kappastore(i,j,k,ispec_top),rho_vs(i,j,k,ispec_top), &
+                                          mustore(i,j,k,ispec_top),kappastore(i,j,k,ispec_top),rhostore(i,j,k,ispec_top), &
                                           accel(:,iglob_top),b_displ(:,iglob_top), &
                                           dsdx_top(:,:,i,j,k,ispec2D),b_dsdx_top(:,:,i,j,k,ispec2D), &
                                           normal_moho_top(:,igll,ispec2D) )
@@ -76,12 +75,11 @@
           ! iglob_top == iglob_bot!
 
           ! computes contribution from bottom element
-          call compute_boundary_kernel_elem( kernel_moho_bot, &
-                      mustore(i,j,k,ispec_bot), &
-                      kappastore(i,j,k,ispec_bot),rho_vs(i,j,k,ispec_bot), &
-                      accel(:,iglob_bot),b_displ(:,iglob_bot), &
-                      dsdx_bot(:,:,i,j,k,ispec2D),b_dsdx_bot(:,:,i,j,k,ispec2D), &
-                      normal_moho_bot(:,jgll,ispec2D) )
+          call compute_boundary_kernel_elem(kernel_moho_bot, &
+                                            mustore(i,j,k,ispec_bot),kappastore(i,j,k,ispec_bot),rhostore(i,j,k,ispec_bot), &
+                                            accel(:,iglob_bot),b_displ(:,iglob_bot), &
+                                            dsdx_bot(:,:,i,j,k,ispec2D),b_dsdx_bot(:,:,i,j,k,ispec2D), &
+                                            normal_moho_bot(:,jgll,ispec2D) )
 
           ! note: kernel point position: indices given by ijk_moho_top(:,igll,ispec2D)
           moho_kl(igll,ispec2D) = moho_kl(igll,ispec2D) &
@@ -114,12 +112,11 @@
           iglob_top = ibool(i,j,k,ispec_top)
 
           ! computes contribution from top element
-          call compute_boundary_kernel_elem( kernel_moho_top, &
-                    mustore(i,j,k,ispec_top), &
-                    kappastore(i,j,k,ispec_top),rho_vs(i,j,k,ispec_top), &
-                    accel(:,iglob_top),b_displ(:,iglob_top), &
-                    dsdx_top(:,:,i,j,k,ispec2D),b_dsdx_top(:,:,i,j,k,ispec2D), &
-                    normal_moho_top(:,igll,ispec2D) )
+          call compute_boundary_kernel_elem(kernel_moho_top, &
+                                            mustore(i,j,k,ispec_top),kappastore(i,j,k,ispec_top),rhostore(i,j,k,ispec_top), &
+                                            accel(:,iglob_top),b_displ(:,iglob_top), &
+                                            dsdx_top(:,:,i,j,k,ispec2D),b_dsdx_top(:,:,i,j,k,ispec2D), &
+                                            normal_moho_top(:,igll,ispec2D) )
 
           ! note: kernel point position igll: indices given by ijk_moho_top(:,igll,ispec2D)
           moho_kl(igll,ispec2D) = moho_kl(igll,ispec2D) + kernel_moho_top * deltat
@@ -131,12 +128,11 @@
           iglob_bot = ibool(i,j,k,ispec_bot)
 
           ! computes contribution from bottom element
-          call compute_boundary_kernel_elem( kernel_moho_bot, &
-                    mustore(i,j,k,ispec_bot), &
-                    kappastore(i,j,k,ispec_bot),rho_vs(i,j,k,ispec_bot), &
-                    accel(:,iglob_bot),b_displ(:,iglob_bot), &
-                    dsdx_bot(:,:,i,j,k,ispec2D),b_dsdx_bot(:,:,i,j,k,ispec2D), &
-                    normal_moho_bot(:,igll,ispec2D) )
+          call compute_boundary_kernel_elem(kernel_moho_bot, &
+                                            mustore(i,j,k,ispec_bot),kappastore(i,j,k,ispec_bot),rhostore(i,j,k,ispec_bot), &
+                                            accel(:,iglob_bot),b_displ(:,iglob_bot), &
+                                            dsdx_bot(:,:,i,j,k,ispec2D),b_dsdx_bot(:,:,i,j,k,ispec2D), &
+                                            normal_moho_bot(:,igll,ispec2D) )
 
           ! note: kernel point position igll: indices given by ijk_moho_bot(:,igll,ispec2D)
           moho_kl(igll,ispec2D) = moho_kl(igll,ispec2D) - kernel_moho_bot * deltat
@@ -153,24 +149,27 @@ end subroutine compute_boundary_kernel
 !-------------------------------------------------------------------------------------------------
 !
 
-subroutine compute_boundary_kernel_elem(kernel, mul, kappal, rho_vsl, &
+subroutine compute_boundary_kernel_elem(kernel, mul, kappal, rhol, &
                                         accel, b_displ, ds, b_ds, norm)
 
 ! compute the boundary kernel contribution from one side of the boundary
 ! see e.g.: Tromp et al. (2005), eq. (25), or Liu & Tromp (2008), eq. (65)
 
-  use constants
+  use constants, only: CUSTOM_REAL,NDIM,ONE
 
   implicit none
 
-  real(kind=CUSTOM_REAL)  kernel, mul, kappal, rho_vsl
-  real(kind=CUSTOM_REAL) :: accel(NDIM), b_displ(NDIM), ds(NDIM,NDIM), b_ds(NDIM,NDIM), norm(NDIM)
+  real(kind=CUSTOM_REAL), intent(inout) ::  kernel
+  real(kind=CUSTOM_REAL), intent(in) ::  mul, kappal, rhol
+  real(kind=CUSTOM_REAL), intent(in) :: accel(NDIM), b_displ(NDIM)
+  real(kind=CUSTOM_REAL), intent(in) :: ds(NDIM,NDIM), b_ds(NDIM,NDIM), norm(NDIM)
 
+  ! local parameters
   real(kind=CUSTOM_REAL) :: eps3, eps(NDIM,NDIM), epsdev(NDIM,NDIM), normal(NDIM,1)
   real(kind=CUSTOM_REAL) :: b_eps3, b_eps(NDIM,NDIM), b_epsdev(NDIM,NDIM)
-  real(kind=CUSTOM_REAL) :: temp1(NDIM,NDIM), rhol, kl(1,1), one_matrix(1,1)
+  real(kind=CUSTOM_REAL) :: temp1(NDIM,NDIM), kl(1,1), one_matrix(1,1)
 
-
+  ! initializes
   normal(:,1) = norm
   one_matrix(1,1) = ONE
 
@@ -194,7 +193,6 @@ subroutine compute_boundary_kernel_elem(kernel, mul, kappal, rho_vsl, &
   epsdev(2,2) = eps(2,2) - eps3 / 3
   epsdev(3,3) = eps(3,3) - eps3 / 3
 
-
   ! backward/reconstructed-forward strain (epsilon) trace
   b_eps3 = b_ds(1,1) + b_ds(2,2) + b_ds(3,3)
 
@@ -217,9 +215,6 @@ subroutine compute_boundary_kernel_elem(kernel, mul, kappal, rho_vsl, &
 
   ! matrix multiplication
   temp1 = matmul(epsdev,b_epsdev)
-
-  ! density value
-  rhol = rho_vsl ** 2 / mul
 
   ! isotropic kernel value
   ! see e.g.: Tromp et al. (2005), eq. (25), or Liu & Tromp 2008, eq. (65)

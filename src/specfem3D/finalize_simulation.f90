@@ -142,8 +142,7 @@
   use fault_solver_kinematic, only: SIMULATION_TYPE_KIN,BC_KINFLT_free
 
   !! solving wavefield discontinuity problem with non-split-node scheme
-  use wavefield_discontinuity_solver, only: &
-               finalize_wavefield_discontinuity
+  use wavefield_discontinuity_solver, only: finalize_wavefield_discontinuity
 
   implicit none
 
@@ -232,6 +231,56 @@
   deallocate(xstore,ystore,zstore)
   deallocate(kappastore,mustore,rhostore)
   deallocate(ispec_is_acoustic,ispec_is_elastic,ispec_is_poroelastic)
+
+  if (ELASTIC_SIMULATION) then
+    if (allocated(rho_vp)) deallocate(rho_vp)
+    if (allocated(rho_vs)) deallocate(rho_vs)
+  endif
+
+  ! kernels
+  if (SIMULATION_TYPE == 3) then
+    ! acoustic
+    if (allocated(rho_ac_kl)) deallocate(rho_ac_kl)
+    if (allocated(kappa_ac_kl)) deallocate(kappa_ac_kl)
+    if (allocated(rhop_ac_kl)) deallocate(rhop_ac_kl)
+    if (allocated(alpha_ac_kl)) deallocate(alpha_ac_kl)
+    ! elastic
+    if (allocated(rho_kl)) deallocate(rho_kl)
+    if (allocated(mu_kl)) deallocate(mu_kl)
+    if (allocated(kappa_kl)) deallocate(kappa_kl)
+    if (allocated(cijkl_kl)) deallocate(cijkl_kl)
+    ! poroelastic
+    if (allocated(rhot_kl)) deallocate(rhot_kl)
+    if (allocated(rhof_kl)) deallocate(rhof_kl)
+    if (allocated(sm_kl)) deallocate(sm_kl)
+    if (allocated(eta_kl)) deallocate(eta_kl)
+    if (allocated(mufr_kl)) deallocate(mufr_kl)
+    if (allocated(B_kl)) deallocate(B_kl)
+    if (allocated(C_kl)) deallocate(C_kl)
+    if (allocated(M_kl)) deallocate(M_kl)
+    if (allocated(rhob_kl)) deallocate(rhob_kl)
+    if (allocated(rhofb_kl)) deallocate(rhofb_kl)
+    if (allocated(Bb_kl)) deallocate(Bb_kl)
+    if (allocated(Cb_kl)) deallocate(Cb_kl)
+    if (allocated(Mb_kl)) deallocate(Mb_kl)
+    if (allocated(mufrb_kl)) deallocate(mufrb_kl)
+    if (allocated(phi_kl)) deallocate(phi_kl)
+    if (allocated(rhobb_kl)) deallocate(rhobb_kl)
+    if (allocated(rhofbb_kl)) deallocate(rhofbb_kl)
+    if (allocated(phib_kl)) deallocate(phib_kl)
+    if (allocated(ratio_kl)) deallocate(ratio_kl)
+    if (allocated(cs_kl)) deallocate(cs_kl)
+    if (allocated(cpI_kl)) deallocate(cpI_kl)
+    if (allocated(cpII_kl)) deallocate(cpII_kl)
+    ! hessians
+    if (allocated(hess_ac_kl)) deallocate(hess_ac_kl)
+    if (allocated(hess_rho_ac_kl)) deallocate(hess_rho_ac_kl)
+    if (allocated(hess_kappa_ac_kl)) deallocate(hess_kappa_ac_kl)
+    if (allocated(hess_kl)) deallocate(hess_kl)
+    if (allocated(hess_rho_kl)) deallocate(hess_rho_kl)
+    if (allocated(hess_kappa_kl)) deallocate(hess_kappa_kl)
+    if (allocated(hess_mu_kl)) deallocate(hess_mu_kl)
+  endif
 
   ! faults
   if (SIMULATION_TYPE_DYN) call BC_DYNFLT_free()

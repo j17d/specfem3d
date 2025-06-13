@@ -394,8 +394,11 @@
 
     dset_name = "kappastore" ! 4 r (/0,0,0,offset_nspec/)
     call h5_create_dataset_gen(dset_name,(/NGLLX,NGLLY,NGLLZ,sum(offset_nspec(:))/), 4, CUSTOM_REAL)
-    dset_name = "mustore" ! 4 r (/0,0,0,offset_nspec/)
+    dset_name = "mustore"    ! 4 r (/0,0,0,offset_nspec/)
     call h5_create_dataset_gen(dset_name,(/NGLLX,NGLLY,NGLLZ,sum(offset_nspec(:))/), 4, CUSTOM_REAL)
+    dset_name = "rhostore"   ! 4 r (/0,0,0,offset_nspec/)
+    call h5_create_dataset_gen(dset_name,(/NGLLX,NGLLY,NGLLZ,sum(offset_nspec(:))/), 4, CUSTOM_REAL)
+
     dset_name = "ispec_is_acoustic" ! 1 l (/0,0,0,offset_nspec/)
     call h5_create_dataset_gen(dset_name,(/sum(offset_nspec(:))/), 1, 0)
     dset_name = "ispec_is_elastic" ! 1 l (/0,0,0,offset_nspec/)
@@ -408,11 +411,6 @@
       dset_name = "rmass_acoustic" ! 1 r (/offset_nglob/)
       call h5_create_dataset_gen(dset_name,(/sum(offset_nglob(:))/), 1, CUSTOM_REAL)
     endif
-
-    ! this array is needed for acoustic simulations but also for elastic simulations with CPML,
-    ! thus we allocate it and read it in all cases (whether the simulation is acoustic, elastic, or acoustic/elastic)
-    dset_name = "rhostore" ! 4 r (/0,0,0,offset_nspec/)
-    call h5_create_dataset_gen(dset_name,(/NGLLX,NGLLY,NGLLZ,sum(offset_nspec(:))/), 4, CUSTOM_REAL)
 
     ! elastic
     if (ELASTIC_SIMULATION) then
@@ -940,10 +938,14 @@
   call h5_write_dataset_collect_hyperslab(dset_name,gammazstore,(/0,0,0,sum(offset_nspec_irregular(0:myrank-1))/),H5_COL)
   dset_name = "jacobianstore" ! 4 r (/0,0,0,offset_nspec_irregular = offset_nspec/)
   call h5_write_dataset_collect_hyperslab(dset_name,jacobianstore,(/0,0,0,sum(offset_nspec_irregular(0:myrank-1))/),H5_COL)
+
   dset_name = "kappastore" ! 4 r (/0,0,0,offset_nspec/)
   call h5_write_dataset_collect_hyperslab(dset_name,kappastore,(/0,0,0,sum(offset_nspec(0:myrank-1))/),H5_COL)
   dset_name = "mustore" ! 4 r (/0,0,0,offset_nspec/)
   call h5_write_dataset_collect_hyperslab(dset_name,mustore,(/0,0,0,sum(offset_nspec(0:myrank-1))/),H5_COL)
+  dset_name = "rhostore" ! 4 r (/0,0,0,offset_nspec/)
+  call h5_write_dataset_collect_hyperslab(dset_name, rhostore, (/0,0,0,sum(offset_nspec(0:myrank-1))/),H5_COL)
+
   dset_name = "ispec_is_acoustic" ! 1 l (/0,0,0,offset_nspec/)
   call h5_write_dataset_collect_hyperslab(dset_name, ispec_is_acoustic, (/sum(offset_nspec(0:myrank-1))/),H5_COL)
   dset_name = "ispec_is_elastic" ! 1 l (/0,0,0,offset_nspec/)
@@ -956,11 +958,6 @@
     dset_name = "rmass_acoustic" ! 1 r (/offset_nglob/)
     call h5_write_dataset_collect_hyperslab(dset_name, rmass_acoustic,(/sum(offset_nglob(0:myrank-1))/),H5_COL)
   endif
-
-  ! this array is needed for acoustic simulations but also for elastic simulations with CPML,
-  ! thus we allocate it and read it in all cases (whether the simulation is acoustic, elastic, or acoustic/elastic)
-  dset_name = "rhostore" ! 4 r (/0,0,0,offset_nspec/)
-  call h5_write_dataset_collect_hyperslab(dset_name, rhostore, (/0,0,0,sum(offset_nspec(0:myrank-1))/),H5_COL)
 
   ! elastic
   if (ELASTIC_SIMULATION) then

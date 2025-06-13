@@ -183,6 +183,7 @@
 
   write(IOUT) kappastore
   write(IOUT) mustore
+  write(IOUT) rhostore
 
   write(IOUT) ispec_is_acoustic
   write(IOUT) ispec_is_elastic
@@ -193,7 +194,6 @@
   call any_all_l( ANY(ispec_is_acoustic), ACOUSTIC_SIMULATION )
   if (ACOUSTIC_SIMULATION) then
     write(IOUT) rmass_acoustic
-    write(IOUT) rhostore
   endif
 
 ! elastic

@@ -631,12 +631,12 @@
 
   call permute_elements_real(kappastore,temp_array_real,perm,nspec)
   call permute_elements_real(mustore,temp_array_real,perm,nspec)
+  call permute_elements_real(rhostore,temp_array_real,perm,nspec)
 
   if (ATTENUATION) then
      call permute_elements_real(qmu_attenuation_store,temp_array_real,perm,nspec)
      call permute_elements_real(qkappa_attenuation_store,temp_array_real,perm,nspec)
   endif
-  call permute_elements_real(rhostore,temp_array_real,perm,nspec)
 
   ! elastic arrays
   if (ELASTIC_SIMULATION) then

@@ -265,6 +265,8 @@
     call h5_read_dataset_collect_hyperslab(dsetname,kappastore,(/0,0,0,sum(offset_nspec(0:myrank-1))/),H5_COL)
     dsetname = "mustore"
     call h5_read_dataset_collect_hyperslab(dsetname,mustore,(/0,0,0,sum(offset_nspec(0:myrank-1))/),H5_COL)
+    dsetname = "rhostore"
+    call h5_read_dataset_collect_hyperslab(dsetname, rhostore, (/0,0,0,sum(offset_nspec(0:myrank-1))/),H5_COL)
   endif
 
 ! note: the size(..) function returns either integer(kind=4) or integer(kind=8)
@@ -295,6 +297,7 @@
 
   call bcast_all_cr_for_database(kappastore(1,1,1,1), size(kappastore,kind=4))
   call bcast_all_cr_for_database(mustore(1,1,1,1), size(mustore,kind=4))
+  call bcast_all_cr_for_database(rhostore(1,1,1,1), size(rhostore,kind=4))
 
   if (size(ispec_is_acoustic) > 0) &
     call bcast_all_l_for_database(ispec_is_acoustic(1), size(ispec_is_acoustic,kind=4))
@@ -368,15 +371,6 @@
     if (ier /= 0) stop 'Error allocating array rmassz_acoustic'
     rmassz_acoustic(:) = 0.0_CUSTOM_REAL
   endif
-
-! rho array is needed for acoustic simulations but also for elastic simulations with CPML,
-! read it in all cases (whether the simulation is acoustic, elastic, or acoustic/elastic)
-  if (I_should_read_the_database) then
-    dsetname = "rhostore"
-    !call h5_read_dataset_p(dsetname, rhostore)
-    call h5_read_dataset_collect_hyperslab(dsetname, rhostore, (/0,0,0,sum(offset_nspec(0:myrank-1))/),H5_COL)
-  endif
-  call bcast_all_cr_for_database(rhostore(1,1,1,1), size(rhostore,kind=4))
 
   ! elastic simulation
   if (ELASTIC_SIMULATION) then
