@@ -77,10 +77,12 @@ def read_mesh_file_msh(file):
     # meshio versions >= 4.0.0:
     if meshio_major_version >= 4:
         print("current meshio version >= 4")
+        #print("cells: ",cells)
         # creates a cells_old object as dictionaries in the same format like older version meshio 3.3.x
         if not isinstance(cells, dict):
             print("")
             print("using older meshio cell format for exporting mesh...")
+            print("  cell format for meshio major version: ",meshio_major_version)
 
             # creates new dictionary for cells and cell_data
             cells_old = {}
@@ -88,23 +90,36 @@ def read_mesh_file_msh(file):
             for cell_block in cells:
                 # cells dictionary
                 nblocks += 1
-                #print("cell block",nblocks,cell_block,len(cell_block))
-                if len(cell_block) == 2:
-                    # must have 2 items ('name',data)
-                    name = cell_block[0]
-                    data = cell_block[1]
-                    print("  cell block",name,len(data))
-                    #for i in cell_block: print(i)
-                    if name in cells_old:
-                        # append data to existing key ('quad9' can occur multiple times)
-                        cells_old[name] = np.concatenate((cells_old[name],data))
+                #print("cell block",nblocks," : ",cell_block,"len = ",len(cell_block))
+                # get cell data
+                if meshio_major_version >= 5:
+                    # meshio >= 5.x  : data returned in CellBlock data structures
+                    if isinstance(cell_block,meshio.CellBlock):
+                        # CellBlock has type and data
+                        name = cell_block.type
+                        data = cell_block.data
                     else:
-                        # new entry
-                        cells_old[name] = data
+                        # error
+                        print("Invalid cell block: cells ",cells," cell block ",cell_block)
+                        sys.exit(1)
                 else:
-                    # error
-                    print("Invalid cells returned",cells,cell_block)
-                    sys.exit(1)
+                    # meshio 4.x
+                    if len(cell_block) == 2:
+                        # must have 2 items ('name',data)
+                        name = cell_block[0]
+                        data = cell_block[1]
+                    else:
+                        # error
+                        print("Invalid cell block: cells ",cells," cell block ",cell_block)
+                        sys.exit(1)
+                #print("  cell block: ",name," - data length: ",len(data))
+                #for i in cell_block: print(i)
+                if name in cells_old:
+                    # append data to existing key ('quad9' can occur multiple times)
+                    cells_old[name] = np.concatenate((cells_old[name],data))
+                else:
+                    # new entry
+                    cells_old[name] = data
             print("")
 
             # replace cells object with older-format dictionary
@@ -137,7 +152,7 @@ def read_mesh_file_msh(file):
                     for s,array in enumerate(data):
                         # gets name from cells entry
                         data_name = list(cells.keys())[s]
-                        print("  cell data block",s,len(array),"name:",data_name)
+                        print("  cell data block",s," : length = ",len(array)," - name: ",data_name)
                         # dictionary has key gmsh:physical (ignoring gmsh:geometry)
                         dic = {'gmsh:physical': array}
                         # sets as new entry
