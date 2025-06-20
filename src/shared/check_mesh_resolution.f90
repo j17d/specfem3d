@@ -440,7 +440,10 @@
     write(IMAIN,*) '*** Min element size = ',elemsize_min_glob
     write(IMAIN,*) '*** Max/min ratio = ',elemsize_max_glob/elemsize_min_glob
     write(IMAIN,*)
-    write(IMAIN,*) '*** Minimum period resolved = ',pmax_glob
+    write(IMAIN,*) '*** Minimum period resolved = ',pmax_glob,'(s)'
+    if (abs(pmax_glob) > TINYVAL) then
+      write(IMAIN,*) '***          (as frequency) = ',1.0_CUSTOM_REAL / pmax_glob,'(Hz)'
+    endif
     write(IMAIN,*) '*** Maximum suggested time step = ',dt_suggested_glob
     write(IMAIN,*)
     if (DT_PRESENT) then
