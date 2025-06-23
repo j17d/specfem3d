@@ -391,7 +391,7 @@
           write(IMAIN,*) '     original depth: ',sngl(stbur(irec)),' m'
         endif
         write(IMAIN,*) '     horizontal distance: ',sngl(dsqrt((stutm_y(irec)-utm_y_source)**2 &
-                                                    + (stutm_x(irec)-utm_x_source)**2) / 1000.d0)
+                                                             + (stutm_x(irec)-utm_x_source)**2) / 1000.d0),' km'
         write(IMAIN,*) '     target x, y, z: ',sngl(x_target(irec)),sngl(y_target(irec)),sngl(z_target(irec))
 
         write(IMAIN,*) '     closest estimate found: ',sngl(final_distance(irec)),' m away'
