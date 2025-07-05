@@ -1263,6 +1263,42 @@ __global__ void normalize_data(realw_p data_smooth,
 
 
 //
+// src/gpu/kernels/smooth_pde_kernels.cu
+//
+
+__global__ void Kernel_2_smooth_pde(const int nb_blocks_to_compute,
+                                    const int* d_ibool,
+                                    const int* d_irregular_element_number,
+                                    const int* d_phase_ispec_inner,
+                                    const int num_phase_ispec,
+                                    const int d_iphase,
+                                    field_const_p d_dat_smooth_glob,
+                                    field_p d_ddat_smooth_glob,
+                                    realw* d_xix,realw* d_xiy,realw* d_xiz,
+                                    realw* d_etax,realw* d_etay,realw* d_etaz,
+                                    realw* d_gammax,realw* d_gammay,realw* d_gammaz,
+                                    const realw xix_regular, const realw jacobian_regular,
+                                    realw_const_p d_hprime_xx,
+                                    realw_const_p d_hprimewgll_xx,
+                                    realw_const_p d_wgllwgll_xy,
+                                    realw_const_p d_wgllwgll_xz,
+                                    realw_const_p d_wgllwgll_yz,
+                                    const realw cv, const realw ch);
+
+__global__ void kernel_3_smooth_pde_cuda_device(field* d_ddat_smooth_glob,
+                                                realw_const_p rvol,
+                                                int size);
+
+__global__ void UpdateData_smooth_pde_kernel(field* d_dat_smooth_glob,
+                                             field* d_ddat_smooth_glob,
+                                             int size);
+
+__global__ void zero_pml_smooth_pde_kernel(int nb_blocks_to_compute,
+                                           field * d_dat_smooth_glob,
+                                           const int * d_ibool,
+                                           const int * d_CPML_to_spec);
+
+//
 // src/gpu/kernels/synchronize_boundary_accel_on_device.cu
 //
 

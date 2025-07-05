@@ -740,6 +740,22 @@ void FC_FUNC_(prepare_fault_device,
                                     int* KELVIN_VOIGT_DAMPING,
                                     realw* Kelvin_Voigt_eta) {}
 
+void FC_FUNC_(prepare_constants_smooth_device,
+              PREPARE_CONSTANTS_SMOOTH_DEVICE)(long* Mesh_pointer,
+                                        int* h_NGLLX, int* NSPEC_AB, int* NGLOB_AB,
+                                        int* NSPEC_IRREGULAR,int* h_irregular_element_number,
+                                        realw* h_xix, realw* h_xiy, realw* h_xiz,
+                                        realw* h_etax, realw* h_etay, realw* h_etaz,
+                                        realw* h_gammax, realw* h_gammay, realw* h_gammaz,
+                                        realw* xix_regular, realw* jacobian_regular,
+                                        int* h_ibool,
+                                        int* num_interfaces_ext_mesh, int* max_nibool_interfaces_ext_mesh,
+                                        int* h_nibool_interfaces_ext_mesh, int* h_ibool_interfaces_ext_mesh,
+                                        realw* h_hprime_xx, realw* h_hprimewgll_xx,
+                                        realw* h_wgllwgll_xy,realw* h_wgllwgll_xz,realw* h_wgllwgll_yz,
+                                        int* h_myrank,
+                                        int* PML_CONDITIONS) {}
+
 void FC_FUNC_(prepare_wavefield_discontinuity_device,
               PREPARE_WAVEFIELD_DISCONTINUITY_DEVICE)(long* Mesh_pointer,
                                                       int* ispec_to_elem_wd,
@@ -820,6 +836,60 @@ void FC_FUNC_(get_smooth_gpu,
               GET_SMOOTH_gpu)(long * smooth_pointer,
                               realw * data_smooth) {}
 
+//
+// src/gpu/smooth_pde_cuda.cu
+//
+
+void FC_FUNC_(prepare_smooth_pde_gpu,
+              PREPARE_SMOOTH_PDE_GPU)(long * Mesh_pointer,
+                                      long * Container_smooth_pde,
+                                      field* dat_smooth_glob,
+                                      realw* rvol,
+                                      int* phase_ispec_inner,
+                                      int* num_phase_ispec,
+                                      int* CPML_to_spec,
+                                      int* NSPEC_CPML,
+                                      realw* cv,
+                                      realw* ch){}
+
+void FC_FUNC_(compute_update_element_smooth_pde_gpu,
+              COMPUTE_UPDATE_ELEMENT_SMOOTH_PDE_GPU)(long * Mesh_pointer,
+                                                     long * Container_smooth_pde,
+                                                     int * iphase,
+                                                     int * num_elements){}
+
+void FC_FUNC_(transfer_boun_dat_smooth_pde_from_device,
+              TRANSFER_BOUN_DAT_SMOOTH_PDE_FROM_DEVICE)(long * Mesh_pointer,
+                                                        long * Container_smooth_pde,
+                                                        field * send_buffer_smooth){}
+
+void FC_FUNC_(transfer_asmbl_dat_smooth_pde_from_device,
+              TRANSFER_ASMBL_DAT_SMOOTH_PDE_FROM_DEVICE)(long * Mesh_pointer,
+                                                         long * Container_smooth_pde,
+                                                         field * recv_buffer_smooth){}
+
+void FC_FUNC_(kernel_3_smooth_pde_cuda,
+              KERNEL_3_SMOOTH_PDE_CUDA)(long * Mesh_pointer,
+                                        long * Container_smooth_pde) {}
+
+void FC_FUNC_(update_dat_smooth_pde_cuda,
+              UPDATE_DAT_SMOOTH_PDE_CUDA)(long * Mesh_pointer,
+                                          long * Container_smooth_pde
+                                          ) {}
+
+void FC_FUNC_(zero_pml_smooth_pde_cuda,
+              ZERO_PML_SMOOTH_PDE_CUDA)(long * Mesh_pointer,
+                                        long * Container_smooth_pde) {}
+
+void FC_FUNC_(get_norm_smooth_pde_from_device,
+              GET_NORM_SMOOTH_PDE_FROM_DEVICE)(long * Mesh_pointer,
+                                               long * Container_smooth_pde,
+                                               realw * norm, int* ind_val){}
+
+void FC_FUNC_(transfer_dat_smooth_pde_from_device,
+              TRANSFER_DAT_SMOOTH_PDE_FROM_DEVICE)(long * Mesh_pointer,
+                                                   long * Container_smooth_pde,
+                                                   realw* dat_smooth_glob){}
 
 //
 // src/gpu/transfer_fields_cuda.cu

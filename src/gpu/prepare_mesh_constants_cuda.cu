@@ -1563,6 +1563,147 @@ void FC_FUNC_(prepare_fault_device,
   }
 }
 
+/* ----------------------------------------------------------------------------------------------- */
+
+// Diffusion-PDE-based smoothing
+
+/* ----------------------------------------------------------------------------------------------- */
+
+extern EXTERN_LANG
+void FC_FUNC_(prepare_constants_smooth_device,
+              PREPARE_CONSTANTS_SMOOTH_DEVICE)(long* Mesh_pointer,
+                                        int* h_NGLLX, int* NSPEC_AB, int* NGLOB_AB,
+                                        int* NSPEC_IRREGULAR,int* h_irregular_element_number,
+                                        realw* h_xix, realw* h_xiy, realw* h_xiz,
+                                        realw* h_etax, realw* h_etay, realw* h_etaz,
+                                        realw* h_gammax, realw* h_gammay, realw* h_gammaz,
+                                        realw* xix_regular, realw* jacobian_regular,
+                                        int* h_ibool,
+                                        int* num_interfaces_ext_mesh, int* max_nibool_interfaces_ext_mesh,
+                                        int* h_nibool_interfaces_ext_mesh, int* h_ibool_interfaces_ext_mesh,
+                                        realw* h_hprime_xx, realw* h_hprimewgll_xx,
+                                        realw* h_wgllwgll_xy,realw* h_wgllwgll_xz,realw* h_wgllwgll_yz,
+                                        int* h_myrank,
+                                        int* PML_CONDITIONS) {
+
+  // the part of prepare_constants_device that is essential for smoothing
+
+  TRACE("prepare_constants_smooth_device");
+
+  // allocates mesh parameter structure
+  Mesh* mp = (Mesh*) malloc( sizeof(Mesh) );
+  if (mp == NULL) exit_on_error("error allocating mesh pointer");
+
+  // sets mesh pointer (for Fortran<->CUDA calls)
+  *Mesh_pointer = (long)mp;
+
+  // from here: routines will get mesh from pointer
+  //            Mesh* mp = (Mesh*)(*Mesh_pointer);
+
+  // sets processes mpi rank
+  mp->myrank = *h_myrank;
+
+  // sets global parameters
+  mp->NSPEC_AB = *NSPEC_AB;
+  mp->NSPEC_IRREGULAR = *NSPEC_IRREGULAR;
+  mp->NGLOB_AB = *NGLOB_AB;
+
+  mp->pml_conditions = *PML_CONDITIONS;
+
+  // checks setup
+// DK DK August 2018: adding this test, following a suggestion by Etienne Bachmann
+  if (*h_NGLLX != NGLLX) {
+    exit_on_error("make sure that the NGLL constants are equal in the two files:\n" \
+                  "  setup/constants.h and src/gpu/mesh_constants_gpu.h\n" \
+                  "and then please re-compile; also make sure that the value of NGLL3_PADDED " \
+                  "is consistent with the value of NGLL\n");
+  }
+
+  // sets constant arrays
+  setConst_hprime_xx(h_hprime_xx,mp);
+  // setConst_hprime_yy(h_hprime_yy,mp); // only needed if NGLLX != NGLLY != NGLLZ
+  // setConst_hprime_zz(h_hprime_zz,mp); // only needed if NGLLX != NGLLY != NGLLZ
+
+  setConst_hprimewgll_xx(h_hprimewgll_xx,mp);
+  //setConst_hprimewgll_yy(h_hprimewgll_yy,mp); // only needed if NGLLX != NGLLY != NGLLZ
+  //setConst_hprimewgll_zz(h_hprimewgll_zz,mp); // only needed if NGLLX != NGLLY != NGLLZ
+
+  setConst_wgllwgll_xy(h_wgllwgll_xy,mp);
+  setConst_wgllwgll_xz(h_wgllwgll_xz,mp);
+  setConst_wgllwgll_yz(h_wgllwgll_yz,mp);
+
+  gpuCreateCopy_todevice_int((void**)&mp->d_irregular_element_number,h_irregular_element_number,mp->NSPEC_AB);
+  mp->xix_regular = *xix_regular;
+  mp->jacobian_regular = *jacobian_regular;
+
+  // mesh
+  // Assuming NGLLX=5. Padded is then 128 (5^3+3)
+  int size_padded = NGLL3_PADDED * (mp->NSPEC_IRREGULAR > 0 ? *NSPEC_IRREGULAR : 1);
+
+  gpuMalloc_realw((void**) &mp->d_xix, size_padded);
+  gpuMalloc_realw((void**) &mp->d_xiy, size_padded);
+  gpuMalloc_realw((void**) &mp->d_xiz, size_padded);
+  gpuMalloc_realw((void**) &mp->d_etax, size_padded);
+  gpuMalloc_realw((void**) &mp->d_etay, size_padded);
+  gpuMalloc_realw((void**) &mp->d_etaz, size_padded);
+  gpuMalloc_realw((void**) &mp->d_gammax, size_padded);
+  gpuMalloc_realw((void**) &mp->d_gammay, size_padded);
+  gpuMalloc_realw((void**) &mp->d_gammaz, size_padded);
+
+  // transfer constant element data with padding
+  /*
+  // way 1: slow...
+  for(int i=0;i < mp->NSPEC_IRREGULAR;i++) {
+    gpuMemcpy_todevice_realw(mp->d_xix + i*NGLL3_PADDED, &h_xix[i*NGLL3],NGLL3);
+    gpuMemcpy_todevice_realw(mp->d_xiy+i*NGLL3_PADDED,   &h_xiy[i*NGLL3],NGLL3);
+    gpuMemcpy_todevice_realw(mp->d_xiz+i*NGLL3_PADDED,   &h_xiz[i*NGLL3],NGLL3);
+    gpuMemcpy_todevice_realw(mp->d_etax+i*NGLL3_PADDED,  &h_etax[i*NGLL3],NGLL3);
+    gpuMemcpy_todevice_realw(mp->d_etay+i*NGLL3_PADDED,  &h_etay[i*NGLL3],NGLL3);
+    gpuMemcpy_todevice_realw(mp->d_etaz+i*NGLL3_PADDED,  &h_etaz[i*NGLL3],NGLL3);
+    gpuMemcpy_todevice_realw(mp->d_gammax+i*NGLL3_PADDED,&h_gammax[i*NGLL3],NGLL3);
+    gpuMemcpy_todevice_realw(mp->d_gammay+i*NGLL3_PADDED,&h_gammay[i*NGLL3],NGLL3);
+    gpuMemcpy_todevice_realw(mp->d_gammaz+i*NGLL3_PADDED,&h_gammaz[i*NGLL3],NGLL3);
+    gpuMemcpy_todevice_realw(mp->d_kappav+i*NGLL3_PADDED,&h_kappav[i*NGLL3],NGLL3);
+    gpuMemcpy_todevice_realw(mp->d_muv+i*NGLL3_PADDED,   &h_muv[i*NGLL3],NGLL3);
+  }
+  */
+  // way 2: faster ....
+  if (*NSPEC_IRREGULAR > 0 ){
+    gpuMemcpy2D_todevice_realw(mp->d_xix, NGLL3_PADDED, h_xix, NGLL3, NGLL3, mp->NSPEC_IRREGULAR);
+    gpuMemcpy2D_todevice_realw(mp->d_xiy, NGLL3_PADDED, h_xiy, NGLL3, NGLL3, mp->NSPEC_IRREGULAR);
+    gpuMemcpy2D_todevice_realw(mp->d_xiz, NGLL3_PADDED, h_xiz, NGLL3, NGLL3, mp->NSPEC_IRREGULAR);
+    gpuMemcpy2D_todevice_realw(mp->d_etax, NGLL3_PADDED, h_etax, NGLL3, NGLL3, mp->NSPEC_IRREGULAR);
+    gpuMemcpy2D_todevice_realw(mp->d_etay, NGLL3_PADDED, h_etay, NGLL3, NGLL3, mp->NSPEC_IRREGULAR);
+    gpuMemcpy2D_todevice_realw(mp->d_etaz, NGLL3_PADDED, h_etaz, NGLL3, NGLL3, mp->NSPEC_IRREGULAR);
+    gpuMemcpy2D_todevice_realw(mp->d_gammax, NGLL3_PADDED, h_gammax, NGLL3, NGLL3, mp->NSPEC_IRREGULAR);
+    gpuMemcpy2D_todevice_realw(mp->d_gammay, NGLL3_PADDED, h_gammay, NGLL3, NGLL3, mp->NSPEC_IRREGULAR);
+    gpuMemcpy2D_todevice_realw(mp->d_gammaz, NGLL3_PADDED, h_gammaz, NGLL3, NGLL3, mp->NSPEC_IRREGULAR);
+  }
+
+  size_padded = NGLL3_PADDED * (mp->NSPEC_AB);
+
+  // global indexing (padded)
+  gpuMalloc_int((void**) &mp->d_ibool, size_padded);
+  gpuMemcpy2D_todevice_int(mp->d_ibool, NGLL3_PADDED, h_ibool, NGLL3, NGLL3, mp->NSPEC_AB);
+
+  // prepare interprocess-edge exchange information
+  mp->num_interfaces_ext_mesh = *num_interfaces_ext_mesh;
+  mp->max_nibool_interfaces_ext_mesh = *max_nibool_interfaces_ext_mesh;
+  if (mp->num_interfaces_ext_mesh > 0){
+    gpuCreateCopy_todevice_int((void**)&mp->d_nibool_interfaces_ext_mesh,h_nibool_interfaces_ext_mesh,mp->num_interfaces_ext_mesh);
+    gpuCreateCopy_todevice_int((void**)&mp->d_ibool_interfaces_ext_mesh,h_ibool_interfaces_ext_mesh,
+                         (mp->num_interfaces_ext_mesh)*(mp->max_nibool_interfaces_ext_mesh));
+  }
+
+  // setup two streams, one for compute and one for host<->device memory copies
+  // compute stream
+  gpuStreamCreate(&mp->compute_stream);
+  // copy stream (needed to transfer mpi buffers)
+  if (mp->num_interfaces_ext_mesh * mp->max_nibool_interfaces_ext_mesh > 0){
+    gpuStreamCreate(&mp->copy_stream);
+  }
+  GPU_ERROR_CHECKING("prepare_constants_smooth_device");
+}
 
 /* ----------------------------------------------------------------------------------------------- */
 

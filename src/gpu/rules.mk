@@ -60,6 +60,7 @@ gpu_specfem3D_OBJECTS = \
 	$O/prepare_mesh_constants_cuda.o \
 	$O/save_and_compare_cpu_vs_gpu.o \
 	$O/smooth_cuda.o \
+	$O/smooth_pde_cuda.o \
 	$O/transfer_fields_cuda.o \
 	$O/update_displacement_cuda.o \
 	$O/write_seismograms_cuda.o \
