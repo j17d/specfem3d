@@ -38,6 +38,7 @@ cuda_kernels_OBJS := \
 	$O/prepare_boundary_accel_on_device.cuda-kernel.o \
 	$O/prepare_boundary_potential_on_device.cuda-kernel.o \
 	$O/process_smooth.cuda-kernel.o \
+	$O/smooth_pde_kernels.cuda-kernel.o \
 	$O/synchronize_boundary_accel_on_device.cuda-kernel.o \
 	$O/transfer_surface_to_host_kernel.cuda-kernel.o \
 	$O/UpdateDispVeloc_kernel.cuda-kernel.o \
