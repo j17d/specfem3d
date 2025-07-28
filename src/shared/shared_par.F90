@@ -192,6 +192,9 @@ end module constants
   ! number of io dedicated nodes
   integer :: HDF5_IO_NODES = 0
 
+  ! HDF5 IO writing mode (collective or independent)
+  logical :: H5_COL = .true.
+
   ! flag for io-dedicated/compute node.
   logical :: IO_storage_task = .false.
   logical :: IO_compute_task = .true.

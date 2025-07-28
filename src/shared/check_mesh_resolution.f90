@@ -524,12 +524,12 @@
       if (DT_PRESENT) then
         filename = 'res_Courant_number'
         call write_checkmesh_data_hdf5(filename,tmp1)
-      else
-        ! minimum period estimate
-        filename = 'res_minimum_period'
-        call write_checkmesh_data_hdf5(filename,tmp2)
-        call write_checkmesh_xdmf_hdf5(NSPEC_AB)
       endif
+
+      ! minimum period estimate
+      filename = 'res_minimum_period'
+      call write_checkmesh_data_hdf5(filename,tmp2)
+      call write_checkmesh_xdmf_hdf5(NSPEC_AB)
     else
       ! default output
       call create_name_database(prname,myrank,LOCAL_PATH)

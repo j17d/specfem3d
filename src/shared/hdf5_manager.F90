@@ -194,6 +194,7 @@ module manager_hdf5
   interface h5_read_dataset_collect_hyperslab
     module procedure h5_read_dataset_1d_l_collect_hyperslab ! logical
     module procedure h5_read_dataset_1d_i_collect_hyperslab ! integer
+    module procedure h5_read_dataset_1d_i64_collect_hyperslab ! integer 64-bit
     module procedure h5_read_dataset_2d_i_collect_hyperslab
     module procedure h5_read_dataset_3d_i_collect_hyperslab
     module procedure h5_read_dataset_4d_i_collect_hyperslab
@@ -254,6 +255,7 @@ module manager_hdf5
   interface h5_write_dataset_collect_hyperslab
     module procedure h5_write_dataset_1d_l_collect_hyperslab ! logical
     module procedure h5_write_dataset_1d_i_collect_hyperslab ! integer
+    module procedure h5_write_dataset_1d_i64_collect_hyperslab ! integer 64-bit
     module procedure h5_write_dataset_2d_i_collect_hyperslab
     module procedure h5_write_dataset_3d_i_collect_hyperslab
     module procedure h5_write_dataset_4d_i_collect_hyperslab
@@ -264,6 +266,13 @@ module manager_hdf5
     module procedure h5_write_dataset_5d_r_collect_hyperslab
     module procedure h5_write_dataset_2d_d_collect_hyperslab ! double
   end interface h5_write_dataset_collect_hyperslab
+
+! generic interface to create dataset
+interface h5_create_dataset_gen
+  module procedure h5_create_dataset_gen_int
+  module procedure h5_create_dataset_gen_int64
+end interface h5_create_dataset_gen
+
 
   ! object-oriented interface
   ! (Fortran 2003 standard style)
@@ -410,7 +419,7 @@ contains
   subroutine write_attenuation_file_hdf5(factor_common, scale_factor, factor_common_kappa, scale_factor_kappa)
 
 #if defined(USE_HDF5)
-    use shared_parameters, only: NPROC, LOCAL_PATH
+    use shared_parameters, only: NPROC, LOCAL_PATH,H5_COL
     use constants, only: myrank,N_SLS,NGLLX,NGLLY,NGLLZ
 #endif
 
@@ -463,16 +472,16 @@ contains
     call h5_open_file_p_collect(filename)
     dset_name = "scale_factor"
     call h5_write_dataset_4d_r_collect_hyperslab(dset_name, &
-                                                 scale_factor,(/0,0,0,sum(offset_nspec(0:myrank-1))/),.true.)
+                                                 scale_factor,(/0,0,0,sum(offset_nspec(0:myrank-1))/),H5_COL)
     dset_name = "scale_factor_kappa"
     call h5_write_dataset_4d_r_collect_hyperslab(dset_name, &
-                                                 scale_factor_kappa,(/0,0,0,sum(offset_nspec(0:myrank-1))/),.true.)
+                                                 scale_factor_kappa,(/0,0,0,sum(offset_nspec(0:myrank-1))/),H5_COL)
     dset_name = "factor_common"
     call h5_write_dataset_5d_r_collect_hyperslab(dset_name, &
-                                                 factor_common,(/0,0,0,0,sum(offset_nspec(0:myrank-1))/),.true.)
+                                                 factor_common,(/0,0,0,0,sum(offset_nspec(0:myrank-1))/),H5_COL)
     dset_name = "factor_common_kappa"
     call h5_write_dataset_5d_r_collect_hyperslab(dset_name, &
-                                                 factor_common_kappa,(/0,0,0,0,sum(offset_nspec(0:myrank-1))/),.true.)
+                                                 factor_common_kappa,(/0,0,0,0,sum(offset_nspec(0:myrank-1))/),H5_COL)
 
     call h5_close_file_p()
     call h5_finalize()
@@ -499,7 +508,7 @@ contains
   subroutine read_attenuation_file_hdf5(factor_common, scale_factor, factor_common_kappa, scale_factor_kappa)
 
 #if defined(USE_HDF5)
-    use shared_parameters, only: NPROC, LOCAL_PATH
+    use shared_parameters, only: NPROC, LOCAL_PATH, H5_COL
     use constants, only: myrank
 #endif
 
@@ -526,16 +535,16 @@ contains
     ! open file
     call h5_open_file_p_collect(fname)
     ! read offset array
-    call h5_read_dataset_1d_i_collect_hyperslab("offset_nspec",offset_nspec, (/0/), .true.)
+    call h5_read_dataset_collect_hyperslab("offset_nspec",offset_nspec, (/0/), H5_COL)
 
-    call h5_read_dataset_4d_r_collect_hyperslab("scale_factor", scale_factor, &
-                                                (/0,0,0,sum(offset_nspec(0:myrank-1))/), .true.)
-    call h5_read_dataset_4d_r_collect_hyperslab("scale_factor_kappa", scale_factor_kappa, &
-                                                (/0,0,0,sum(offset_nspec(0:myrank-1))/), .true.)
-    call h5_read_dataset_5d_r_collect_hyperslab("factor_common", factor_common, &
-                                                (/0,0,0,0,sum(offset_nspec(0:myrank-1))/), .true.)
-    call h5_read_dataset_5d_r_collect_hyperslab("factor_common_kappa", factor_common_kappa, &
-                                                (/0,0,0,0,sum(offset_nspec(0:myrank-1))/), .true.)
+    call h5_read_dataset_collect_hyperslab("scale_factor", scale_factor, &
+                                          (/0,0,0,sum(offset_nspec(0:myrank-1))/), H5_COL)
+    call h5_read_dataset_collect_hyperslab("scale_factor_kappa", scale_factor_kappa, &
+                                          (/0,0,0,sum(offset_nspec(0:myrank-1))/), H5_COL)
+    call h5_read_dataset_collect_hyperslab("factor_common", factor_common, &
+                                          (/0,0,0,0,sum(offset_nspec(0:myrank-1))/), H5_COL)
+    call h5_read_dataset_collect_hyperslab("factor_common_kappa", factor_common_kappa, &
+                                          (/0,0,0,0,sum(offset_nspec(0:myrank-1))/), H5_COL)
 
     call h5_close_file_p()
     call h5_finalize()
@@ -562,7 +571,7 @@ contains
   subroutine write_checkmesh_data_hdf5(dset_name,dump_array)
 
 #if defined(USE_HDF5)
-    use shared_parameters, only: LOCAL_PATH, NPROC
+    use shared_parameters, only: LOCAL_PATH, NPROC, H5_COL
     use constants, only: myrank
 #endif
 
@@ -612,9 +621,14 @@ contains
     endif
     call synchronize_all()
 
-    ! open file
-    call h5_open_file_p_collect(filename)
-    call h5_write_dataset_1d_r_collect_hyperslab(dset_name, dump_array, (/sum(offset(0:myrank-1))/),.true.)
+    ! open file (usually *_collect can be used with H5_COL = .false.)
+    ! but I got a strange error on some systems, so I use if statement here
+    if (H5_COL) then
+      call h5_open_file_p_collect(filename)
+    else
+      call h5_open_file_p(filename)
+    endif
+    call h5_write_dataset_collect_hyperslab(dset_name, dump_array, (/sum(offset(0:myrank-1))/), H5_COL)
     call h5_close_file_p()
 
     call h5_finalize()
@@ -1751,7 +1765,7 @@ contains
 !-------------------------------------------------------------------------------
 !
 
-  subroutine h5_create_dataset_gen(dataset_name, dim_in, rank, dtype_id)
+  subroutine h5_create_dataset_gen_int(dataset_name, dim_in, rank, dtype_id)
     implicit none
     character(len=*), intent(in) :: dataset_name
     integer, dimension(:), intent(in)  :: dim_in
@@ -1812,7 +1826,75 @@ contains
     if (error /= 0) write(*,*) 'hdf5 dataspace close failed for ', dataset_name
     call check_error()
 
-  end subroutine h5_create_dataset_gen
+  end subroutine h5_create_dataset_gen_int
+
+!
+!-------------------------------------------------------------------------------
+!
+
+  subroutine h5_create_dataset_gen_int64(dataset_name, dim_in, rank, dtype_id)
+    implicit none
+    character(len=*), intent(in) :: dataset_name
+    integer(kind=8), dimension(:), intent(in)  :: dim_in
+
+    integer(HSIZE_T), dimension(size(dim_in)) :: dim
+    integer, intent(in)                :: dtype_id ! 1:int, 4:real4, 8:real8,
+    integer, intent(in)                :: rank
+
+    integer(HID_T)                     :: dspace_id
+    !logical :: if_chunk = .true.
+    !integer :: i
+
+    dim = dim_in ! convert data type
+
+    call h5screate_simple_f(rank, dim, dspace_id, error)
+    if (error /= 0) write(*,*) 'hdf5 dataspace create failed for ', dataset_name
+    call check_error()
+    call h5pcreate_f(H5P_DATASET_CREATE_F, plist_id, error)
+    call check_error()
+
+    ! chunk size setting
+    !do i = 1, rank
+    !    if (dim(i) <= 0) then
+    !        if_chunk = .false.
+    !        print *, "dataset not chunk set: ", dataset_name
+    !    endif
+    !enddo
+    !if (if_chunk) call h5pset_chunk_f(plist_id,rank,dim,error)
+
+    if (dtype_id == 0) then ! bool uses integer
+      call h5dcreate_f(file_id, trim(dataset_name), H5T_NATIVE_INTEGER, dspace_id, dataset_id, error, &
+                       dcpl_id=plist_id)
+    else if (dtype_id == 1) then ! integer
+      call h5dcreate_f(file_id, trim(dataset_name), H5T_NATIVE_INTEGER, dspace_id, dataset_id, error, &
+                       dcpl_id=plist_id)
+    else if (dtype_id == 2) then ! character
+      call h5dcreate_f(file_id, trim(dataset_name), str_type, dspace_id, dataset_id, error, &
+                       dcpl_id=plist_id)
+    else if (dtype_id == 4) then  !  real
+      call h5dcreate_f(file_id, trim(dataset_name), H5T_NATIVE_REAL, dspace_id, dataset_id, error, &
+                       dcpl_id=plist_id)
+    else if (dtype_id == 8) then ! double
+      call h5dcreate_f(file_id, trim(dataset_name), H5T_NATIVE_DOUBLE, dspace_id, dataset_id, error, &
+                       dcpl_id=plist_id)
+    else
+      print *, "specified dtype_id is not implemented yet for hdf5 io. aborting..."
+      stop 'Invalid dtype_id, not implemented yet in h5_create_dataset_gen() routine'
+    endif
+    if (error /= 0) write(*,*) 'hdf5 dataset create failed for ', dataset_name
+    call check_error()
+
+    call h5_close_prop_list_nocheck(dataset_name)
+
+    call h5dclose_f(dataset_id,error)
+    if (error /= 0) write(*,*) 'hdf5 dataset close failed for ', dataset_name
+    call check_error()
+    call h5sclose_f(dspace_id, error)
+    if (error /= 0) write(*,*) 'hdf5 dataspace close failed for ', dataset_name
+    call check_error()
+
+  end subroutine h5_create_dataset_gen_int64
+
 
 !
 !-------------------------------------------------------------------------------
@@ -2524,7 +2606,60 @@ contains
     call h5_close_dataset()
   end subroutine h5_read_dataset_1d_i_collect_hyperslab
 
+  !
+!-------------------------------------------------------------------------------
 !
+
+  subroutine h5_read_dataset_1d_i64_collect_hyperslab(dataset_name, data, offset_in, if_collective)
+    implicit none
+    character(len=*), intent(in)                                :: dataset_name
+    integer, dimension(:), intent(inout), target                :: data
+    integer(kind=8), dimension(:), intent(in)                           :: offset_in
+    logical, intent(in)                                         :: if_collective
+    ! local parameters
+    integer                                                     :: rank = 1
+    integer(HSIZE_T), dimension(1)                              :: dim
+    integer(HSIZE_T), dimension(1)                              :: count ! size of hyperslab
+    integer(HSSIZE_T), dimension(1)                             :: offset ! the position where the datablock is inserted
+
+    dim = shape(data)
+    offset = offset_in ! convert data type
+
+    ! open dataset
+    call h5_open_dataset2(trim(dataset_name))
+
+    ! select a place where data is inserted.
+    count(1)  = dim(1)
+
+    ! select hyperslab in the file
+    call h5screate_simple_f(rank,count, mem_dspace_id, error)
+    call check_error()
+    call h5dget_space_f(dataset_id, file_dspace_id, error)
+    call check_error()
+    call h5sselect_hyperslab_f(file_dspace_id, H5S_SELECT_SET_F, offset, count, error)
+    call check_error()
+    call h5_create_dataset_prop_list(if_collective)
+
+    call h5_check_arr_dim(dim)
+
+    ! write array using Fortran pointer
+    !call h5dread_f(dataset_id, H5T_NATIVE_INTEGER, data, dim, error, &
+    !                file_space_id=file_dspace_id, mem_space_id=mem_dspace_id, xfer_prp=plist_id)
+    ! use F2003 API
+    f_ptr = c_loc(data(1))
+    call h5dread_f(dataset_id, H5T_NATIVE_INTEGER, f_ptr, error, &
+                    file_space_id=file_dspace_id, mem_space_id=mem_dspace_id, xfer_prp=plist_id)
+    if (error /= 0) write(*,*) 'hdf5 dataset write failed for ', dataset_name
+    call check_error()
+    call h5_close_prop_list(dataset_name)
+    call h5sclose_f(mem_dspace_id, error)
+    call check_error()
+    call h5sclose_f(file_dspace_id, error)
+    call check_error()
+    call h5_close_dataset()
+  end subroutine h5_read_dataset_1d_i64_collect_hyperslab
+
+
 !-------------------------------------------------------------------------------
 !
 
@@ -3975,6 +4110,59 @@ contains
 !
 !-------------------------------------------------------------------------------
 !
+
+! store local 1d array to global 1d array
+  subroutine h5_write_dataset_1d_i64_collect_hyperslab(dataset_name, data, offset_in, if_collective)
+    implicit none
+    character(len=*), intent(in)                                :: dataset_name
+    integer, dimension(:), intent(in), target                   :: data
+    integer(kind=8), dimension(:), intent(in)                   :: offset_in
+    logical, intent(in)                                         :: if_collective
+    ! local parameters
+    integer                                                     :: rank = 1
+    integer(HSIZE_T), dimension(1)                              :: dim
+    integer(HSIZE_T), dimension(1)                              :: count ! size of hyperslab
+    integer(HSSIZE_T), dimension(1)                             :: offset ! the position where the datablock is inserted
+
+    dim = shape(data)
+    offset = offset_in ! convert data type
+
+    ! open dataset
+    call h5_open_dataset2(trim(dataset_name))
+
+    ! select a place where data is inserted.
+    count(1) = dim(1)
+
+    ! select hyperslab in the file
+    call h5screate_simple_f(rank,count, mem_dspace_id, error)
+    call check_error()
+    call h5dget_space_f(dataset_id, file_dspace_id, error)
+    call check_error()
+    call h5sselect_hyperslab_f(file_dspace_id, H5S_SELECT_SET_F, offset, count, error)
+    call check_error()
+    call h5_create_dataset_prop_list(if_collective)
+
+    call h5_check_arr_dim(dim)
+    ! write array using Fortran pointer
+    !call h5dwrite_f(dataset_id, H5T_NATIVE_INTEGER, data, dim, error, &
+    !                file_space_id=file_dspace_id, mem_space_id=mem_dspace_id, xfer_prp=plist_id)
+    ! use F2003 API
+    call h5dwrite_f(dataset_id, H5T_NATIVE_INTEGER, c_loc(data(1)), error, &
+                    file_space_id=file_dspace_id, mem_space_id=mem_dspace_id, xfer_prp=plist_id)
+    if (error /= 0) write(*,*) 'hdf5 dataset write failed for ', dataset_name
+    call check_error()
+    call h5_close_prop_list(dataset_name)
+    call h5sclose_f(mem_dspace_id, error)
+    call check_error()
+    call h5sclose_f(file_dspace_id, error)
+    call check_error()
+    call h5_close_dataset()
+  end subroutine h5_write_dataset_1d_i64_collect_hyperslab
+
+!
+!-------------------------------------------------------------------------------
+!
+
 
   subroutine h5_write_dataset_1d_r_collect_hyperslab(dataset_name, data, offset_in, if_collective)
     implicit none

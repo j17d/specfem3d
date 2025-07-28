@@ -1033,6 +1033,7 @@ contains
   subroutine prepare_vol_movie_hdf5()
 
   use specfem_par_movie_hdf5
+  use shared_parameters, only: H5_COL
 
   implicit none
 
@@ -1041,8 +1042,6 @@ contains
   character(len=64) :: dset_name
   integer           :: iproc, ier, nglob_all, nspec_all
   character(len=MAX_STRING_LEN) :: fname_h5_data_vol
-
-  logical,parameter :: if_collective = .true.
 
   allocate(nglob_par_proc_nio(0:NPROC-1), stat=ier)
   if (ier /= 0) call exit_MPI_without_rank('error allocating array nglob_par_proc')
@@ -1121,13 +1120,13 @@ contains
   call h5_open_group(group_name)
 
   dset_name = "elm_conn"
-  call h5_write_dataset_collect_hyperslab_in_group(dset_name,elm_conn_loc,(/0,nelm_offset(myrank)/),if_collective)
+  call h5_write_dataset_collect_hyperslab_in_group(dset_name,elm_conn_loc,(/0,nelm_offset(myrank)/),H5_COL)
   dset_name = "x"
-  call h5_write_dataset_collect_hyperslab_in_group(dset_name,xstore,(/nglob_offset(myrank)/),if_collective)
+  call h5_write_dataset_collect_hyperslab_in_group(dset_name,xstore,(/nglob_offset(myrank)/),H5_COL)
   dset_name = "y"
-  call h5_write_dataset_collect_hyperslab_in_group(dset_name,ystore,(/nglob_offset(myrank)/),if_collective)
+  call h5_write_dataset_collect_hyperslab_in_group(dset_name,ystore,(/nglob_offset(myrank)/),H5_COL)
   dset_name = "z"
-  call h5_write_dataset_collect_hyperslab_in_group(dset_name,zstore,(/nglob_offset(myrank)/),if_collective)
+  call h5_write_dataset_collect_hyperslab_in_group(dset_name,zstore,(/nglob_offset(myrank)/),H5_COL)
 
   call h5_close_group()
   call h5_close_file()
@@ -1144,6 +1143,7 @@ contains
   subroutine write_vol_data_hdf5(darr, dset_name)
 
   use specfem_par_movie_hdf5
+  use shared_parameters, only: H5_COL
 
   implicit none
 
@@ -1156,7 +1156,6 @@ contains
   character(len=MAX_STRING_LEN) :: fname_h5_data_vol
 
   integer, parameter :: rank = 1
-  logical, parameter :: if_collective = .true.
 
   fname_h5_data_vol = trim(OUTPUT_FILES) // "/movie_volume.h5"
 
@@ -1188,7 +1187,7 @@ contains
   call h5_open_file_p(fname_h5_data_vol)
   call h5_open_group(group_name)
   call h5_write_dataset_collect_hyperslab_in_group(dset_name, &
-                                darr, (/nglob_offset(myrank)/), if_collective)
+                                darr, (/nglob_offset(myrank)/), H5_COL)
 
   call h5_close_group()
   call h5_close_file()
