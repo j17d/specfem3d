@@ -53,6 +53,7 @@ program smooth_sem_pde
       nspec_inner_elastic,nspec_outer_elastic,phase_ispec_inner_elastic
   !use specfem_par_acoustic, only: ispec_is_acoustic, nspec_acoustic
   !use specfem_par_poroelastic, only: ispec_is_poroelastic
+
   use pml_par, only: is_CPML, NSPEC_CPML, CPML_to_spec
 
   implicit none
@@ -369,6 +370,7 @@ program smooth_sem_pde
     enddo;enddo;enddo
   enddo
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
   ddat_glob(:) = 0.0
 
   if (USE_GPU .and. GPU_MODE) then 
@@ -424,6 +426,7 @@ program smooth_sem_pde
       else
         num_elements = nspec_inner_elastic
       endif
+
       if (USE_GPU .and. GPU_MODE) then
         call compute_update_element_smooth_pde_gpu(Mesh_pointer, &
                                                    Smooth_container, &
@@ -849,6 +852,9 @@ end program smooth_sem_pde
 
   end subroutine assemble_MPI_send_smooth
 
+!
+!-------------------------------------------------------------------------------------------------
+!
 
   subroutine assemble_MPI_send_smooth_cuda(NPROC,&
           buffer_send_vector_ext_mesh_smooth, &
