@@ -1504,9 +1504,6 @@ contains
     call h5tcopy_f(H5T_NATIVE_INTEGER, atype_id, error) ! for a string tag of attribute value
     if (error /= 0) write(*,*) 'hdf5 tcopy failed for attribute, ', attribute_name
     call check_error()
-    call h5tset_size_f(atype_id, taglen, error)
-    if (error /= 0) write(*,*) 'hdf5 set_size failed for attribute, ', attribute_name
-    call check_error()
     ! here the attribute is written on the current openning dataset
     call h5acreate_f(dataset_id, trim(attribute_name), atype_id, aspace_id, attr_id, error)
     if (error /= 0) write(*,*) 'hdf5 acreate failed for attribute, ', attribute_name
