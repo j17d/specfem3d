@@ -90,6 +90,9 @@
   ! LTS
   use specfem_par_lts, only: lts_type_compute_pelem,current_lts_elem,current_lts_boundary_elem
 
+  ! coupling
+  use specfem_par_coupling, only: do_save_coupling_wavefield
+
 #ifdef FORCE_VECTORIZATION
   use constants, only: NGLLCUBE
 #endif
@@ -211,7 +214,8 @@
 !$OMP c55store,c56store,c66store, &
 !$OMP factor_common,factor_common_kappa, &
 !$OMP COMPUTE_AND_STORE_STRAIN,ATTENUATION,ANISOTROPY,SIMULATION_TYPE, &
-!$OMP MOVIE_VOLUME_STRESS,stress_xx,stress_yy,stress_zz,stress_xy,stress_xz,stress_yz, &
+!$OMP MOVIE_VOLUME_STRESS,do_save_coupling_wavefield, &
+!$OMP stress_xx,stress_yy,stress_zz,stress_xy,stress_xz,stress_yz, &
 !$OMP R_xx,R_yy,R_xy,R_xz,R_yz,R_trace, &
 !$OMP epsilondev_xx,epsilondev_yy,epsilondev_xy,epsilondev_xz,epsilondev_yz,epsilondev_trace,epsilon_trace_over_3, &
 !$OMP USE_LDDRK,R_xx_lddrk,R_yy_lddrk,R_xy_lddrk,R_xz_lddrk,R_yz_lddrk,R_trace_lddrk, &
@@ -645,17 +649,6 @@
         sigma_yz = mul * duzdyl_plus_duydzl
       endif ! ANISOTROPY
 
-      ! stores stress for movie output
-      if (MOVIE_VOLUME_STRESS) then
-        ! store stress tensor
-        stress_xx(INDEX_IJK,ispec) = sigma_xx
-        stress_yy(INDEX_IJK,ispec) = sigma_yy
-        stress_zz(INDEX_IJK,ispec) = sigma_zz
-        stress_xy(INDEX_IJK,ispec) = sigma_xy
-        stress_xz(INDEX_IJK,ispec) = sigma_xz
-        stress_yz(INDEX_IJK,ispec) = sigma_yz
-      endif
-
       ! subtract memory variables if attenuation
       if (ATTENUATION .and. .not. is_CPML(ispec)) then
         R_xx_sum = sum(R_xx(:,INDEX_IJK,ispec))
@@ -671,6 +664,18 @@
         sigma_xy = sigma_xy - sum(R_xy(:,INDEX_IJK,ispec))
         sigma_xz = sigma_xz - sum(R_xz(:,INDEX_IJK,ispec))
         sigma_yz = sigma_yz - sum(R_yz(:,INDEX_IJK,ispec))
+      endif
+
+      ! stores stress for movie output
+      ! and SPECFEM coupling injection technique to compute traction on boundary point
+      if (MOVIE_VOLUME_STRESS .or. do_save_coupling_wavefield) then
+        ! store stress tensor
+        stress_xx(INDEX_IJK,ispec) = sigma_xx
+        stress_yy(INDEX_IJK,ispec) = sigma_yy
+        stress_zz(INDEX_IJK,ispec) = sigma_zz
+        stress_xy(INDEX_IJK,ispec) = sigma_xy
+        stress_xz(INDEX_IJK,ispec) = sigma_xz
+        stress_yz(INDEX_IJK,ispec) = sigma_yz
       endif
 
       if (.not. is_CPML(ispec)) then

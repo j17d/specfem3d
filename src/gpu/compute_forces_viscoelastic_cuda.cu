@@ -145,7 +145,7 @@ void Kernel_2(int nb_blocks_to_compute,Mesh* mp,int d_iphase,realw d_deltat,
   }
 
   // cuda kernel call
-  if (ATTENUATION ){
+  if (ATTENUATION){
     TRACE("\tKernel_2: Kernel_2_att_impl");
     // compute kernels with attenuation
     // forward wavefields -> FORWARD_OR_ADJOINT == 1
@@ -173,7 +173,6 @@ void Kernel_2(int nb_blocks_to_compute,Mesh* mp,int d_iphase,realw d_deltat,
                                                                 epsilondev_trace,
                                                                 epsilon_trace_over_3,
                                                                 mp->simulation_type,
-                                                                mp->NSPEC_AB,
                                                                 d_factor_common,
                                                                 R_xx,R_yy,R_xy,R_xz,R_yz,
                                                                 R_trace,
@@ -222,7 +221,6 @@ void Kernel_2(int nb_blocks_to_compute,Mesh* mp,int d_iphase,realw d_deltat,
                                             epsilondev_trace,
                                             epsilon_trace_over_3,
                                             mp->simulation_type,
-                                            mp->NSPEC_AB,
                                             d_factor_common,
                                             R_xx,R_yy,R_xy,R_xz,R_yz,
                                             R_trace,
@@ -273,7 +271,6 @@ void Kernel_2(int nb_blocks_to_compute,Mesh* mp,int d_iphase,realw d_deltat,
                                                                  d_b_epsilondev_trace,
                                                                  d_b_epsilon_trace_over_3,
                                                                  mp->simulation_type,
-                                                                 mp->NSPEC_AB,
                                                                  d_factor_common,
                                                                  d_b_R_xx,d_b_R_yy,d_b_R_xy,d_b_R_xz,d_b_R_yz,
                                                                  d_b_R_trace,
@@ -322,7 +319,6 @@ void Kernel_2(int nb_blocks_to_compute,Mesh* mp,int d_iphase,realw d_deltat,
                                               d_b_epsilondev_trace,
                                               d_b_epsilon_trace_over_3,
                                               mp->simulation_type,
-                                              mp->NSPEC_AB,
                                               d_factor_common,
                                               d_b_R_xx,d_b_R_yy,d_b_R_xy,d_b_R_xz,d_b_R_yz,
                                               d_b_R_trace,
@@ -443,7 +439,7 @@ void Kernel_2(int nb_blocks_to_compute,Mesh* mp,int d_iphase,realw d_deltat,
         // backward/reconstructed wavefields -> FORWARD_OR_ADJOINT == 3
 #ifdef USE_CUDA
         if (run_cuda){
-          Kernel_2_noatt_ani_impl<<< grid,threads,0,mp->compute_stream>>>( nb_blocks_to_compute,
+          Kernel_2_noatt_ani_impl<<<grid,threads,0,mp->compute_stream>>>( nb_blocks_to_compute,
                                                                            d_ibool,
                                                                            mp->d_phase_ispec_inner_elastic,mp->num_phase_ispec_elastic,
                                                                            d_iphase,
@@ -604,7 +600,7 @@ void Kernel_2(int nb_blocks_to_compute,Mesh* mp,int d_iphase,realw d_deltat,
           // backward/reconstructed wavefields -> FORWARD_OR_ADJOINT == 3
 #ifdef USE_CUDA
           if (run_cuda){
-            Kernel_2_noatt_iso_grav_impl<<< grid,threads,0,mp->compute_stream>>>(nb_blocks_to_compute,
+            Kernel_2_noatt_iso_grav_impl<<<grid,threads,0,mp->compute_stream>>>(nb_blocks_to_compute,
                                                                                  d_ibool,
                                                                                  mp->d_phase_ispec_inner_elastic,mp->num_phase_ispec_elastic,
                                                                                  d_iphase,
@@ -736,7 +732,7 @@ void Kernel_2(int nb_blocks_to_compute,Mesh* mp,int d_iphase,realw d_deltat,
             // backward/reconstructed wavefields -> FORWARD_OR_ADJOINT == 3
 #ifdef USE_CUDA
             if (run_cuda){
-              Kernel_2_noatt_iso_col_impl<<< grid,threads,0,mp->compute_stream>>>( nb_blocks_to_compute,
+              Kernel_2_noatt_iso_col_impl<<<grid,threads,0,mp->compute_stream>>>( nb_blocks_to_compute,
                                                                                    d_ibool,
                                                                                    mp->d_phase_ispec_inner_elastic,mp->num_phase_ispec_elastic,
                                                                                    d_iphase,
@@ -856,7 +852,7 @@ void Kernel_2(int nb_blocks_to_compute,Mesh* mp,int d_iphase,realw d_deltat,
               // backward/reconstructed wavefields -> FORWARD_OR_ADJOINT == 3
 #ifdef USE_CUDA
               if (run_cuda){
-                Kernel_2_noatt_iso_strain_impl<<< grid,threads,0,mp->compute_stream>>>(nb_blocks_to_compute,
+                Kernel_2_noatt_iso_strain_impl<<<grid,threads,0,mp->compute_stream>>>(nb_blocks_to_compute,
                                                                                        d_ibool,
                                                                                        mp->d_phase_ispec_inner_elastic,
                                                                                        mp->num_phase_ispec_elastic,
@@ -990,6 +986,10 @@ void Kernel_2(int nb_blocks_to_compute,Mesh* mp,int d_iphase,realw d_deltat,
                                                                                mp->d_hprimewgll_xx,
                                                                                mp->d_wgllwgll_xy, mp->d_wgllwgll_xz, mp->d_wgllwgll_yz,
                                                                                d_kappav, d_muv,
+                                                                               mp->is_wavefield_discontinuity,
+                                                                               mp->d_displ_wd,
+                                                                               mp->d_ispec_to_elem_wd,
+                                                                               mp->d_ibool_wd,
                                                                                mp->pml_conditions,
                                                                                mp->d_is_CPML,
                                                                                FORWARD_OR_ADJOINT);
@@ -1013,6 +1013,10 @@ void Kernel_2(int nb_blocks_to_compute,Mesh* mp,int d_iphase,realw d_deltat,
                                                              mp->d_hprimewgll_xx,
                                                              mp->d_wgllwgll_xy, mp->d_wgllwgll_xz, mp->d_wgllwgll_yz,
                                                              d_kappav, d_muv,
+                                                             mp->is_wavefield_discontinuity,
+                                                             mp->d_displ_wd,
+                                                             mp->d_ispec_to_elem_wd,
+                                                             mp->d_ibool_wd,
                                                              mp->pml_conditions,
                                                              mp->d_is_CPML,
                                                              FORWARD_OR_ADJOINT);
@@ -1023,7 +1027,7 @@ void Kernel_2(int nb_blocks_to_compute,Mesh* mp,int d_iphase,realw d_deltat,
                 // backward/reconstructed wavefields -> FORWARD_OR_ADJOINT == 3
 #ifdef USE_CUDA
                 if (run_cuda){
-                  Kernel_2_noatt_iso_impl<<< grid,threads,0,mp->compute_stream>>>(nb_blocks_to_compute,
+                  Kernel_2_noatt_iso_impl<<<grid,threads,0,mp->compute_stream>>>(nb_blocks_to_compute,
                                                                                   d_ibool,
                                                                                   mp->d_phase_ispec_inner_elastic,
                                                                                   mp->num_phase_ispec_elastic,
@@ -1039,6 +1043,10 @@ void Kernel_2(int nb_blocks_to_compute,Mesh* mp,int d_iphase,realw d_deltat,
                                                                                   mp->d_hprimewgll_xx,
                                                                                   mp->d_wgllwgll_xy, mp->d_wgllwgll_xz, mp->d_wgllwgll_yz,
                                                                                   d_kappav, d_muv,
+                                                                                  mp->is_wavefield_discontinuity,
+                                                                                  mp->d_displ_wd,
+                                                                                  mp->d_ispec_to_elem_wd,
+                                                                                  mp->d_ibool_wd,
                                                                                   mp->pml_conditions,
                                                                                   mp->d_is_CPML,
                                                                                   3); // 3 == backward
@@ -1063,6 +1071,10 @@ void Kernel_2(int nb_blocks_to_compute,Mesh* mp,int d_iphase,realw d_deltat,
                                                               mp->d_hprimewgll_xx,
                                                               mp->d_wgllwgll_xy, mp->d_wgllwgll_xz, mp->d_wgllwgll_yz,
                                                               d_kappav, d_muv,
+                                                              mp->is_wavefield_discontinuity,
+                                                              mp->d_displ_wd,
+                                                              mp->d_ispec_to_elem_wd,
+                                                              mp->d_ibool_wd,
                                                               mp->pml_conditions,
                                                               mp->d_is_CPML,
                                                               3); // 3 == backward

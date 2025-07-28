@@ -613,8 +613,8 @@ contains
   ! discontinuity interface
   !-------------------------------------------------
   subroutine write_wavefield_discontinuity_database(iproc, outputpath_name, &
-                                       nb_wd, boundary_to_ispec_wd, side_wd, &
-                                                nspec, glob2loc_elmnts, part)
+                                                    nb_wd, boundary_to_ispec_wd, side_wd, &
+                                                    nspec, glob2loc_elmnts, part)
   use constants, only: FNAME_WAVEFIELD_DISCONTINUITY_MESH, &
                        IFILE_WAVEFIELD_DISCONTINUITY, MAX_STRING_LEN
   implicit none
@@ -630,11 +630,13 @@ contains
                                         local_side_wd
   character(len=MAX_STRING_LEN), intent(in) :: outputpath_name
   character(len=MAX_STRING_LEN) :: prname
+
   write(prname, "('proc',i6.6,'_')") iproc
   open(unit=IFILE_WAVEFIELD_DISCONTINUITY, &
        file = trim(outputpath_name)//'/'//trim(prname)//&
             trim(FNAME_WAVEFIELD_DISCONTINUITY_MESH), &
        form='unformatted', action='write')
+
   local_nb_wd = 0
   do ib = 1, nb_wd
     ispec = boundary_to_ispec_wd(ib)
@@ -643,7 +645,9 @@ contains
       local_nb_wd = local_nb_wd + 1
     endif
   enddo
+
   print *, 'partition', iproc, ' has ', local_nb_wd, ' elements on wavefield discontinuity interface'
+
   allocate(local_boundary_to_ispec_wd(local_nb_wd))
   allocate(local_side_wd(local_nb_wd))
   local_nb_wd = 0
@@ -656,11 +660,15 @@ contains
       local_side_wd(local_nb_wd) = iside
     endif
   enddo
+
   write(IFILE_WAVEFIELD_DISCONTINUITY) local_nb_wd
   write(IFILE_WAVEFIELD_DISCONTINUITY) local_boundary_to_ispec_wd
   write(IFILE_WAVEFIELD_DISCONTINUITY) local_side_wd
+
   close(IFILE_WAVEFIELD_DISCONTINUITY)
+
   deallocate(local_boundary_to_ispec_wd, local_side_wd)
+
   end subroutine write_wavefield_discontinuity_database
 
 

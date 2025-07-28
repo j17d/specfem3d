@@ -44,7 +44,6 @@ __global__ void compute_add_sources_kernel(realw* accel,
   int isource  = blockIdx.x + gridDim.x*blockIdx.y; // bx
 
   int ispec,iglob;
-  field stf;
 
   if (isource < NSOURCES) { // when NSOURCES > 65535, but mod(nspec_top,2) > 0, we end up with an extra block.
 
@@ -54,12 +53,17 @@ __global__ void compute_add_sources_kernel(realw* accel,
 
       if (ispec_is_elastic[ispec]) {
 
-        stf = stf_pre_compute[isource];
         iglob = d_ibool[INDEX4_PADDED(NGLLX,NGLLX,NGLLX,i,j,k,ispec)]-1;
 
-        atomicAdd(&accel[iglob*3+0],sourcearrays[INDEX5(NSOURCES,NDIM,NGLLX,NGLLX,isource,0,i,j,k)]*stf);
-        atomicAdd(&accel[iglob*3+1],sourcearrays[INDEX5(NSOURCES,NDIM,NGLLX,NGLLX,isource,1,i,j,k)]*stf);
-        atomicAdd(&accel[iglob*3+2],sourcearrays[INDEX5(NSOURCES,NDIM,NGLLX,NGLLX,isource,2,i,j,k)]*stf);
+        realw stf = (realw) stf_pre_compute[isource];
+
+        realw stf_x = sourcearrays[INDEX5(NSOURCES,NDIM,NGLLX,NGLLX,isource,0,i,j,k)] * stf;
+        realw stf_y = sourcearrays[INDEX5(NSOURCES,NDIM,NGLLX,NGLLX,isource,1,i,j,k)] * stf;
+        realw stf_z = sourcearrays[INDEX5(NSOURCES,NDIM,NGLLX,NGLLX,isource,2,i,j,k)] * stf;
+
+        atomicAdd(&accel[iglob*3],stf_x);
+        atomicAdd(&accel[iglob*3+1],stf_y);
+        atomicAdd(&accel[iglob*3+2],stf_z);
       }
     }
   }

@@ -265,40 +265,46 @@
     call h5_read_dataset_collect_hyperslab(dsetname,kappastore,(/0,0,0,sum(offset_nspec(0:myrank-1))/),H5_COL)
     dsetname = "mustore"
     call h5_read_dataset_collect_hyperslab(dsetname,mustore,(/0,0,0,sum(offset_nspec(0:myrank-1))/),H5_COL)
+    dsetname = "rhostore"
+    call h5_read_dataset_collect_hyperslab(dsetname, rhostore, (/0,0,0,sum(offset_nspec(0:myrank-1))/),H5_COL)
   endif
+
+! note: the size(..) function returns either integer(kind=4) or integer(kind=8)
+!       depending on compiler flags (-mcmedium), thus adding a kind argument to have integer(kind=4) output
 
   call bcast_all_i_for_database(NSPEC_AB, 1)
   call bcast_all_i_for_database(NGLOB_AB, 1)
   call bcast_all_i_for_database(NSPEC_IRREGULAR, 1)
-  call bcast_all_i_for_database(ibool(1,1,1,1), size(ibool))
-  call bcast_all_i_for_database(irregular_element_number(1), size(irregular_element_number))
+  call bcast_all_i_for_database(ibool(1,1,1,1), size(ibool,kind=4))
+  call bcast_all_i_for_database(irregular_element_number(1), size(irregular_element_number,kind=4))
   call bcast_all_cr_for_database(xix_regular, 1)
   call bcast_all_cr_for_database(jacobian_regular, 1)
 
-  if (size(xstore) > 0) call bcast_all_cr_for_database(xstore(1), size(xstore))
-  if (size(ystore) > 0) call bcast_all_cr_for_database(ystore(1), size(ystore))
-  if (size(zstore) > 0) call bcast_all_cr_for_database(zstore(1), size(zstore))
+  if (size(xstore) > 0) call bcast_all_cr_for_database(xstore(1), size(xstore,kind=4))
+  if (size(ystore) > 0) call bcast_all_cr_for_database(ystore(1), size(ystore,kind=4))
+  if (size(zstore) > 0) call bcast_all_cr_for_database(zstore(1), size(zstore,kind=4))
 
-  call bcast_all_cr_for_database(xixstore(1,1,1,1), size(xixstore))
-  call bcast_all_cr_for_database(xiystore(1,1,1,1), size(xiystore))
-  call bcast_all_cr_for_database(xizstore(1,1,1,1), size(xizstore))
-  call bcast_all_cr_for_database(etaxstore(1,1,1,1), size(etaxstore))
-  call bcast_all_cr_for_database(etaystore(1,1,1,1), size(etaystore))
-  call bcast_all_cr_for_database(etazstore(1,1,1,1), size(etazstore))
-  call bcast_all_cr_for_database(gammaxstore(1,1,1,1), size(gammaxstore))
-  call bcast_all_cr_for_database(gammaystore(1,1,1,1), size(gammaystore))
-  call bcast_all_cr_for_database(gammazstore(1,1,1,1), size(gammazstore))
-  call bcast_all_cr_for_database(jacobianstore(1,1,1,1), size(jacobianstore))
+  call bcast_all_cr_for_database(xixstore(1,1,1,1), size(xixstore,kind=4))
+  call bcast_all_cr_for_database(xiystore(1,1,1,1), size(xiystore,kind=4))
+  call bcast_all_cr_for_database(xizstore(1,1,1,1), size(xizstore,kind=4))
+  call bcast_all_cr_for_database(etaxstore(1,1,1,1), size(etaxstore,kind=4))
+  call bcast_all_cr_for_database(etaystore(1,1,1,1), size(etaystore,kind=4))
+  call bcast_all_cr_for_database(etazstore(1,1,1,1), size(etazstore,kind=4))
+  call bcast_all_cr_for_database(gammaxstore(1,1,1,1), size(gammaxstore,kind=4))
+  call bcast_all_cr_for_database(gammaystore(1,1,1,1), size(gammaystore,kind=4))
+  call bcast_all_cr_for_database(gammazstore(1,1,1,1), size(gammazstore,kind=4))
+  call bcast_all_cr_for_database(jacobianstore(1,1,1,1), size(jacobianstore,kind=4))
 
-  call bcast_all_cr_for_database(kappastore(1,1,1,1), size(kappastore))
-  call bcast_all_cr_for_database(mustore(1,1,1,1), size(mustore))
+  call bcast_all_cr_for_database(kappastore(1,1,1,1), size(kappastore,kind=4))
+  call bcast_all_cr_for_database(mustore(1,1,1,1), size(mustore,kind=4))
+  call bcast_all_cr_for_database(rhostore(1,1,1,1), size(rhostore,kind=4))
 
   if (size(ispec_is_acoustic) > 0) &
-    call bcast_all_l_for_database(ispec_is_acoustic(1), size(ispec_is_acoustic))
+    call bcast_all_l_for_database(ispec_is_acoustic(1), size(ispec_is_acoustic,kind=4))
   if (size(ispec_is_elastic) > 0) &
-    call bcast_all_l_for_database(ispec_is_elastic(1), size(ispec_is_elastic))
+    call bcast_all_l_for_database(ispec_is_elastic(1), size(ispec_is_elastic,kind=4))
   if (size(ispec_is_poroelastic) > 0) &
-    call bcast_all_l_for_database(ispec_is_poroelastic(1), size(ispec_is_poroelastic))
+    call bcast_all_l_for_database(ispec_is_poroelastic(1), size(ispec_is_poroelastic,kind=4))
 
   ! all processes will have acoustic_simulation set if any flag is .true.
   call any_all_l( ANY(ispec_is_acoustic), ACOUSTIC_SIMULATION )
@@ -357,7 +363,7 @@
       dsetname = "rmass_acoustic"
       call h5_read_dataset_collect_hyperslab(dsetname, rmass_acoustic,(/sum(offset_nglob(0:myrank-1))/),H5_COL)
     endif
-    if (size(rmass_acoustic) > 0) call bcast_all_cr_for_database(rmass_acoustic(1), size(rmass_acoustic))
+    if (size(rmass_acoustic) > 0) call bcast_all_cr_for_database(rmass_acoustic(1), size(rmass_acoustic,kind=4))
 
     ! initializes mass matrix contribution
     allocate(rmassz_acoustic(NGLOB_AB),stat=ier)
@@ -365,15 +371,6 @@
     if (ier /= 0) stop 'Error allocating array rmassz_acoustic'
     rmassz_acoustic(:) = 0.0_CUSTOM_REAL
   endif
-
-! rho array is needed for acoustic simulations but also for elastic simulations with CPML,
-! read it in all cases (whether the simulation is acoustic, elastic, or acoustic/elastic)
-  if (I_should_read_the_database) then
-    dsetname = "rhostore"
-    !call h5_read_dataset_p(dsetname, rhostore)
-    call h5_read_dataset_collect_hyperslab(dsetname, rhostore, (/0,0,0,sum(offset_nspec(0:myrank-1))/),H5_COL)
-  endif
-  call bcast_all_cr_for_database(rhostore(1,1,1,1), size(rhostore))
 
   ! elastic simulation
   if (ELASTIC_SIMULATION) then
@@ -537,7 +534,7 @@
       dsetname = "rmass"
       call h5_read_dataset_collect_hyperslab(dsetname, rmass, (/sum(offset_nglob(0:myrank-1))/), H5_COL)
     endif
-    call bcast_all_cr_for_database(rmass(1), size(rmass))
+    call bcast_all_cr_for_database(rmass(1), size(rmass,kind=4))
     if (ier /= 0) stop 'Error reading in array rmass'
 
     if (APPROXIMATE_OCEAN_LOAD) then
@@ -552,7 +549,7 @@
         dsetname = "rmass_ocean_load"
         call h5_read_dataset_collect_hyperslab(dsetname, rmass_ocean_load, (/sum(offset_nglob_ocean(0:myrank-1))/),H5_COL)
       endif
-      if (size(rmass_ocean_load) > 0) call bcast_all_cr_for_database(rmass_ocean_load(1), size(rmass_ocean_load))
+      if (size(rmass_ocean_load) > 0) call bcast_all_cr_for_database(rmass_ocean_load(1), size(rmass_ocean_load,kind=4))
     else
       ! dummy allocation
       allocate(rmass_ocean_load(1),stat=ier)
@@ -565,12 +562,12 @@
       dsetname = "rho_vp"
       call h5_read_dataset_collect_hyperslab(dsetname, rho_vp, (/0,0,0,sum(offset_nspec(0:myrank-1))/),H5_COL)
     endif
-    if (size(rho_vp) > 0) call bcast_all_cr_for_database(rho_vp(1,1,1,1), size(rho_vp))
+    if (size(rho_vp) > 0) call bcast_all_cr_for_database(rho_vp(1,1,1,1), size(rho_vp,kind=4))
     if (I_should_read_the_database) then
       dsetname = "rho_vs"
       call h5_read_dataset_collect_hyperslab(dsetname, rho_vs, (/0,0,0,sum(offset_nspec(0:myrank-1))/),H5_COL)
     endif
-    if (size(rho_vs) > 0) call bcast_all_cr_for_database(rho_vs(1,1,1,1), size(rho_vs))
+    if (size(rho_vs) > 0) call bcast_all_cr_for_database(rho_vs(1,1,1,1), size(rho_vs,kind=4))
 
   else
     ! no elastic attenuation & anisotropy
@@ -706,27 +703,27 @@
       call h5_read_dataset_collect_hyperslab(dsetname, rho_vsI, (/0,0,0,sum(offset_nspecporo(0:myrank-1))/),H5_COL)
     endif
     if (size(rmass_solid_poroelastic) > 0) &
-      call bcast_all_cr_for_database(rmass_solid_poroelastic(1), size(rmass_solid_poroelastic))
+      call bcast_all_cr_for_database(rmass_solid_poroelastic(1), size(rmass_solid_poroelastic,kind=4))
     if (size(rmass_fluid_poroelastic) > 0) &
-      call bcast_all_cr_for_database(rmass_fluid_poroelastic(1), size(rmass_fluid_poroelastic))
+      call bcast_all_cr_for_database(rmass_fluid_poroelastic(1), size(rmass_fluid_poroelastic,kind=4))
     if (size(rhoarraystore) > 0) &
-      call bcast_all_cr_for_database(rhoarraystore(1,1,1,1,1), size(rhoarraystore))
+      call bcast_all_cr_for_database(rhoarraystore(1,1,1,1,1), size(rhoarraystore,kind=4))
     if (size(kappaarraystore) > 0) &
-      call bcast_all_cr_for_database(kappaarraystore(1,1,1,1,1), size(kappaarraystore))
+      call bcast_all_cr_for_database(kappaarraystore(1,1,1,1,1), size(kappaarraystore,kind=4))
     if (size(etastore) > 0) &
-      call bcast_all_cr_for_database(etastore(1,1,1,1), size(etastore))
+      call bcast_all_cr_for_database(etastore(1,1,1,1), size(etastore,kind=4))
     if (size(tortstore) > 0) &
-      call bcast_all_cr_for_database(tortstore(1,1,1,1), size(tortstore))
+      call bcast_all_cr_for_database(tortstore(1,1,1,1), size(tortstore,kind=4))
     if (size(permstore) > 0) &
-      call bcast_all_cr_for_database(permstore(1,1,1,1,1), size(permstore))
+      call bcast_all_cr_for_database(permstore(1,1,1,1,1), size(permstore,kind=4))
     if (size(phistore) > 0) &
-      call bcast_all_cr_for_database(phistore(1,1,1,1), size(phistore))
+      call bcast_all_cr_for_database(phistore(1,1,1,1), size(phistore,kind=4))
     if (size(rho_vpI) > 0) &
-      call bcast_all_cr_for_database(rho_vpI(1,1,1,1), size(rho_vpI))
+      call bcast_all_cr_for_database(rho_vpI(1,1,1,1), size(rho_vpI,kind=4))
     if (size(rho_vpII) > 0) &
-      call bcast_all_cr_for_database(rho_vpII(1,1,1,1), size(rho_vpII))
+      call bcast_all_cr_for_database(rho_vpII(1,1,1,1), size(rho_vpII,kind=4))
     if (size(rho_vsI) > 0) &
-      call bcast_all_cr_for_database(rho_vsI(1,1,1,1), size(rho_vsI))
+      call bcast_all_cr_for_database(rho_vsI(1,1,1,1), size(rho_vsI,kind=4))
   else
     ! dummy allocations (needed for subroutine arguments)
     allocate(rhoarraystore(2,1,1,1,1), &
@@ -846,18 +843,18 @@
         call h5_read_dataset_collect_hyperslab(dsetname, alpha_store_z, (/0,0,0,sum(offset_nspeccpml(0:myrank-1))/),H5_COL)
       endif
 
-      if (size(CPML_regions) > 0) call bcast_all_i_for_database(CPML_regions(1), size(CPML_regions))
-      if (size(CPML_to_spec) > 0) call bcast_all_i_for_database(CPML_to_spec(1), size(CPML_to_spec))
-      if (size(is_CPML) > 0) call bcast_all_l_for_database(is_CPML(1), size(is_CPML))
-      if (size(d_store_x) > 0) call bcast_all_cr_for_database(d_store_x(1,1,1,1), size(d_store_x))
-      if (size(d_store_y) > 0) call bcast_all_cr_for_database(d_store_y(1,1,1,1), size(d_store_y))
-      if (size(d_store_z) > 0) call bcast_all_cr_for_database(d_store_z(1,1,1,1), size(d_store_z))
-      if (size(k_store_x) > 0) call bcast_all_cr_for_database(k_store_x(1,1,1,1), size(k_store_x))
-      if (size(k_store_y) > 0) call bcast_all_cr_for_database(k_store_y(1,1,1,1), size(k_store_y))
-      if (size(k_store_z) > 0) call bcast_all_cr_for_database(k_store_z(1,1,1,1), size(k_store_z))
-      if (size(alpha_store_x) > 0) call bcast_all_cr_for_database(alpha_store_x(1,1,1,1), size(alpha_store_x))
-      if (size(alpha_store_y) > 0) call bcast_all_cr_for_database(alpha_store_y(1,1,1,1), size(alpha_store_y))
-      if (size(alpha_store_z) > 0) call bcast_all_cr_for_database(alpha_store_z(1,1,1,1), size(alpha_store_z))
+      if (size(CPML_regions) > 0) call bcast_all_i_for_database(CPML_regions(1), size(CPML_regions,kind=4))
+      if (size(CPML_to_spec) > 0) call bcast_all_i_for_database(CPML_to_spec(1), size(CPML_to_spec,kind=4))
+      if (size(is_CPML) > 0) call bcast_all_l_for_database(is_CPML(1), size(is_CPML,kind=4))
+      if (size(d_store_x) > 0) call bcast_all_cr_for_database(d_store_x(1,1,1,1), size(d_store_x,kind=4))
+      if (size(d_store_y) > 0) call bcast_all_cr_for_database(d_store_y(1,1,1,1), size(d_store_y,kind=4))
+      if (size(d_store_z) > 0) call bcast_all_cr_for_database(d_store_z(1,1,1,1), size(d_store_z,kind=4))
+      if (size(k_store_x) > 0) call bcast_all_cr_for_database(k_store_x(1,1,1,1), size(k_store_x,kind=4))
+      if (size(k_store_y) > 0) call bcast_all_cr_for_database(k_store_y(1,1,1,1), size(k_store_y,kind=4))
+      if (size(k_store_z) > 0) call bcast_all_cr_for_database(k_store_z(1,1,1,1), size(k_store_z,kind=4))
+      if (size(alpha_store_x) > 0) call bcast_all_cr_for_database(alpha_store_x(1,1,1,1), size(alpha_store_x,kind=4))
+      if (size(alpha_store_y) > 0) call bcast_all_cr_for_database(alpha_store_y(1,1,1,1), size(alpha_store_y,kind=4))
+      if (size(alpha_store_z) > 0) call bcast_all_cr_for_database(alpha_store_z(1,1,1,1), size(alpha_store_z,kind=4))
 
       if ((SIMULATION_TYPE == 1 .and. SAVE_FORWARD) .or. SIMULATION_TYPE == 3) then
         ! acoustic
@@ -889,7 +886,7 @@
                 points_interface_PML_acoustic, (/sum(offset_nglob_interface_PML_acoustic(0:myrank-1))/),H5_COL)
           endif
           if (size(points_interface_PML_acoustic) > 0) &
-            call bcast_all_i_for_database(points_interface_PML_acoustic(1), size(points_interface_PML_acoustic))
+            call bcast_all_i_for_database(points_interface_PML_acoustic(1), size(points_interface_PML_acoustic,kind=4))
         endif
         ! elastic allocation
         if (sum(offset_nglob_interface_PML_elastic) > 0) then
@@ -904,7 +901,7 @@
                 points_interface_PML_acoustic, (/sum(offset_nglob_interface_PML_elastic(0:myrank-1))/),H5_COL)
           endif
           if (size(points_interface_PML_elastic) > 0) &
-            call bcast_all_i_for_database(points_interface_PML_elastic(1), size(points_interface_PML_elastic))
+            call bcast_all_i_for_database(points_interface_PML_elastic(1), size(points_interface_PML_elastic,kind=4))
         endif
       endif
     endif
@@ -937,13 +934,13 @@
   if (I_should_read_the_database) then
     call h5_read_dataset_collect_hyperslab("offset_num_abs_boundary_faces",offset_num_abs_boundary_faces, (/0/), H5_COL)
   endif
-  call bcast_all_i_array_for_database(offset_num_abs_boundary_faces, size(offset_num_abs_boundary_faces))
+  call bcast_all_i_array_for_database(offset_num_abs_boundary_faces, size(offset_num_abs_boundary_faces,kind=4))
 
   if (sum(offset_num_abs_boundary_faces) > 0) then
     if (I_should_read_the_database) then
       call h5_read_dataset_collect_hyperslab("offset_nglob_xy",offset_nglob_xy, (/0/), H5_COL)
     endif
-    call bcast_all_i_array_for_database(offset_nglob_xy, size(offset_nglob_xy))
+    call bcast_all_i_array_for_database(offset_nglob_xy, size(offset_nglob_xy,kind=4))
 
     if (I_should_read_the_database) then
       dsetname = "abs_boundary_ispec"
@@ -960,13 +957,13 @@
               (/0,0,sum(offset_num_abs_boundary_faces(0:myrank-1))/), H5_COL)
     endif
     if (size(abs_boundary_ispec) > 0) &
-      call bcast_all_i_for_database(abs_boundary_ispec(1), size(abs_boundary_ispec))
+      call bcast_all_i_for_database(abs_boundary_ispec(1), size(abs_boundary_ispec,kind=4))
     if (size(abs_boundary_ijk) > 0) &
-      call bcast_all_i_for_database(abs_boundary_ijk(1,1,1), size(abs_boundary_ijk))
+      call bcast_all_i_for_database(abs_boundary_ijk(1,1,1), size(abs_boundary_ijk,kind=4))
     if (size(abs_boundary_jacobian2Dw) > 0) &
-      call bcast_all_cr_for_database(abs_boundary_jacobian2Dw(1,1), size(abs_boundary_jacobian2Dw))
+      call bcast_all_cr_for_database(abs_boundary_jacobian2Dw(1,1), size(abs_boundary_jacobian2Dw,kind=4))
     if (size(abs_boundary_normal) > 0) &
-      call bcast_all_cr_for_database(abs_boundary_normal(1,1,1), size(abs_boundary_normal))
+      call bcast_all_cr_for_database(abs_boundary_normal(1,1,1), size(abs_boundary_normal,kind=4))
 
     if (STACEY_ABSORBING_CONDITIONS .and. (.not. PML_CONDITIONS)) then
       ! store mass matrix contributions
@@ -982,9 +979,9 @@
           call h5_read_dataset_collect_hyperslab(dsetname, rmassz(1:offset_nglob_xy(myrank)), &
                                                           (/sum(offset_nglob_xy(0:myrank-1))/),H5_COL)
         endif
-        if (size(rmassx) > 0) call bcast_all_cr_for_database(rmassx(1), size(rmassx))
-        if (size(rmassy) > 0) call bcast_all_cr_for_database(rmassy(1), size(rmassy))
-        if (size(rmassz) > 0) call bcast_all_cr_for_database(rmassz(1), size(rmassz))
+        if (size(rmassx) > 0) call bcast_all_cr_for_database(rmassx(1), size(rmassx,kind=4))
+        if (size(rmassy) > 0) call bcast_all_cr_for_database(rmassy(1), size(rmassy,kind=4))
+        if (size(rmassz) > 0) call bcast_all_cr_for_database(rmassz(1), size(rmassz,kind=4))
       endif
       if (ACOUSTIC_SIMULATION) then
         if (I_should_read_the_database) then
@@ -992,7 +989,7 @@
           call h5_read_dataset_collect_hyperslab(dsetname, rmassz_acoustic(1:offset_nglob_xy(myrank)), &
                                                           (/sum(offset_nglob_xy(0:myrank-1))/),H5_COL)
         endif
-        if (size(rmassz_acoustic) > 0) call bcast_all_cr_for_database(rmassz_acoustic(1), size(rmassz_acoustic))
+        if (size(rmassz_acoustic) > 0) call bcast_all_cr_for_database(rmassz_acoustic(1), size(rmassz_acoustic,kind=4))
       endif
     endif
   endif
@@ -1062,12 +1059,12 @@
       call h5_read_dataset_collect_hyperslab(dsetname, ibelm_top, (/sum(offset_nspec2D_top_ext(0:myrank-1))/),H5_COL)
     endif
   endif
-  if (size(ibelm_xmin) > 0) call bcast_all_i_for_database(ibelm_xmin(1), size(ibelm_xmin))
-  if (size(ibelm_xmax) > 0) call bcast_all_i_for_database(ibelm_xmax(1), size(ibelm_xmax))
-  if (size(ibelm_ymin) > 0) call bcast_all_i_for_database(ibelm_ymin(1), size(ibelm_ymin))
-  if (size(ibelm_ymax) > 0) call bcast_all_i_for_database(ibelm_ymax(1), size(ibelm_ymax))
-  if (size(ibelm_bottom) > 0) call bcast_all_i_for_database(ibelm_bottom(1), size(ibelm_bottom))
-  if (size(ibelm_top) > 0) call bcast_all_i_for_database(ibelm_top(1), size(ibelm_top))
+  if (size(ibelm_xmin) > 0) call bcast_all_i_for_database(ibelm_xmin(1), size(ibelm_xmin,kind=4))
+  if (size(ibelm_xmax) > 0) call bcast_all_i_for_database(ibelm_xmax(1), size(ibelm_xmax,kind=4))
+  if (size(ibelm_ymin) > 0) call bcast_all_i_for_database(ibelm_ymin(1), size(ibelm_ymin,kind=4))
+  if (size(ibelm_ymax) > 0) call bcast_all_i_for_database(ibelm_ymax(1), size(ibelm_ymax,kind=4))
+  if (size(ibelm_bottom) > 0) call bcast_all_i_for_database(ibelm_bottom(1), size(ibelm_bottom,kind=4))
+  if (size(ibelm_top) > 0) call bcast_all_i_for_database(ibelm_top(1), size(ibelm_top,kind=4))
 
   ! free surface
   if (I_should_read_the_database) then
@@ -1091,7 +1088,7 @@
   if (I_should_read_the_database) then
     call h5_read_dataset_collect_hyperslab("offset_num_free_surface_faces",offset_num_free_surface_faces, (/0/), H5_COL)
   endif
-  call bcast_all_i_array_for_database(offset_num_free_surface_faces, size(offset_num_free_surface_faces))
+  call bcast_all_i_array_for_database(offset_num_free_surface_faces, size(offset_num_free_surface_faces,kind=4))
 
   if (sum(offset_num_free_surface_faces) > 0) then
     if (I_should_read_the_database) then
@@ -1109,13 +1106,13 @@
               (/0,0,sum(offset_num_free_surface_faces(0:myrank-1))/),H5_COL)
     endif
     if (size(free_surface_ispec) > 0) &
-      call bcast_all_i_for_database(free_surface_ispec(1), size(free_surface_ispec))
+      call bcast_all_i_for_database(free_surface_ispec(1), size(free_surface_ispec,kind=4))
     if (size(free_surface_ijk) > 0) &
-      call bcast_all_i_for_database(free_surface_ijk(1,1,1), size(free_surface_ijk))
+      call bcast_all_i_for_database(free_surface_ijk(1,1,1), size(free_surface_ijk,kind=4))
     if (size(free_surface_jacobian2Dw) > 0) &
-      call bcast_all_cr_for_database(free_surface_jacobian2Dw(1,1), size(free_surface_jacobian2Dw))
+      call bcast_all_cr_for_database(free_surface_jacobian2Dw(1,1), size(free_surface_jacobian2Dw,kind=4))
     if (size(free_surface_normal) > 0) &
-      call bcast_all_cr_for_database(free_surface_normal(1,1,1), size(free_surface_normal))
+      call bcast_all_cr_for_database(free_surface_normal(1,1,1), size(free_surface_normal,kind=4))
   endif
 
   ! acoustic-elastic coupling surface
@@ -1140,7 +1137,7 @@
   if (I_should_read_the_database) then
     call h5_read_dataset_collect_hyperslab("offset_num_coupling_ac_el_faces",offset_num_coupling_ac_el_faces,(/0/),H5_COL)
   endif
-  call bcast_all_i_array_for_database(offset_num_coupling_ac_el_faces, size(offset_num_coupling_ac_el_faces))
+  call bcast_all_i_array_for_database(offset_num_coupling_ac_el_faces, size(offset_num_coupling_ac_el_faces,kind=4))
 
   if (sum(offset_num_coupling_ac_el_faces) > 0) then
     if (I_should_read_the_database) then
@@ -1158,13 +1155,13 @@
                (/0,0,sum(offset_num_coupling_ac_el_faces(0:myrank-1))/),H5_COL)
     endif
     if (size(coupling_ac_el_ispec) > 0) &
-      call bcast_all_i_for_database(coupling_ac_el_ispec(1), size(coupling_ac_el_ispec))
+      call bcast_all_i_for_database(coupling_ac_el_ispec(1), size(coupling_ac_el_ispec,kind=4))
     if (size(coupling_ac_el_ijk) > 0) &
-      call bcast_all_i_for_database(coupling_ac_el_ijk(1,1,1), size(coupling_ac_el_ijk))
+      call bcast_all_i_for_database(coupling_ac_el_ijk(1,1,1), size(coupling_ac_el_ijk,kind=4))
     if (size(coupling_ac_el_jacobian2Dw) > 0) &
-      call bcast_all_cr_for_database(coupling_ac_el_jacobian2Dw(1,1), size(coupling_ac_el_jacobian2Dw))
+      call bcast_all_cr_for_database(coupling_ac_el_jacobian2Dw(1,1), size(coupling_ac_el_jacobian2Dw,kind=4))
     if (size(coupling_ac_el_normal) > 0) &
-      call bcast_all_cr_for_database(coupling_ac_el_normal(1,1,1), size(coupling_ac_el_normal))
+      call bcast_all_cr_for_database(coupling_ac_el_normal(1,1,1), size(coupling_ac_el_normal,kind=4))
   endif
 
   ! acoustic-poroelastic coupling surface
@@ -1189,7 +1186,7 @@
   if (I_should_read_the_database) then
     call h5_read_dataset_collect_hyperslab("offset_num_coupling_ac_po_faces",offset_num_coupling_ac_po_faces, (/0/), H5_COL)
   endif
-  call bcast_all_i_array_for_database(offset_num_coupling_ac_po_faces,size(offset_num_coupling_ac_po_faces))
+  call bcast_all_i_array_for_database(offset_num_coupling_ac_po_faces,size(offset_num_coupling_ac_po_faces,kind=4))
 
   if (sum(offset_num_coupling_ac_po_faces) > 0) then
     if (I_should_read_the_database) then
@@ -1207,13 +1204,13 @@
               (/0,0,sum(offset_num_coupling_ac_po_faces(0:myrank-1))/),H5_COL)
     endif
     if (size(coupling_ac_po_ispec) > 0) &
-      call bcast_all_i_for_database(coupling_ac_po_ispec(1), size(coupling_ac_po_ispec))
+      call bcast_all_i_for_database(coupling_ac_po_ispec(1), size(coupling_ac_po_ispec,kind=4))
     if (size(coupling_ac_po_ijk) > 0) &
-      call bcast_all_i_for_database(coupling_ac_po_ijk(1,1,1), size(coupling_ac_po_ijk))
+      call bcast_all_i_for_database(coupling_ac_po_ijk(1,1,1), size(coupling_ac_po_ijk,kind=4))
     if (size(coupling_ac_po_jacobian2Dw) > 0) &
-      call bcast_all_cr_for_database(coupling_ac_po_jacobian2Dw(1,1), size(coupling_ac_po_jacobian2Dw))
+      call bcast_all_cr_for_database(coupling_ac_po_jacobian2Dw(1,1), size(coupling_ac_po_jacobian2Dw,kind=4))
     if (size(coupling_ac_po_normal) > 0) &
-      call bcast_all_cr_for_database(coupling_ac_po_normal(1,1,1), size(coupling_ac_po_normal))
+      call bcast_all_cr_for_database(coupling_ac_po_normal(1,1,1), size(coupling_ac_po_normal,kind=4))
   endif
 
   ! elastic-poroelastic coupling surface
@@ -1243,7 +1240,7 @@
   if (I_should_read_the_database) then
     call h5_read_dataset_collect_hyperslab("offset_num_coupling_el_po_faces",offset_num_coupling_el_po_faces, (/0/), H5_COL)
   endif
-  call bcast_all_i_array_for_database(offset_num_coupling_el_po_faces,size(offset_num_coupling_el_po_faces))
+  call bcast_all_i_array_for_database(offset_num_coupling_el_po_faces,size(offset_num_coupling_el_po_faces,kind=4))
 
   if (sum(offset_num_coupling_el_po_faces) > 0) then
     if (I_should_read_the_database) then
@@ -1267,17 +1264,17 @@
               (/0,0,sum(offset_num_coupling_el_po_faces(0:myrank-1))/),H5_COL)
     endif
     if (size(coupling_el_po_ispec) > 0) &
-      call bcast_all_i_for_database(coupling_el_po_ispec(1), size(coupling_el_po_ispec))
+      call bcast_all_i_for_database(coupling_el_po_ispec(1), size(coupling_el_po_ispec,kind=4))
     if (size(coupling_po_el_ispec) > 0) &
-      call bcast_all_i_for_database(coupling_po_el_ispec(1), size(coupling_po_el_ispec))
+      call bcast_all_i_for_database(coupling_po_el_ispec(1), size(coupling_po_el_ispec,kind=4))
     if (size(coupling_el_po_ijk) > 0) &
-      call bcast_all_i_for_database(coupling_el_po_ijk(1,1,1), size(coupling_el_po_ijk))
+      call bcast_all_i_for_database(coupling_el_po_ijk(1,1,1), size(coupling_el_po_ijk,kind=4))
     if (size(coupling_po_el_ijk) > 0) &
-      call bcast_all_i_for_database(coupling_po_el_ijk(1,1,1), size(coupling_po_el_ijk))
+      call bcast_all_i_for_database(coupling_po_el_ijk(1,1,1), size(coupling_po_el_ijk,kind=4))
     if (size(coupling_el_po_jacobian2Dw) > 0) &
-      call bcast_all_cr_for_database(coupling_el_po_jacobian2Dw(1,1), size(coupling_el_po_jacobian2Dw))
+      call bcast_all_cr_for_database(coupling_el_po_jacobian2Dw(1,1), size(coupling_el_po_jacobian2Dw,kind=4))
     if (size(coupling_el_po_normal) > 0) &
-      call bcast_all_cr_for_database(coupling_el_po_normal(1,1,1), size(coupling_el_po_normal))
+      call bcast_all_cr_for_database(coupling_el_po_normal(1,1,1), size(coupling_el_po_normal,kind=4))
   endif
 
   ! MPI interfaces
@@ -1297,7 +1294,7 @@
   if (I_should_read_the_database) then
     call h5_read_dataset_collect_hyperslab("offset_num_interfaces_ext_mesh",offset_num_interfaces_ext_mesh, (/0/), H5_COL)
   endif
-  call bcast_all_i_array_for_database(offset_num_interfaces_ext_mesh,size(offset_num_interfaces_ext_mesh))
+  call bcast_all_i_array_for_database(offset_num_interfaces_ext_mesh,size(offset_num_interfaces_ext_mesh,kind=4))
 
   if (sum(offset_num_interfaces_ext_mesh) > 0) then
     if (I_should_read_the_database) then
@@ -1322,11 +1319,11 @@
               (/0,sum(offset_num_interfaces_ext_mesh(0:myrank-1))/),H5_COL)
     endif
     if (size(my_neighbors_ext_mesh) > 0) &
-      call bcast_all_i_for_database(my_neighbors_ext_mesh(1), size(my_neighbors_ext_mesh))
+      call bcast_all_i_for_database(my_neighbors_ext_mesh(1), size(my_neighbors_ext_mesh,kind=4))
     if (size(nibool_interfaces_ext_mesh) > 0) &
-      call bcast_all_i_for_database(nibool_interfaces_ext_mesh(1), size(nibool_interfaces_ext_mesh))
+      call bcast_all_i_for_database(nibool_interfaces_ext_mesh(1), size(nibool_interfaces_ext_mesh,kind=4))
     if (size(ibool_interfaces_ext_mesh) > 0) &
-      call bcast_all_i_for_database(ibool_interfaces_ext_mesh(1,1), size(ibool_interfaces_ext_mesh))
+      call bcast_all_i_for_database(ibool_interfaces_ext_mesh(1,1), size(ibool_interfaces_ext_mesh,kind=4))
   else
     ! no interfaces
     max_nibool_interfaces_ext_mesh = 0
@@ -1382,27 +1379,27 @@
       dsetname = "c66store"
       call h5_read_dataset_collect_hyperslab(dsetname, c66store, (/0,0,0,sum(offset_nspec_aniso(0:myrank-1))/), H5_COL)
     endif
-    if (size(c11store) > 0) call bcast_all_cr_for_database(c11store(1,1,1,1), size(c11store))
-    if (size(c12store) > 0) call bcast_all_cr_for_database(c12store(1,1,1,1), size(c12store))
-    if (size(c13store) > 0) call bcast_all_cr_for_database(c13store(1,1,1,1), size(c13store))
-    if (size(c14store) > 0) call bcast_all_cr_for_database(c14store(1,1,1,1), size(c14store))
-    if (size(c15store) > 0) call bcast_all_cr_for_database(c15store(1,1,1,1), size(c15store))
-    if (size(c16store) > 0) call bcast_all_cr_for_database(c16store(1,1,1,1), size(c16store))
-    if (size(c22store) > 0) call bcast_all_cr_for_database(c22store(1,1,1,1), size(c22store))
-    if (size(c23store) > 0) call bcast_all_cr_for_database(c23store(1,1,1,1), size(c23store))
-    if (size(c24store) > 0) call bcast_all_cr_for_database(c24store(1,1,1,1), size(c24store))
-    if (size(c25store) > 0) call bcast_all_cr_for_database(c25store(1,1,1,1), size(c25store))
-    if (size(c26store) > 0) call bcast_all_cr_for_database(c26store(1,1,1,1), size(c26store))
-    if (size(c33store) > 0) call bcast_all_cr_for_database(c33store(1,1,1,1), size(c33store))
-    if (size(c34store) > 0) call bcast_all_cr_for_database(c34store(1,1,1,1), size(c34store))
-    if (size(c35store) > 0) call bcast_all_cr_for_database(c35store(1,1,1,1), size(c35store))
-    if (size(c36store) > 0) call bcast_all_cr_for_database(c36store(1,1,1,1), size(c36store))
-    if (size(c44store) > 0) call bcast_all_cr_for_database(c44store(1,1,1,1), size(c44store))
-    if (size(c45store) > 0) call bcast_all_cr_for_database(c45store(1,1,1,1), size(c45store))
-    if (size(c46store) > 0) call bcast_all_cr_for_database(c46store(1,1,1,1), size(c46store))
-    if (size(c55store) > 0) call bcast_all_cr_for_database(c55store(1,1,1,1), size(c55store))
-    if (size(c56store) > 0) call bcast_all_cr_for_database(c56store(1,1,1,1), size(c56store))
-    if (size(c66store) > 0) call bcast_all_cr_for_database(c66store(1,1,1,1), size(c66store))
+    if (size(c11store) > 0) call bcast_all_cr_for_database(c11store(1,1,1,1), size(c11store,kind=4))
+    if (size(c12store) > 0) call bcast_all_cr_for_database(c12store(1,1,1,1), size(c12store,kind=4))
+    if (size(c13store) > 0) call bcast_all_cr_for_database(c13store(1,1,1,1), size(c13store,kind=4))
+    if (size(c14store) > 0) call bcast_all_cr_for_database(c14store(1,1,1,1), size(c14store,kind=4))
+    if (size(c15store) > 0) call bcast_all_cr_for_database(c15store(1,1,1,1), size(c15store,kind=4))
+    if (size(c16store) > 0) call bcast_all_cr_for_database(c16store(1,1,1,1), size(c16store,kind=4))
+    if (size(c22store) > 0) call bcast_all_cr_for_database(c22store(1,1,1,1), size(c22store,kind=4))
+    if (size(c23store) > 0) call bcast_all_cr_for_database(c23store(1,1,1,1), size(c23store,kind=4))
+    if (size(c24store) > 0) call bcast_all_cr_for_database(c24store(1,1,1,1), size(c24store,kind=4))
+    if (size(c25store) > 0) call bcast_all_cr_for_database(c25store(1,1,1,1), size(c25store,kind=4))
+    if (size(c26store) > 0) call bcast_all_cr_for_database(c26store(1,1,1,1), size(c26store,kind=4))
+    if (size(c33store) > 0) call bcast_all_cr_for_database(c33store(1,1,1,1), size(c33store,kind=4))
+    if (size(c34store) > 0) call bcast_all_cr_for_database(c34store(1,1,1,1), size(c34store,kind=4))
+    if (size(c35store) > 0) call bcast_all_cr_for_database(c35store(1,1,1,1), size(c35store,kind=4))
+    if (size(c36store) > 0) call bcast_all_cr_for_database(c36store(1,1,1,1), size(c36store,kind=4))
+    if (size(c44store) > 0) call bcast_all_cr_for_database(c44store(1,1,1,1), size(c44store,kind=4))
+    if (size(c45store) > 0) call bcast_all_cr_for_database(c45store(1,1,1,1), size(c45store,kind=4))
+    if (size(c46store) > 0) call bcast_all_cr_for_database(c46store(1,1,1,1), size(c46store,kind=4))
+    if (size(c55store) > 0) call bcast_all_cr_for_database(c55store(1,1,1,1), size(c55store,kind=4))
+    if (size(c56store) > 0) call bcast_all_cr_for_database(c56store(1,1,1,1), size(c56store,kind=4))
+    if (size(c66store) > 0) call bcast_all_cr_for_database(c66store(1,1,1,1), size(c66store,kind=4))
   endif
 
   ! inner / outer elements
@@ -1415,7 +1412,7 @@
     dsetname = "ispec_is_inner"
     call h5_read_dataset_collect_hyperslab(dsetname, ispec_is_inner,(/sum(offset_nspec(0:myrank-1))/),H5_COL)
   endif
-  if (size(ispec_is_inner) > 0) call bcast_all_l_for_database(ispec_is_inner(1), size(ispec_is_inner))
+  if (size(ispec_is_inner) > 0) call bcast_all_l_for_database(ispec_is_inner(1), size(ispec_is_inner,kind=4))
 
   if (ACOUSTIC_SIMULATION) then
     if (I_should_read_the_database) then
@@ -1445,7 +1442,7 @@
                 (/sum(offset_num_phase_ispec_acoustic(0:myrank-1)),0/),H5_COL)
       endif
       if (size(phase_ispec_inner_acoustic) > 0) &
-            call bcast_all_i_for_database(phase_ispec_inner_acoustic(1,1), size(phase_ispec_inner_acoustic))
+            call bcast_all_i_for_database(phase_ispec_inner_acoustic(1,1), size(phase_ispec_inner_acoustic,kind=4))
     endif
   endif
 
@@ -1471,7 +1468,7 @@
     if (I_should_read_the_database) then
       call h5_read_dataset_collect_hyperslab("offset_num_phase_ispec_elastic",offset_num_phase_ispec_elastic, (/0/), H5_COL)
     endif
-    call bcast_all_i_array_for_database(offset_num_phase_ispec_elastic,size(offset_num_phase_ispec_elastic))
+    call bcast_all_i_array_for_database(offset_num_phase_ispec_elastic,size(offset_num_phase_ispec_elastic,kind=4))
 
     if (sum(offset_num_phase_ispec_elastic) > 0) then
       if (I_should_read_the_database) then
@@ -1480,7 +1477,7 @@
                 (/sum(offset_num_phase_ispec_elastic(0:myrank-1)),0/),H5_COL)
       endif
       if (size(phase_ispec_inner_elastic) > 0) &
-        call bcast_all_i_for_database(phase_ispec_inner_elastic(1,1), size(phase_ispec_inner_elastic))
+        call bcast_all_i_for_database(phase_ispec_inner_elastic(1,1), size(phase_ispec_inner_elastic,kind=4))
     endif
   endif
 
@@ -1507,7 +1504,7 @@
       call h5_read_dataset_collect_hyperslab("offset_num_phase_ispec_poroelastic", &
             offset_num_phase_ispec_poroelastic, (/0/), H5_COL)
     endif
-    call bcast_all_i_array_for_database(offset_num_phase_ispec_poroelastic,size(offset_num_phase_ispec_poroelastic))
+    call bcast_all_i_array_for_database(offset_num_phase_ispec_poroelastic,size(offset_num_phase_ispec_poroelastic,kind=4))
     if (sum(offset_num_phase_ispec_poroelastic) > 0) then
       if (I_should_read_the_database) then
         dsetname = "phase_ispec_inner_poroelastic"
@@ -1515,7 +1512,7 @@
               (/sum(offset_num_phase_ispec_poroelastic(0:myrank-1)),0/),H5_COL)
       endif
       if (size(phase_ispec_inner_poroelastic) > 0) &
-        call bcast_all_i_for_database(phase_ispec_inner_poroelastic(1,1), size(phase_ispec_inner_poroelastic))
+        call bcast_all_i_for_database(phase_ispec_inner_poroelastic(1,1), size(phase_ispec_inner_poroelastic,kind=4))
     endif
   endif
 
@@ -1545,7 +1542,7 @@
                 num_elem_colors_acoustic,(/sum(offset_num_colors_acoustic(0:myrank-1))/),H5_COL)
       endif
       if (size(num_elem_colors_acoustic) > 0) &
-        call bcast_all_i_for_database(num_elem_colors_acoustic(1), size(num_elem_colors_acoustic))
+        call bcast_all_i_for_database(num_elem_colors_acoustic(1), size(num_elem_colors_acoustic,kind=4))
     endif
     ! elastic domain colors
     if (ELASTIC_SIMULATION) then
@@ -1571,7 +1568,7 @@
                 (/sum(offset_num_colors_elastic(0:myrank-1))/),H5_COL)
       endif
       if (size(num_elem_colors_elastic) > 0) &
-        call bcast_all_i_for_database(num_elem_colors_elastic(1), size(num_elem_colors_elastic))
+        call bcast_all_i_for_database(num_elem_colors_elastic(1), size(num_elem_colors_elastic,kind=4))
     endif
   else
     ! allocates dummy arrays
@@ -1614,8 +1611,8 @@
             (/sum(offset_nglob_ab(0:myrank-1))/), H5_COL)
   endif
   call bcast_all_i_for_database(nfaces_surface, 1)
-  call bcast_all_l_for_database(ispec_is_surface_external_mesh(1), size(ispec_is_surface_external_mesh))
-  call bcast_all_l_for_database(iglob_is_surface_external_mesh(1), size(iglob_is_surface_external_mesh))
+  call bcast_all_l_for_database(ispec_is_surface_external_mesh(1), size(ispec_is_surface_external_mesh,kind=4))
+  call bcast_all_l_for_database(iglob_is_surface_external_mesh(1), size(iglob_is_surface_external_mesh,kind=4))
 
   ! for mesh adjacency
   if (I_should_read_the_database) then
@@ -1640,8 +1637,8 @@
     call h5_read_dataset_collect_hyperslab(dsetname, neighbors_adjncy, &
             (/sum_offset_neighbors_adjncy_this_proc/), H5_COL)
   endif
-  call bcast_all_i_for_database(neighbors_xadj(1), size(neighbors_xadj))
-  call bcast_all_i_for_database(neighbors_adjncy(1), size(neighbors_adjncy))
+  call bcast_all_i_for_database(neighbors_xadj(1), size(neighbors_xadj,kind=4))
+  call bcast_all_i_for_database(neighbors_adjncy(1), size(neighbors_adjncy,kind=4))
 
   ! done reading database
   if (I_should_read_the_database) then

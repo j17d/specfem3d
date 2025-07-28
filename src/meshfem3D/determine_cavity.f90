@@ -366,13 +366,13 @@ cavity: do i_cavity = 1,ncavity
         allocate(tmp_all(1,1),stat=ier)
         if (ier /= 0) call exit_MPI_without_rank('error allocating array 1330')
       endif
-      call sum_all_1Darray_dp(cavity_boundary,tmp_all,size(cavity_boundary))
+      call sum_all_1Darray_dp(cavity_boundary,tmp_all,size(cavity_boundary,kind=4))
       if (myrank == 0) then
         cavity_boundary(:,:) = tmp_all(:,:)
       endif
       deallocate(tmp_all)
       ! broadcasts to all others
-      call bcast_all_dp(cavity_boundary,size(cavity_boundary))
+      call bcast_all_dp(cavity_boundary,size(cavity_boundary,kind=4))
 
       !print *,'cavity boundary after:',myrank,'array:',cavity_boundary(:,:)
 
@@ -537,7 +537,7 @@ cavity: do i_cavity = 1,ncavity
     nodes_coords_old(:,:) = nodes_coords(:,:)
     ispec_material_id_old(:) = ispec_material_id(:)
     ibool_old(:,:,:,:) = ibool(:,:,:,:)
-    iboun_old (:,:)= iboun(:,:)
+    iboun_old (:,:) = iboun(:,:)
     iMPIcut_xi_old(:,:) = iMPIcut_xi(:,:)
     iMPIcut_eta_old(:,:) = iMPIcut_eta(:,:)
 

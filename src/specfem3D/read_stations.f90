@@ -53,6 +53,9 @@
       read(IIN,"(a)",iostat=ier) line
       if (ier /= 0) call exit_mpi(myrank, 'Error reading station file '//trim(rec_filename))
 
+      ! suppress white space
+      line = trim(adjustl(line))
+
       ! skip comment lines
       if (len_trim(line) > 0 .and. line(1:1) /= '#') then
         line = trim(line)
@@ -510,7 +513,7 @@
   !    z'0xF7537E82', z'0xBD3AF235', z'0x2AD7D2BB', z'0xEB86D391' &
   !    /)
   ! or to be computed below
-  integer(kind=4), dimension(64) :: K
+  integer(kind=8), dimension(64) :: K    ! Using 64-bit integer to avoid sign issues
 
   ! specifies the per-round shift amounts
   integer(kind=4), dimension(64), parameter :: S = (/ &
@@ -579,7 +582,7 @@
   ! initializes MD5 hash values
   ! binary integer part of the sines of integers (Radians) as constants
   do i = 1,64
-    K(i) = floor(2**32 * dabs(dsin((i-1) + 1.d0)))
+    K(i) = floor(2.d0**32 * dabs(dsin((i-1) + 1.d0)),kind=8)
   enddo
 
   ! magic numbers: the original MD5 algorithm seems to use big endian initializations
@@ -727,7 +730,7 @@
           temp = d
           d = c
           c = b
-          b = b + leftrotate((a + f + K(j) + w(g)), S(j))
+          b = b + leftrotate(int(a + f + K(j) + w(g),kind=4), S(j))
           a = temp
         !endif
       enddo

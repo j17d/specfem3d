@@ -173,7 +173,7 @@ end module scotch_par
       stop 'Scotch ERROR : MAIN : Invalid check'
     endif
 
-    call scotchfgraphpart (scotchgraph(1), nparts, scotchstrat(1),part(1),ier)
+    call scotchfgraphpart (scotchgraph(1), nparts, scotchstrat(1), part(1),ier)
     if (ier /= 0) then
       stop 'Scotch ERROR : MAIN : Cannot part graph'
     endif
@@ -244,6 +244,13 @@ end module scotch_par
            adjncy_tmp(1:nb_edges+1), &
            stat=ier)
   if (ier /= 0) stop 'Error allocating array part_tmp,...'
+  ! initializes
+  part_tmp(:) = 0
+  elmnts_load_tmp(:) = 0
+  ispec_global(:) = 0
+  ispec_local(:) = 0
+  xadj_tmp(:) = -1
+  adjncy_tmp(:) = 0
 
   ! partitions each p-level separately
   do ilevel = 1,num_p_level
@@ -264,11 +271,15 @@ end module scotch_par
     enddo
     if (inum /= nspec_p) stop 'Error number of p-vertices not equals to number of p-elements'
 
+    ! note: newer gcc compilers (version >= 13.x) seem to work only if the adjaceny arrays start indexing from 0.
+    !       that is, we use scotchfgraphbuild(..) with a baseval == 0 and use index values from 0 to nspec_p-1 in
+    !       xadj_tmp() and adjncy_tmp() arrays.
+
     ! builds up local arrays only for p-elements
     xadj_tmp(:) = 0
     adjncy_tmp(:) = -1
     elmnts_load_tmp(:) = 0
-    nb_edges_tmp = 1
+    nb_edges_tmp = 0
     do inum = 1,nspec_p
       ispec = ispec_global(inum)
 
@@ -277,11 +288,9 @@ end module scotch_par
 
       ! number of neighbors
       ! note: xadj() values start from 0; adjncy() values start from 0 to nspec-1
-      !       we shift these by +1 since arrays in this subroutine are defined between 1 to ..
       !
       !       xadj(i)  -> adjncy( . ) : values in xadj point to the first index in adjncy() for vertex i
       !                   adjncy() holds all indices of neighbor vertices(=elements)
-      ! note: for xadj_tmp and adjncy_tmp we start indexing at 1
       xadj_tmp(inum) = nb_edges_tmp
       do j = xadj(ispec),xadj(ispec+1)-1
         ! gets neighbor index
@@ -292,14 +301,20 @@ end module scotch_par
         if (ispec_p_refine(k) == p) then
           ! we store the local index between 1 and nspec_p
           i = ispec_local( k )
-          adjncy_tmp(nb_edges_tmp) = i
+          if (i < 1 .or. i > nspec_p) then
+            print *,'Error: invalid local index ',i,'ispec k',k,'p',ispec_p_refine(k),'ilevel/p',ilevel,p
+            stop 'Error local index'
+          endif
+          adjncy_tmp(nb_edges_tmp+1) = i - 1  ! shift index to start at 0
           nb_edges_tmp = nb_edges_tmp + 1
         endif
       enddo
     enddo
     ! last entry for xadj for a contiguous range of indices ("compact edge array")
     xadj_tmp(nspec_p+1) = nb_edges_tmp
-    nb_edges_tmp = nb_edges_tmp - 1
+
+    ! since we start counting at 0, the total number is nb_edges_tmp not nb_edges_tmp-1
+    !nb_edges_tmp = nb_edges_tmp - 1
 
     ! debug
     !print *,'xadj:',xadj(ispec_global(1):ispec_global(1)+1),xadj(nspec-1:nspec+1)
@@ -317,8 +332,8 @@ end module scotch_par
     !  print *,j-xadj_tmp(1)+1,j,adjncy_tmp(j),ispec_global(adjncy_tmp(j))
     !enddo
 
-    ! checks ranges
-    if (minval(adjncy_tmp(1:nb_edges_tmp)) < 1 .or. maxval(adjncy_tmp(1:nb_edges_tmp)) > nspec_p) then
+    ! checks ranges (index values in adjncy_tmp() start at 0)
+    if (minval(adjncy_tmp(1:nb_edges_tmp)) < 0 .or. maxval(adjncy_tmp(1:nb_edges_tmp)) > nspec_p - 1) then
       print *,'Error adjncy bounds invalid', minval(adjncy_tmp(1:nb_edges_tmp)),maxval(adjncy_tmp(1:nb_edges_tmp))
       stop 'Error adjncy bounds invalid'
     endif
@@ -330,7 +345,7 @@ end module scotch_par
     print *,'  p-level partitioning: p-level =',ilevel,'p =',p,'elements =',nspec_p !,'edges =',nb_edges_tmp
 
     ! scotch partitioning
-    ! arguments: #(1) graph_structure       #(2)baseval (either 0/1)    #(3)vertnbr (number_of_vertices)
+    ! arguments: #(1)graph_structure       #(2)baseval (either 0/1)    #(3)vertnbr (number_of_vertices)
     !            #(4)verttab (adjacency_index_array)            #(5)vendtab (adjacency_end_index_array (optional))
     !            #(6)velotab (vertex_load_array (optional))     #(7)vlbltab (vertex_label_array)
     !            #(7)edgenbr (number_of_arcs)                   #(8)edgetab (adjacency_array)
@@ -342,7 +357,7 @@ end module scotch_par
     ! Setting vendtab to refer to one cell after verttab yields the same result,
     ! as it is the exact semantics of a compact vertex array.
 
-    call scotchfgraphbuild (scotchgraph(1), 1, nspec_p, &
+    call scotchfgraphbuild (scotchgraph(1), 0, nspec_p, &
                             xadj_tmp(1), xadj_tmp(1), &
                             elmnts_load_tmp(1), xadj_tmp(1), &
                             nb_edges_tmp, adjncy_tmp(1), &
@@ -365,19 +380,22 @@ end module scotch_par
         'using subset maximum',P_LEVEL_PARTIAL_SUBSET_MINIMUM
 
       ! partitions among subset nparts_partial processes
-      call scotchfgraphpart (scotchgraph(1), nparts_partial, scotchstrat(1),part_tmp(1),ier)
+      call scotchfgraphpart (scotchgraph(1), nparts_partial, scotchstrat(1), part_tmp(1), ier)
       if (ier /= 0) stop 'Scotch ERROR : MAIN : Cannot part graph'
 
     else
+      ! parition over all nparts processes
+      ! user output
+      print *,'    partitioning: nparts =',nparts
 
       ! partitions among all nparts processes
-      call scotchfgraphpart (scotchgraph(1), nparts, scotchstrat(1),part_tmp(1),ier)
+      call scotchfgraphpart (scotchgraph(1), nparts, scotchstrat(1), part_tmp(1), ier)
       if (ier /= 0) stop 'Scotch ERROR : MAIN : Cannot part graph'
 
     endif
 
     ! frees scotch graph for subsequent calls of scotch again
-    call scotchfgraphfree (scotchgraph(1),ier)
+    call scotchfgraphfree (scotchgraph(1), ier)
     if (ier /= 0) stop 'Scotch ERROR : MAIN : Cannot free graph'
 
     ! stitch partitioning together
@@ -427,7 +445,7 @@ end module scotch_par
   integer :: current_partition
   logical, dimension(:), allocatable :: partition_available
   integer, dimension(:), allocatable :: part_remap, part_remap_inverse
-  integer :: ipart, unused_count, best_choice, ilevel
+  integer :: ipart, unused_count, best_choice, ilevel, ier
   integer :: p, ispec
 
   ! Try to reconnect the individually partitioned levels in a
@@ -436,9 +454,17 @@ end module scotch_par
   ! should be sufficient.
 
   if (SCOTCH_P_REMAP) then
-      allocate(partition_available(0:nparts-1))
-      allocate(part_remap(0:nparts-1))
-      allocate(part_remap_inverse(0:nparts-1))
+      allocate(partition_available(0:nparts-1),stat=ier)
+      if (ier /= 0) stop 'Error allocating partition_available array'
+      partition_available(:) = .true.
+
+      allocate(part_remap(0:nparts-1),stat=ier)
+      if (ier /= 0) stop 'Error allocating part_remap array'
+      part_remap(:) = -1
+
+      allocate(part_remap_inverse(0:nparts-1),stat=ier)
+      if (ier /= 0) stop 'Error allocating part_remap_inverse array'
+      part_remap_inverse(:) = -1
 
       do ilevel = 1,num_p_level-1
         part_remap(:) = -1
@@ -489,6 +515,9 @@ end module scotch_par
         enddo
 
       enddo ! ilevel
+
+      ! free temporary arrays
+      deallocate(partition_available,part_remap,part_remap_inverse)
 
     endif
 

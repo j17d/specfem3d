@@ -185,6 +185,8 @@ void FC_FUNC_(compute_smooth_gpu,
 
     gpuFree(d_data_other);
   }
+
+  // explicitly wait for cuda kernels to finish
   gpuSynchronize();
 
   gpuFree(x_other);

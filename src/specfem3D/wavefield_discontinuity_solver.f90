@@ -29,7 +29,10 @@
 !! scheme
 !! Tianshi Liu, 2023.5
 module wavefield_discontinuity_solver
+
   use constants, only: CUSTOM_REAL
+
+  implicit none
 
   !! ispec_to_elem_wd(NSPEC_AB)
   !! ispec_to_elem_wd(ispec) = ispec_wd (0 if element not belong to boundary)
@@ -94,6 +97,15 @@ module wavefield_discontinuity_solver
 
 contains
 
+  subroutine prepare_timerun_wavefield_discontinuity()
+  use specfem_par, only: IS_WAVEFIELD_DISCONTINUITY
+  implicit none
+  if (IS_WAVEFIELD_DISCONTINUITY) then
+    call read_mesh_databases_wavefield_discontinuity()
+    call open_wavefield_discontinuity_file()
+  endif
+  end subroutine prepare_timerun_wavefield_discontinuity
+
   subroutine read_mesh_databases_wavefield_discontinuity()
   use constants, only: IFILE_WAVEFIELD_DISCONTINUITY, &
                        FNAME_WAVEFIELD_DISCONTINUITY_DATABASE
@@ -144,6 +156,27 @@ contains
   read(IFILE_WAVEFIELD_DISCONTINUITY) accel_wd
   read(IFILE_WAVEFIELD_DISCONTINUITY) traction_wd
   end subroutine read_wavefield_discontinuity_file
+
+  subroutine transfer_wavefield_discontinuity_to_GPU()
+  use specfem_par, only: Mesh_pointer, NDIM, NGLLSQUARE
+  implicit none
+  call transfer_wavefield_discontinuity_to_device(nglob_wd*NDIM, &
+                                                  nfaces_wd*NDIM*NGLLSQUARE, &
+                                                  displ_wd, accel_wd, &
+                                                  traction_wd, Mesh_pointer)
+  end subroutine transfer_wavefield_discontinuity_to_GPU
+
+  subroutine prepare_wavefield_discontinuity_GPU()
+  use specfem_par, only: Mesh_pointer
+  implicit none
+  call prepare_wavefield_discontinuity_device(Mesh_pointer, ispec_to_elem_wd, &
+                                                nglob_wd, nspec_wd, ibool_wd, &
+                                                boundary_to_iglob_wd, &
+                                                mass_in_wd, &
+                                                nfaces_wd, face_ijk_wd, &
+                                                face_ispec_wd, face_normal_wd, &
+                                                face_jacobian2dw_wd)
+  end subroutine prepare_wavefield_discontinuity_GPU
 
   subroutine finalize_wavefield_discontinuity()
   use constants, only: IFILE_WAVEFIELD_DISCONTINUITY
@@ -205,4 +238,11 @@ contains
     enddo
   enddo
   end subroutine add_traction_discontinuity
+
+  subroutine add_traction_discontinuity_GPU()
+  use specfem_par, only: Mesh_pointer
+  implicit none
+  call wavefield_discontinuity_add_traction_cuda(nglob_wd, nfaces_wd, &
+                                                 Mesh_pointer)
+  end subroutine add_traction_discontinuity_GPU
 end module wavefield_discontinuity_solver

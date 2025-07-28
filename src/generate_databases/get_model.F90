@@ -41,8 +41,10 @@
   use create_regions_mesh_ext_par
 
   ! injection technique
-  use constants, only: INJECTION_TECHNIQUE_IS_FK,INJECTION_TECHNIQUE_IS_DSM,INJECTION_TECHNIQUE_IS_AXISEM
-  use shared_parameters, only: COUPLE_WITH_INJECTION_TECHNIQUE,MESH_A_CHUNK_OF_THE_EARTH,INJECTION_TECHNIQUE_TYPE
+  use constants, only: &
+    INJECTION_TECHNIQUE_IS_FK,INJECTION_TECHNIQUE_IS_DSM,INJECTION_TECHNIQUE_IS_AXISEM,INJECTION_TECHNIQUE_IS_SPECFEM
+  use shared_parameters, only: &
+    COUPLE_WITH_INJECTION_TECHNIQUE,MESH_A_CHUNK_OF_THE_EARTH,INJECTION_TECHNIQUE_TYPE
 
   implicit none
 
@@ -90,32 +92,41 @@
   end select
   call synchronize_all()
 
+  ! (optional) checks if additional VS30 layer model is provided in DATA/interface_vs30.dat file
+  ! and loads the Vs30 velocities to overimpose them at the top 30-m layer
+  call model_vs30_setup_check()
+
 ! DP: not sure if this here should check if (COUPLE_WITH_INJECTION_TECHNIQUE .or. MESH_A_CHUNK_OF_THE_EARTH) ..
   if (COUPLE_WITH_INJECTION_TECHNIQUE) then
-
+    ! safety stop
     if (INJECTION_TECHNIQUE_TYPE == INJECTION_TECHNIQUE_IS_FK .and. MESH_A_CHUNK_OF_THE_EARTH) &
       stop 'coupling with INJECTION_TECHNIQUE_IS_FK is incompatible with MESH_A_CHUNK_OF_THE_EARTH &
                       &because of Earth curvature not honored'
 
-    !! VM VM for coupling with DSM
-    !! find the layer in which the middle of the element is located
-    if (myrank == 0) then
-      write(IMAIN,*)
-      write(IMAIN,*) '     USING A HYBRID METHOD (THE CODE IS COUPLED WITH AN INJECTION TECHNIQUE):'
-      select case(INJECTION_TECHNIQUE_TYPE)
-      case (INJECTION_TECHNIQUE_IS_DSM)
-        write(IMAIN,*) '     INJECTION TECHNIQUE TYPE = ', INJECTION_TECHNIQUE_TYPE,' (DSM) '
-      case (INJECTION_TECHNIQUE_IS_AXISEM)
-        write(IMAIN,*) '     INJECTION TECHNIQUE TYPE = ', INJECTION_TECHNIQUE_TYPE,' (AXISEM) '
-      case (INJECTION_TECHNIQUE_IS_FK)
-        write(IMAIN,*) '     INJECTION TECHNIQUE TYPE = ', INJECTION_TECHNIQUE_TYPE,' (FK) '
-      case default
-        stop 'Invalid INJECTION_TECHNIQUE_TYPE chosen, must be 1 == DSM, 2 == AXISEM or 3 == FK'
-      end select
-      write(IMAIN,*)
-    endif
+    ! DSM/AxiSEM coupling model
+    if (INJECTION_TECHNIQUE_TYPE == INJECTION_TECHNIQUE_IS_DSM .or. &
+        INJECTION_TECHNIQUE_TYPE == INJECTION_TECHNIQUE_IS_AXISEM) then
+      ! for coupling with DSM
+      ! find the layer in which the middle of the element is located
+      if (myrank == 0) then
+        write(IMAIN,*)
+        write(IMAIN,*) '     USING A HYBRID METHOD (THE CODE IS COUPLED WITH AN INJECTION TECHNIQUE):'
+        select case(INJECTION_TECHNIQUE_TYPE)
+        case (INJECTION_TECHNIQUE_IS_DSM)
+          write(IMAIN,*) '     INJECTION TECHNIQUE TYPE = ', INJECTION_TECHNIQUE_TYPE,' (DSM) '
+        case (INJECTION_TECHNIQUE_IS_AXISEM)
+          write(IMAIN,*) '     INJECTION TECHNIQUE TYPE = ', INJECTION_TECHNIQUE_TYPE,' (AXISEM) '
+        case (INJECTION_TECHNIQUE_IS_FK)
+          write(IMAIN,*) '     INJECTION TECHNIQUE TYPE = ', INJECTION_TECHNIQUE_TYPE,' (FK) '
+        case (INJECTION_TECHNIQUE_IS_SPECFEM)
+          write(IMAIN,*) '     INJECTION TECHNIQUE TYPE = ', INJECTION_TECHNIQUE_TYPE,' (SPECFEM) '
+        case default
+          stop 'Invalid INJECTION_TECHNIQUE_TYPE chosen, must be 1 == DSM, 2 == AXISEM, 3 == FK or 4 == SPECFEM'
+        end select
+        write(IMAIN,*)
+        call flush_IMAIN()
+      endif
 
-    if (INJECTION_TECHNIQUE_TYPE /= INJECTION_TECHNIQUE_IS_FK) then
       ! MESH_A_CHUNK_OF_THE_EARTH, DSM or AxiSEM
       if ((NGLLX == 5) .and. (NGLLY == 5) .and. (NGLLZ == 5)) then
         ! gets xyz coordinates of GLL point
@@ -125,10 +136,11 @@
         zmesh = zstore_unique(iglob)
         call model_coupled_FindLayer(xmesh,ymesh,zmesh)
       else
-        stop 'bad number of GLL points for coupling with an external code'
+        stop 'bad number of GLL points for coupling with an external code (DSM/AxiSEM)'
       endif
     endif
   endif
+
   call synchronize_all()
 
   ! get MPI starting time
@@ -140,7 +152,9 @@
 
     ! coupling
     if (COUPLE_WITH_INJECTION_TECHNIQUE .or. MESH_A_CHUNK_OF_THE_EARTH) then
-      if (INJECTION_TECHNIQUE_TYPE /= INJECTION_TECHNIQUE_IS_FK) then
+      ! DSM/AxiSEM coupling
+      if (INJECTION_TECHNIQUE_TYPE == INJECTION_TECHNIQUE_IS_DSM .or. &
+          INJECTION_TECHNIQUE_TYPE == INJECTION_TECHNIQUE_IS_AXISEM) then
         iglob = ibool(3,3,3,ispec)
         xmesh = xstore_unique(iglob)
         ymesh = ystore_unique(iglob)
@@ -212,7 +226,9 @@
           !! VM VM for coupling with DSM
           !! find the layer in which the middle of the element is located
           if (COUPLE_WITH_INJECTION_TECHNIQUE .or. MESH_A_CHUNK_OF_THE_EARTH) then
-            if (INJECTION_TECHNIQUE_TYPE /= INJECTION_TECHNIQUE_IS_FK) then
+            ! DSM/AxiSEM coupling
+            if (INJECTION_TECHNIQUE_TYPE == INJECTION_TECHNIQUE_IS_DSM .or. &
+                INJECTION_TECHNIQUE_TYPE == INJECTION_TECHNIQUE_IS_AXISEM) then
               if (i == 3 .and. j == 3 .and. k == 3) call model_coupled_FindLayer(xmesh,ymesh,zmesh)
             endif
           endif
@@ -422,15 +438,15 @@
     ! note: for example, in tomography models a single element might have GLL points assigned to both, acoustic and elastic velocities.
     !       here we assign a single domain to the element. in cases where an element has velocities from both domains, the element
     !       will be treated as fully elastic - and similar for mixed poroelastic/elastic/acoustic elements.
-    if (any(ispec_domain(:,:,:) == 3)) then
+    if (any(ispec_domain(:,:,:) == IDOMAIN_POROELASTIC)) then
       ! poroelastic
-      idomain_id = 3
-    else if (any(ispec_domain(:,:,:) == 2)) then
+      idomain_id = IDOMAIN_POROELASTIC
+    else if (any(ispec_domain(:,:,:) == IDOMAIN_ELASTIC)) then
       ! elastic
-      idomain_id = 2
+      idomain_id = IDOMAIN_ELASTIC
     else
       ! acoustic
-      idomain_id = 1
+      idomain_id = IDOMAIN_ACOUSTIC
     endif
 
     select case (idomain_id)
@@ -449,10 +465,10 @@
       if (mod(ispec,max(nspec/10,1)) == 0) then
         tCPU = wtime() - time_start
         ! remaining
-        tCPU = (10.0-ispec/(nspec/10.0))/ispec/(nspec/10.0)*tCPU
-        write(IMAIN,*) "    ",ispec/(max(nspec/10,1)) * 10," %", &
-                      " time remaining:", tCPU,"s"
-
+        !tCPU = (10.0-ispec/(nspec/10.0))/ispec/(nspec/10.0)*tCPU
+        !write(IMAIN,*) "    ",int(ispec/(max(nspec/10,1)) * 10)," %"," time remaining:",tCPU,"s"
+        ! elapsed
+        write(IMAIN,*) "    ",int(ispec/(max(nspec/10,1)) * 10)," %"," - elapsed time:",sngl(tCPU),"s"
         ! flushes file buffer for main output file (IMAIN)
         call flush_IMAIN()
       endif
@@ -749,6 +765,9 @@
     endif
   endif
   ! *********************************************************************************
+
+  ! Vs30 model interface at top
+  if (USE_MODEL_LAYER_VS30) call model_vs30(xmesh,ymesh,zmesh,rho,vp,vs,idomain_id)
 
   ! for pure acoustic simulations (a way of avoiding re-mesh, re-partition etc.)
   ! can be used to compare elastic & acoustic reflections in exploration seismology

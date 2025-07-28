@@ -45,8 +45,6 @@ __global__ void compute_add_sources_acoustic_kernel(field* potential_dot_dot_aco
   int isource  = blockIdx.x + gridDim.x*blockIdx.y; // bx
 
   int ispec,iglob;
-  field stf;
-  realw kappal;
 
   if (isource < NSOURCES){
 
@@ -58,11 +56,12 @@ __global__ void compute_add_sources_acoustic_kernel(field* potential_dot_dot_aco
 
         iglob = d_ibool[INDEX4_PADDED(NGLLX,NGLLX,NGLLX,i,j,k,ispec)] - 1;
 
-        stf = stf_pre_compute[isource];
-        kappal = kappastore[INDEX4(NGLLX,NGLLX,NGLLX,i,j,k,ispec)];
+        field stf = stf_pre_compute[isource];
+        realw kappal = kappastore[INDEX4(NGLLX,NGLLX,NGLLX,i,j,k,ispec)];
 
-        atomicAdd(&potential_dot_dot_acoustic[iglob],
-                  -sourcearrays[INDEX5(NSOURCES,NDIM,NGLLX,NGLLX,isource, 0,i,j,k)]*stf/kappal);
+        field stf_p = - (sourcearrays[INDEX5(NSOURCES,NDIM,NGLLX,NGLLX,isource, 0,i,j,k)] / kappal) * stf;
+
+        atomicAdd(&potential_dot_dot_acoustic[iglob],stf_p);
 
         // debug: without atomic operation
         //      potential_dot_dot_acoustic[iglob] +=

@@ -114,12 +114,12 @@
 
   ! broadcasts
   call bcast_all_i_for_database(ispec, 1)
-  if (size(factor_common) > 0) &
-    call bcast_all_cr_for_database(factor_common(1,1,1,1,1), size(factor_common))
-  if (size(scale_factor) > 0) &
-    call bcast_all_cr_for_database(scale_factor(1,1,1,1), size(scale_factor))
-  call bcast_all_cr_for_database(factor_common_kappa(1,1,1,1,1), size(factor_common_kappa))
-  call bcast_all_cr_for_database(scale_factor_kappa(1,1,1,1), size(scale_factor_kappa))
+  if (size(factor_common,kind=4) > 0) &
+    call bcast_all_cr_for_database(factor_common(1,1,1,1,1), size(factor_common,kind=4))
+  if (size(scale_factor,kind=4) > 0) &
+    call bcast_all_cr_for_database(scale_factor(1,1,1,1), size(scale_factor,kind=4))
+  call bcast_all_cr_for_database(factor_common_kappa(1,1,1,1,1), size(factor_common_kappa,kind=4))
+  call bcast_all_cr_for_database(scale_factor_kappa(1,1,1,1), size(scale_factor_kappa,kind=4))
 
   ! gets stress relaxation times tau_sigma, i.e.
   ! precalculates tau_sigma depending on period band (constant for all Q_mu), and

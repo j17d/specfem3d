@@ -68,6 +68,9 @@
     call flush_IMAIN()
   endif
 
+  ! setup for coupling boundary points
+  call setup_coupling_boundary_points()
+
   ! frees memory
   if (.not. INVERSE_FWI_FULL_PROBLEM) then
     deallocate(xyz_midpoints)
@@ -429,7 +432,8 @@
     ! checks if CMT source time function is a Heaviside
     ! (high-frequency oscillations don't look good in movies)
     if (.not. USE_FORCE_POINT_SOURCE .and. &
-        .not. USE_EXTERNAL_SOURCE_FILE) then
+        .not. USE_EXTERNAL_SOURCE_FILE .and. &
+        .not. COUPLE_WITH_INJECTION_TECHNIQUE) then
       if (minval(hdur(:)) < TINYVAL) &
         stop 'Error hdur too small for movie creation, movies do not make sense for Heaviside source'
     endif
@@ -519,15 +523,38 @@
   t0_acoustic = t0
   call max_all_all_dp(t0_acoustic,t0)
 
-  !! VM VM for external source the time will begin with simulation
+  ! for external source the time will begin with simulation
   if (USE_EXTERNAL_SOURCE_FILE) then
     t0 = 0.d0
     ! user output
     if (myrank == 0) then
       write(IMAIN,*) 'External STF:'
-      write(IMAIN,*) '  simulation start time set to zero: ', t0
+      write(IMAIN,*) '  simulation start time set to zero: ',t0,'s'
       write(IMAIN,*)
       call flush_IMAIN()
+    endif
+  endif
+
+  ! check if couple injection
+  if (COUPLE_WITH_INJECTION_TECHNIQUE) then
+    if (INJECTION_TECHNIQUE_TYPE == INJECTION_TECHNIQUE_IS_SPECFEM) then
+      ! SPECFEM coupling
+      ! check if INJECTION_START_TIME was given in Par_file
+      ! (assuming it is set to a larger value than the default -999999.d0)
+      if (INJECTION_START_TIME > -9999.d0) then
+        ! notifies user
+        if (myrank == 0) then
+          write(IMAIN,*) 'coupling with SPECFEM solution'
+          write(IMAIN,*) '  start time is using INJECTION_START_TIME: ',INJECTION_START_TIME,'s'
+          write(IMAIN,*)
+          call flush_IMAIN()
+        endif
+        ! note: we use -t0 as starting time in the code, thus having a positive INJECTION_START_TIME means we need a negative t0
+        !       and therefore set t0 == -INJECTION_START_TIME.
+        !       this is different to the convention for USER_T0 in constants.h, where USER_T0 must be set strictly positive
+        !       to be considered and where then it is used as t0 == USER_T0.
+        t0 = -INJECTION_START_TIME
+      endif
     endif
   endif
 
@@ -560,7 +587,7 @@
 
       ! notifies user
       if (myrank == 0) then
-        write(IMAIN,*) '  set new simulation start time: ', - t0
+        write(IMAIN,*) '  set new simulation start time: ', - t0,'s'
         write(IMAIN,*)
         call flush_IMAIN()
       endif
@@ -2044,3 +2071,244 @@
   call kdtree_delete()
 
   end subroutine setup_free_kdtree
+
+!
+!-------------------------------------------------------------------------------------------------
+!
+
+  subroutine setup_coupling_boundary_points()
+
+! checks if coupling file is given and locates coupling boundary points
+
+  use constants, only: myrank,CUSTOM_REAL,NDIM,NGLLX,NGLLY,NGLLZ,MAX_STRING_LEN,IIN,IMAIN, &
+    INJECTION_TECHNIQUE_IS_SPECFEM
+
+  use shared_parameters, only: &
+    COUPLE_WITH_INJECTION_TECHNIQUE,INJECTION_TECHNIQUE_TYPE,TRACTION_PATH, &
+    SIMULATION_TYPE,ACOUSTIC_SIMULATION,POROELASTIC_SIMULATION,GPU_MODE
+
+  use specfem_par, only: DT,t0,NSTEP,NTSTEP_BETWEEN_OUTPUT_SAMPLE,NSPEC_AB
+
+  use specfem_par_movie, only: stress_xx,stress_yy,stress_zz,stress_xy,stress_xz,stress_yz
+
+  use specfem_par_coupling, only: do_save_coupling_wavefield,IOUT_COUP
+
+  implicit none
+
+  ! local parameters
+  real(kind=CUSTOM_REAL),dimension(:,:),allocatable :: coupling_points
+  integer :: num_coupling_points_total
+  integer :: ipoin,ier
+  character(len=MAX_STRING_LEN) :: filename
+  logical :: file_exists
+
+  double precision :: start_time,dt_incr
+  integer :: ntimesteps
+
+  ! file size estimation
+  double precision :: sizeval
+
+  ! this routine is used in the coarse simulation to store velocity & traction on the coupling boundary points.
+
+  ! note: regarding the Par_file settings, the solver needs to run with a "normal" forward simulation Par_file, i.e.,
+  !       uses COUPLE_WITH_INJECTION_TECHNIQUE == .false. to correctly add a (CMT) source.
+  !       However, the parameter INJECTION_TECHNIQUE_TYPE should be == 4 for SPECFEM coupling and we check here,
+  !       if we find the default `specfem_coupling_points.bin` file in the directory given by the TRACTION_PATH parameter
+  !       in Par_file. In case this file is found, we assume that we need to store the velocity & traction solutions
+  !       during this simulation for a subsequent "local" small-scale simulation coupled with injection technique.
+  !
+  !       Coupling with an injection wavefield using the SPECFEM calculated wavefield requires three steps:
+  !         1. run the mesher for the "local" small-scale simulation to determine the boundary coupling points.
+  !            for this, we need to have the following coupling parameters in Par_file:
+  !                 COUPLE_WITH_INJECTION_TECHNIQUE = .true.
+  !                 INJECTION_TECHNIQUE_TYPE        = 4
+  !                 TRACTION_PATH                   = ./COUPLING_FILES
+  !            This will store the coupling points in ./COUPLING_FILES/specfem_coupling_points.bin
+  !
+  !         2. run the full simulation with the coarse mesh.
+  !            the coarse mesher/solver will have the following parameters in Par_file:
+  !                 COUPLE_WITH_INJECTION_TECHNIQUE = .false.
+  !                 INJECTION_TECHNIQUE_TYPE        = 4
+  !                 TRACTION_PATH                   = ./COUPLING_FILES
+  !            We will check if the specfem_coupling_points.bin has been created and store the injection wavefield
+  !            for those points.
+  !
+  !         3. run the solver for the "local" small-scale simulation with the wavefield injection technique.
+  !            In this case, we use the following coupling parameters in Par_file:
+  !                 COUPLE_WITH_INJECTION_TECHNIQUE = .true.
+  !                 INJECTION_TECHNIQUE_TYPE        = 4
+  !                 TRACTION_PATH                   = ./COUPLING_FILES
+  !            The solver will check if the injection wavefield has been stored in folder `./COUPLING_FILES`
+  !            and prepare the injection solution steps accordingly.
+  !
+  !       Thus for SPECFEM coupling, the flag COUPLE_WITH_INJECTION_TECHNIQUE is used to indicate if during the meshing stage,
+  !       we need to store the coupling points file `specfem_coupling_points.bin`. And it is used to determine if
+  !       the solver uses an injection wavefield instead of a (CMT) source.
+
+  ! only needed for "normal" forward simulation to compute coupling boundary point wavefield solutions
+  if (COUPLE_WITH_INJECTION_TECHNIQUE) return
+  ! applies only to SPECFEM type technique
+  if (INJECTION_TECHNIQUE_TYPE /= INJECTION_TECHNIQUE_IS_SPECFEM) return
+  ! only for forward simulations
+  if (SIMULATION_TYPE /= 1) return
+
+  ! default filename for coupling point information
+  filename = trim(TRACTION_PATH) // '/' // 'specfem_coupling_points.bin'
+
+  ! checks if the coupling point file exists
+  inquire(file=trim(filename),exist=file_exists)
+
+  ! check if anything to do
+  if (.not. file_exists) return
+
+  ! safety checks
+  ! for now, the wavefield solutions for coupling points are only computed and valid for elastic simulations
+  ! as the stresses are missing for acoustic, poroelastic and GPU simulations yet.
+  if (ACOUSTIC_SIMULATION .or. &
+      POROELASTIC_SIMULATION .or. &
+      GPU_MODE) then
+    ! user info
+    if (myrank == 0) then
+      write(IMAIN,*)
+      write(IMAIN,*) 'INFO: coupling with injection using SPECFEM technique is only supported for elastic simulation so far.'
+      write(IMAIN,*) '      will continue without storing the coupling boundary fields'
+      call flush_IMAIN()
+    endif
+
+    ! will run without saving coupling solutions
+    do_save_coupling_wavefield = .false.
+
+    ! done
+    return
+  endif
+
+  ! found existing file
+  if (myrank == 0) then
+    write(IMAIN,*) '************************************************'
+    write(IMAIN,*) 'coupling with injection using SPECFEM technique:'
+    write(IMAIN,*) '************************************************'
+    write(IMAIN,*) '  found coupling point file: ',trim(filename)
+    write(IMAIN,*)
+    write(IMAIN,*) '  solver will store wavefield on injection boundary points in directory: ',trim(TRACTION_PATH)
+    write(IMAIN,*)
+    call flush_IMAIN()
+  endif
+
+  ! read coupling points
+  if (myrank == 0) then
+    ! opens file
+    open(unit=IIN,file=trim(filename),status='old',action='read',form='unformatted',iostat=ier)
+    if (ier /= 0) then
+      print *,'Error: could not open file ',trim(filename)
+      print *,'       Please check if path exists...'
+      stop 'Error opening database specfem_coupling_points.bin'
+    endif
+
+    ! total number of point records to follow
+    read(IIN) num_coupling_points_total
+
+    ! user output
+    write(IMAIN,*) '  total number of coupling points in file:',num_coupling_points_total
+    write(IMAIN,*)
+    call flush_IMAIN()
+
+    ! allocate points array
+    allocate(coupling_points(6,num_coupling_points_total),stat=ier)
+    if (ier /= 0) stop 'Error allocating coupling points array'
+    coupling_points(:,:) = 0.0_CUSTOM_REAL
+
+    ! reads in point infos
+    do ipoin = 1,num_coupling_points_total
+      ! format: #x #y #z #nx #ny #nz
+      read(IIN) coupling_points(:,ipoin)
+    enddo
+
+    ! closes file
+    close(IIN)
+  endif
+
+  ! note: boundary points might have shared node positions, but still have different normal components.
+  !       we therefore search for all boundary points and won't try to remove duplicate nodes.
+
+  ! broadcast to all other processes
+  call bcast_all_singlei(num_coupling_points_total)
+
+  ! allocate arrays on other processes
+  if (.not. allocated(coupling_points)) then
+    allocate(coupling_points(6,num_coupling_points_total),stat=ier)
+    if (ier /= 0) stop 'Error allocating coupling points array'
+    coupling_points(:,:) = 0.0_CUSTOM_REAL
+  endif
+
+  ! broadcast point infos
+  call bcast_all_cr(coupling_points,6*num_coupling_points_total)
+
+  ! locate coupling points
+  call locate_coupling_points(num_coupling_points_total,coupling_points)
+
+  ! found points
+  if (myrank == 0) then
+    write(IMAIN,*) '  all coupling points found'
+    write(IMAIN,*)
+    call flush_IMAIN()
+  endif
+
+  ! set flag to save wavefield on coupling points
+  do_save_coupling_wavefield = .true.
+
+  ! allocate stress arrays to store element stresses and compute boundary tractions
+  if (.not. allocated(stress_xx)) then
+    ! might be done already in detect_mesh_surfaces() routine for MOVIE_VOLUME_STRESS case
+    ! we will use the same arrays here
+    allocate(stress_xx(NGLLX,NGLLY,NGLLZ,NSPEC_AB), &
+             stress_yy(NGLLX,NGLLY,NGLLZ,NSPEC_AB), &
+             stress_zz(NGLLX,NGLLY,NGLLZ,NSPEC_AB), &
+             stress_xy(NGLLX,NGLLY,NGLLZ,NSPEC_AB), &
+             stress_xz(NGLLX,NGLLY,NGLLZ,NSPEC_AB), &
+             stress_yz(NGLLX,NGLLY,NGLLZ,NSPEC_AB),stat=ier)
+    if (ier /= 0) stop 'error allocating array stress'
+    stress_xx(:,:,:,:) = 0._CUSTOM_REAL
+    stress_yy(:,:,:,:) = 0._CUSTOM_REAL
+    stress_zz(:,:,:,:) = 0._CUSTOM_REAL
+    stress_xy(:,:,:,:) = 0._CUSTOM_REAL
+    stress_xz(:,:,:,:) = 0._CUSTOM_REAL
+    stress_yz(:,:,:,:) = 0._CUSTOM_REAL
+  endif
+
+  ! main process writes out wavefield solutions for all coupling boundary points
+  if (myrank == 0) then
+    filename = trim(TRACTION_PATH) // '/' // 'specfem_coupling_solution.bin'
+    open(unit=IOUT_COUP,file=trim(filename),status='unknown',action='write',form='unformatted',iostat=ier)
+    if (ier /= 0) then
+      print *,'Error: could not open file ',trim(filename)
+      print *,'       Please check if path exists...'
+      stop 'Error opening database specfem_coupling_solution.bin'
+    endif
+
+    ! total number of point records to follow
+    start_time = - t0
+    dt_incr = DT * NTSTEP_BETWEEN_OUTPUT_SAMPLE
+    ntimesteps = NSTEP / NTSTEP_BETWEEN_OUTPUT_SAMPLE
+
+    ! first line: #num_points #step_size #start_time #ntimesteps
+    write(IOUT_COUP) num_coupling_points_total, dt_incr, start_time, ntimesteps
+
+    ! user output
+    ! total wavefield size
+    sizeval = dble(num_coupling_points_total) * dble(NDIM * 2) * dble(CUSTOM_REAL)  ! veloc & traction
+    sizeval = sizeval * ntimesteps
+    write(IMAIN,*) '  number of time steps (NSTEP)                           = ',NSTEP
+    write(IMAIN,*) '  time step subsampling (NTSTEP_BETWEEN_OUTPUT_SAMPLE)   = ',NTSTEP_BETWEEN_OUTPUT_SAMPLE
+    write(IMAIN,*) '  number of coupling boundary points                     = ',num_coupling_points_total
+    write(IMAIN,*)
+    write(IMAIN,*) '  estimated size of wavefield solution file              = ',sngl(sizeval/1024.d0/1024.d0),"MB"
+    write(IMAIN,*) '                                                         = ',sngl(sizeval/1024.d0/1024.d0/1024.d0),"GB"
+    write(IMAIN,*)
+    call flush_IMAIN()
+  endif
+
+  ! free array used for reading
+  deallocate(coupling_points)
+
+  end subroutine setup_coupling_boundary_points
+

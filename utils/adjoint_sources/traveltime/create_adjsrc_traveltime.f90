@@ -10,12 +10,12 @@ program create_adjsrc_traveltime
   implicit none
 
   integer,parameter :: NMAX = 30000
-  real*8, parameter :: EPS = 1.0d-17
-  real*8, parameter :: PI = 3.1415926d0
+  double precision, parameter :: EPS = 1.0d-17
+  double precision, parameter :: PI = 3.1415926d0
 
-  real*8 :: data(5,NMAX), out(NMAX), adj(NMAX), tw(NMAX)
-  real*8 :: ts, te, norm
-  real*8 :: dt, t0, t0_old, dt_old, costh, sinth, th, baz
+  double precision :: data(5,NMAX), out(NMAX), adj(NMAX), tw(NMAX)
+  double precision :: ts, te, norm
+  double precision :: dt, t0, t0_old, dt_old, costh, sinth, th, baz
 
   integer :: i, is, ie, nstep, j, itime ,ifile,ios, i1, i2, nstep_old, idx, idx2
 

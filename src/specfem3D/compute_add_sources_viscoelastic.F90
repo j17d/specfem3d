@@ -70,34 +70,35 @@
   double precision :: stf,time_source_dble,time_t
   double precision,external :: get_stf_viscoelastic
 
-  integer :: isource,iglob,i,j,k,ispec,it_sub_adj
+  integer :: isource,iglob,i,j,k,ispec,it_sub_adj,it_index
   integer :: irec_local,irec
 
   character(len=MAX_STRING_LEN) :: adj_source_file
 
-  ! sets current initial time
-  if (USE_LDDRK) then
-    ! LDDRK
-    ! note: the LDDRK scheme updates displacement after the stiffness computations and
-    !       after adding boundary/coupling/source terms.
-    !       thus, at each time loop step it, displ(:) is still at (n) and not (n+1) like for the Newmark scheme
-    !       when entering this routine. we therefore at an additional -DT to have the corresponding timing for the source.
-    time_t = dble(it-1-1)*DT + dble(C_LDDRK(istage))*DT - t0
-  else if (LTS_MODE) then
-    ! current local time
-    time_t = current_lts_time
-  else
-    time_t = dble(it-1)*DT - t0
-  endif
-
   ! forward simulations
   if (SIMULATION_TYPE == 1 .and. NOISE_TOMOGRAPHY == 0 .and. nsources_local > 0) then
+
     ! ignore CMT sources for fault rupture simulations
     if (FAULT_SIMULATION) return
 
     ! no source inside the mesh if we are coupling with DSM
     ! because the source is precisely the wavefield coming from the DSM traction file
     if (COUPLE_WITH_INJECTION_TECHNIQUE) return
+
+    ! sets current initial time
+    if (USE_LDDRK) then
+      ! LDDRK
+      ! note: the LDDRK scheme updates displacement after the stiffness computations and
+      !       after adding boundary/coupling/source terms.
+      !       thus, at each time loop step it, displ(:) is still at (n) and not (n+1) like for the Newmark scheme
+      !       when entering this routine. we therefore at an additional -DT to have the corresponding timing for the source.
+      time_t = dble(it-1-1)*DT + dble(C_LDDRK(istage))*DT - t0
+    else if (LTS_MODE) then
+      ! current local time
+      time_t = current_lts_time
+    else
+      time_t = dble(it-1)*DT - t0
+    endif
 
 ! openmp solver
 !$OMP PARALLEL if (NSOURCES > 100) &
@@ -201,33 +202,37 @@
       ! this must be done carefully, otherwise the adjoint sources may be added twice
       if (ibool_read_adj_arrays .and. .not. INVERSE_FWI_FULL_PROBLEM) then
         ! reads adjoint source files
-        if (.not. (SU_FORMAT .or. READ_ADJSRC_ASDF)) then
-          ! ASCII formant
-          if (USE_BINARY_FOR_SEISMOGRAMS) stop 'Adjoint simulations not supported with .bin format, please use SU format instead'
-          !!! read ascii adjoint sources
-          do irec_local = 1, nadj_rec_local
-            ! reads in **net**.**sta**.**BH**.adj files
-            irec = number_adjsources_global(irec_local)
-            adj_source_file = trim(network_name(irec))//'.'//trim(station_name(irec))
-            call compute_arrays_adjoint_source(adj_source_file,irec_local)
-          enddo
+        if (SU_FORMAT) then
+          ! SU format
+          call compute_arrays_adjoint_source_SU(IDOMAIN_ELASTIC)
         else if (READ_ADJSRC_ASDF) then
           ! ASDF format
           do irec_local = 1, nadj_rec_local
             ! reads in **net**.**sta**.**BH**.adj files
             irec = number_adjsources_global(irec_local)
-            adj_source_file = trim(network_name(irec))//'_'//trim(station_name(irec))
+            adj_source_file = trim(network_name(irec))//'_'//trim(station_name(irec))   ! format: "net_sta"
+            ! compute source arrays
             call compute_arrays_adjoint_source(adj_source_file,irec_local)
           enddo
-          call compute_arrays_adjoint_source(adj_source_file, irec_local)
         else
-          ! SU format
-          call compute_arrays_adjoint_source_SU()
-        endif !if (.not. SU_FORMAT)
+          ! default ASCII format
+          if (USE_BINARY_FOR_SEISMOGRAMS) stop 'Adjoint simulations not supported with .bin format, please use SU format instead'
+          !!! read ascii adjoint sources
+          do irec_local = 1, nadj_rec_local
+            ! reads in **net**.**sta**.**BH**.adj files
+            irec = number_adjsources_global(irec_local)
+            adj_source_file = trim(network_name(irec))//'.'//trim(station_name(irec))   ! format: "net.sta"
+            ! compute source arrays
+            call compute_arrays_adjoint_source(adj_source_file,irec_local)
+          enddo
+        endif
       endif ! if (ibool_read_adj_arrays)
 
       ! adds source term
       if (it < NSTEP) then
+        ! time step index for adjoint source (time-reversed)
+        it_index = NTSTEP_BETWEEN_READ_ADJSRC - mod(it-1,NTSTEP_BETWEEN_READ_ADJSRC)
+
         ! receivers act as sources
         do irec_local = 1, nadj_rec_local
           irec = number_adjsources_global(irec_local)
@@ -242,8 +247,7 @@
 
                   hlagrange = hxir_adjstore(i,irec_local) * hetar_adjstore(j,irec_local) * hgammar_adjstore(k,irec_local)
 
-                  accel(:,iglob) = accel(:,iglob) &
-                    + source_adjoint(:,irec_local,NTSTEP_BETWEEN_READ_ADJSRC - mod(it-1,NTSTEP_BETWEEN_READ_ADJSRC)) * hlagrange
+                  accel(:,iglob) = accel(:,iglob) + source_adjoint(:,irec_local,it_index) * hlagrange
                 enddo
               enddo
             enddo
@@ -284,6 +288,7 @@
       ! that's to say, the ensemble forward source is kind of a surface force density, not a body force density
       ! therefore, we must add it here, before applying the inverse of mass matrix
     endif
+    ! note: NOISE_TOMOGRAPHY == 3 step is done in backward routine
   endif
 
   end subroutine compute_add_sources_viscoelastic
@@ -340,28 +345,6 @@
   ! because the source is precisely the wavefield coming from the DSM traction file
   if (COUPLE_WITH_INJECTION_TECHNIQUE) return
 
-  ! iteration step
-  if (UNDO_ATTENUATION_AND_OR_PML) then
-    ! example: NSTEP is a multiple of NT_DUMP_ATTENUATION
-    !         NT_DUMP_ATTENUATION = 301, NSTEP = 1204, NSUBSET_ITERATIONS = 4, iteration_on_subset = 1 -> 4,
-    !              1. subset, it_temp goes from 301 down to 1
-    !              2. subset, it_temp goes from 602 down to 302
-    !              3. subset, it_temp goes from 903 down to 603
-    !              4. subset, it_temp goes from 1204 down to 904
-    !valid for multiples only:
-    !it_tmp = iteration_on_subset * NT_DUMP_ATTENUATION - it_of_this_subset + 1
-    !
-    ! example: NSTEP is **NOT** a multiple of NT_DUMP_ATTENUATION
-    !          NT_DUMP_ATTENUATION = 301, NSTEP = 900, NSUBSET_ITERATIONS = 3, iteration_on_subset = 1 -> 3
-    !              1. subset, it_temp goes from (900 - 602) = 298 down to 1
-    !              2. subset, it_temp goes from (900 - 301) = 599 down to 299
-    !              3. subset, it_temp goes from (900 - 0)   = 900 down to 600
-    !works always:
-    it_tmp = NSTEP - (NSUBSET_ITERATIONS - iteration_on_subset)*NT_DUMP_ATTENUATION - it_of_this_subset + 1
-  else
-    it_tmp = it
-  endif
-
 ! NOTE: adjoint sources and backward wavefield timing:
 !             idea is to start with the backward field b_displ,.. at time (T)
 !             and convolve with the adjoint field at time (T-t)
@@ -386,25 +369,51 @@
 !       adjoint source traces which start at -t0 and end at time (NSTEP-1)*DT - t0
 !       for step it=1: (NSTEP -it + 1)*DT - t0 for backward wavefields corresponds to time T
 
-  ! sets current initial time
-  if (USE_LDDRK) then
-    ! LDDRK
-    ! note: the LDDRK scheme updates displacement after the stiffness computations and
-    !       after adding boundary/coupling/source terms.
-    !       thus, at each time loop step it, displ(:) is still at (n) and not (n+1) like for the Newmark scheme
-    !       when entering this routine. we therefore at an additional -DT to have the corresponding timing for the source.
-    if (UNDO_ATTENUATION_AND_OR_PML) then
-      ! stepping moves forward from snapshot position
-      time_t = dble(NSTEP-it_tmp-1)*DT + dble(C_LDDRK(istage))*DT - t0
-    else
-      time_t = dble(NSTEP-it_tmp-1)*DT - dble(C_LDDRK(istage))*DT - t0
-    endif
-  else
-    time_t = dble(NSTEP-it_tmp)*DT - t0
-  endif
-
-! adjoint simulations
+  ! adjoint simulations
   if (NOISE_TOMOGRAPHY == 0 .and. nsources_local > 0) then
+
+    ! iteration step
+    if (UNDO_ATTENUATION_AND_OR_PML) then
+      ! example: NSTEP is a multiple of NT_DUMP_ATTENUATION
+      !         NT_DUMP_ATTENUATION = 301, NSTEP = 1204, NSUBSET_ITERATIONS = 4, iteration_on_subset = 1 -> 4,
+      !              1. subset, it_temp goes from 301 down to 1
+      !              2. subset, it_temp goes from 602 down to 302
+      !              3. subset, it_temp goes from 903 down to 603
+      !              4. subset, it_temp goes from 1204 down to 904
+      !valid for multiples only:
+      !it_tmp = iteration_on_subset * NT_DUMP_ATTENUATION - it_of_this_subset + 1
+      !
+      ! example: NSTEP is **NOT** a multiple of NT_DUMP_ATTENUATION
+      !          NT_DUMP_ATTENUATION = 301, NSTEP = 900, NSUBSET_ITERATIONS = 3, iteration_on_subset = 1 -> 3
+      !              1. subset, it_temp goes from (900 - 602) = 298 down to 1
+      !              2. subset, it_temp goes from (900 - 301) = 599 down to 299
+      !              3. subset, it_temp goes from (900 - 0)   = 900 down to 600
+      !works always:
+      it_tmp = NSTEP - (NSUBSET_ITERATIONS - iteration_on_subset)*NT_DUMP_ATTENUATION - it_of_this_subset + 1
+    else
+      it_tmp = it
+    endif
+
+    ! sets current initial time
+    if (USE_LDDRK) then
+      ! LDDRK
+      ! note: the LDDRK scheme updates displacement after the stiffness computations and
+      !       after adding boundary/coupling/source terms.
+      !       thus, at each time loop step it, displ(:) is still at (n) and not (n+1) like for the Newmark scheme
+      !       when entering this routine. we therefore at an additional -DT to have the corresponding timing for the source.
+      if (UNDO_ATTENUATION_AND_OR_PML) then
+        ! stepping moves forward from snapshot position
+        time_t = dble(NSTEP-it_tmp-1)*DT + dble(C_LDDRK(istage))*DT - t0
+      else
+        time_t = dble(NSTEP-it_tmp-1)*DT - dble(C_LDDRK(istage))*DT - t0
+      endif
+    else
+      ! Newmark
+      ! note: b_displ() is read in after Newmark time scheme, thus
+      !       b_displ(it=1) corresponds to -t0 + (NSTEP-1)*DT.
+      !       thus indexing is NSTEP - it , instead of NSTEP - it - 1
+      time_t = dble(NSTEP-it_tmp)*DT - t0
+    endif
 
     ! backward source reconstruction
     do isource = 1,NSOURCES
@@ -429,7 +438,9 @@
             do j = 1,NGLLY
               do i = 1,NGLLX
                 iglob = ibool(i,j,k,ispec)
-                b_accel(:,iglob) = b_accel(:,iglob) + sourcearrays(isource,:,i,j,k) * stf_used
+                b_accel(1,iglob) = b_accel(1,iglob) + sourcearrays(isource,1,i,j,k) * stf_used
+                b_accel(2,iglob) = b_accel(2,iglob) + sourcearrays(isource,2,i,j,k) * stf_used
+                b_accel(3,iglob) = b_accel(3,iglob) + sourcearrays(isource,3,i,j,k) * stf_used
               enddo
             enddo
           enddo
@@ -472,8 +483,8 @@
 
   use shared_parameters, only: DT, &
     SIMULATION_TYPE,NOISE_TOMOGRAPHY,INVERSE_FWI_FULL_PROBLEM, &
-    USE_LDDRK,LTS_MODE,GPU_MODE,UNDO_ATTENUATION_AND_OR_PML, &
-    SU_FORMAT,USE_BINARY_FOR_SEISMOGRAMS, &
+    USE_LDDRK,LTS_MODE, &
+    SU_FORMAT,READ_ADJSRC_ASDF,USE_BINARY_FOR_SEISMOGRAMS, &
     NSTEP,NTSTEP_BETWEEN_READ_ADJSRC
 
   use specfem_par, only: station_name,network_name, &
@@ -481,7 +492,7 @@
     tshift_src,t0, &
     istage,it, &
     NSOURCES,nsources_local,ispec_selected_source, &
-    nrec,islice_selected_rec, &
+    islice_selected_rec, &
     nadj_rec_local,source_adjoint,nadj_rec_local,number_adjsources_global, &
     Mesh_pointer
 
@@ -510,11 +521,20 @@
 
   character(len=MAX_STRING_LEN) :: adj_source_file
 
-  ! checks if anything to do
-  if (.not. GPU_MODE) return
+  ! note: this routine will only take care of adding contributions to accel() wavefield array.
+  !       it mimicks exactly what the routine compute_add_sources_viscoelastic() is doing.
+  !
+  !       thus, it deals with the CMT/force/noise source contributions for forward simulations,
+  !       and the adjoint source contributions for pure adjoint or kernel simulations.
+  !
+  !       we will not consider the backward b_accel() wavefield contributions.
+  !       that is, the re-injection of the CMT/force/noise source contribution into
+  !       the backward wavefield b_accel() is not done here.
+  !       those will be done in the routine compute_add_sources_viscoelastic_backward_GPU().
 
   ! forward simulations
   if (SIMULATION_TYPE == 1 .and. NOISE_TOMOGRAPHY == 0 .and. nsources_local > 0) then
+
     ! ignore CMT sources for fault rupture simulations
     if (FAULT_SIMULATION) return
 
@@ -600,6 +620,7 @@
 
   ! adjoint simulations
   if (SIMULATION_TYPE == 2 .or. SIMULATION_TYPE == 3) then
+
     ! adds adjoint source in this partitions
     if (nadj_rec_local > 0) then
 
@@ -619,78 +640,43 @@
       ! with other partitions while calculate for the inner part
       ! this must be done carefully, otherwise the adjoint sources may be added twice
       if (ibool_read_adj_arrays .and. .not. INVERSE_FWI_FULL_PROBLEM) then
-
-        if (.not. SU_FORMAT) then
-          ! ASCII format
+        ! reads adjoint source files
+        if (SU_FORMAT) then
+          ! SU format
+          call compute_arrays_adjoint_source_SU(IDOMAIN_ELASTIC)
+        else if (READ_ADJSRC_ASDF) then
+          ! ASDF format
+          do irec_local = 1, nadj_rec_local
+            ! reads in **net**.**sta**.**BH**.adj files
+            irec = number_adjsources_global(irec_local)
+            adj_source_file = trim(network_name(irec))//'_'//trim(station_name(irec))   ! format: "net_sta"
+            ! compute source arrays
+            call compute_arrays_adjoint_source(adj_source_file,irec_local)
+          enddo
+        else
+          ! default ASCII format
           if (USE_BINARY_FOR_SEISMOGRAMS) stop 'Adjoint simulations not supported with .bin format, please use SU format instead'
           !!! read ascii adjoint sources
           do irec_local = 1, nadj_rec_local
             ! reads in **net**.**sta**.**BH**.adj files
             irec = number_adjsources_global(irec_local)
-            adj_source_file = trim(network_name(irec))//'.'//trim(station_name(irec))
+            adj_source_file = trim(network_name(irec))//'.'//trim(station_name(irec))   ! format: "net.sta"
+            ! compute source arrays
             call compute_arrays_adjoint_source(adj_source_file,irec_local)
           enddo
-        else
-          ! SU format
-          call compute_arrays_adjoint_source_SU()
-        endif !if (.not. SU_FORMAT)
-
+        endif
       endif ! if (ibool_read_adj_arrays)
 
+      ! adds source term
       if (it < NSTEP) then
         call add_sources_el_sim_type_2_or_3(Mesh_pointer, &
                                             source_adjoint, &
-                                            nrec, &
                                             nadj_rec_local, &
                                             NTSTEP_BETWEEN_READ_ADJSRC, &
                                             it)
       endif ! it
     endif ! nadj_rec_local
   endif !adjoint
-
-! note:  b_displ() is read in after Newmark time scheme, thus
-!           b_displ(it=1) corresponds to -t0 + (NSTEP-1)*DT.
-!           thus indexing is NSTEP - it , instead of NSTEP - it - 1
-
-  ! adjoint/backward wavefield
-  if (SIMULATION_TYPE == 3 .and. NOISE_TOMOGRAPHY == 0 .and. nsources_local > 0) then
-    ! ignore CMT sources for fault rupture simulations
-    if (FAULT_SIMULATION) return
-
-    ! no source inside the mesh if we are coupling with DSM
-    ! nothing left to do, can exit routine...
-    if (COUPLE_WITH_INJECTION_TECHNIQUE) return
-
-    if (NSOURCES > 0) then
-      do isource = 1,NSOURCES
-        ! current time
-        if (USE_LDDRK) then
-          ! LDDRK
-          ! note: the LDDRK scheme updates displacement after the stiffness computations and
-          !       after adding boundary/coupling/source terms.
-          !       thus, at each time loop step it, displ(:) is still at (n) and not (n+1) like for the Newmark scheme
-          !       when entering this routine. we therefore at an additional -DT to have the corresponding timing for the source.
-          if (UNDO_ATTENUATION_AND_OR_PML) then
-            ! stepping moves forward from snapshot position
-            time_source_dble = dble(NSTEP-it-1)*DT + dble(C_LDDRK(istage))*DT - t0 - tshift_src(isource)
-          else
-            time_source_dble = dble(NSTEP-it-1)*DT - dble(C_LDDRK(istage))*DT - t0 - tshift_src(isource)
-          endif
-        else
-          time_source_dble = dble(NSTEP-it)*DT - t0 - tshift_src(isource)
-        endif
-
-        ! determines source time function value
-        stf = get_stf_viscoelastic(time_source_dble,isource,NSTEP-it+1)
-
-        ! stores precomputed source time function factor
-        stf_pre_compute(isource) = stf
-      enddo
-
-      ! only implements SIMTYPE=3
-      call compute_add_sources_el_s3_cuda(Mesh_pointer,stf_pre_compute,NSOURCES)
-    endif
-  endif ! adjoint
 
   ! for noise simulations
   if (NOISE_TOMOGRAPHY > 0) then
@@ -713,14 +699,8 @@
       ! note the ensemble forward sources are generally distributed on the surface of the earth
       ! that's to say, the ensemble forward source is kind of a surface force density, not a body force density
       ! therefore, we must add it here, before applying the inverse of mass matrix
-    else if (NOISE_TOMOGRAPHY == 3) then
-      ! third step of noise tomography, i.e., read the surface movie saved at every timestep
-      ! use the movie to reconstruct the ensemble forward wavefield
-      ! the ensemble adjoint wavefield is done as usual
-      ! note instead of "NSTEP-it+1", now we us "it", since reconstruction is a reversal of reversal
-      call noise_read_add_surface_movie_GPU(noise_surface_movie,it,num_free_surface_faces, &
-                                            Mesh_pointer,NOISE_TOMOGRAPHY)
     endif
+    ! note: NOISE_TOMOGRAPHY == 3 step is done in backward routine
   endif
 
   end subroutine compute_add_sources_viscoelastic_GPU
@@ -731,10 +711,11 @@
 
   use constants
   use specfem_par, only: nsources_local,tshift_src,dt,t0, &
-                        USE_LDDRK,istage, &
-                        NSOURCES,it,SIMULATION_TYPE,NSTEP, &
-                        NOISE_TOMOGRAPHY, &
-                        Mesh_pointer,GPU_MODE
+    num_free_surface_faces, &
+    USE_LDDRK,istage, &
+    NSOURCES,it,SIMULATION_TYPE,NSTEP, &
+    NOISE_TOMOGRAPHY, &
+    Mesh_pointer
 
   ! coupling
   use shared_parameters, only: COUPLE_WITH_INJECTION_TECHNIQUE
@@ -742,6 +723,8 @@
   ! undo_att
   use specfem_par, only: UNDO_ATTENUATION_AND_OR_PML,NSUBSET_ITERATIONS,NT_DUMP_ATTENUATION, &
                          iteration_on_subset,it_of_this_subset
+
+  use specfem_par_noise, only: noise_surface_movie
 
   ! faults
   use specfem_par, only: FAULT_SIMULATION
@@ -758,7 +741,6 @@
 
   ! checks if anything to do
   if (SIMULATION_TYPE /= 3) return
-  if (.not. GPU_MODE) return
 
   ! ignore CMT sources for fault rupture simulations
   if (FAULT_SIMULATION) return
@@ -767,30 +749,31 @@
   ! because the source is precisely the wavefield coming from the DSM traction file
   if (COUPLE_WITH_INJECTION_TECHNIQUE) return
 
-  ! iteration step
-  if (UNDO_ATTENUATION_AND_OR_PML) then
-    ! example: NSTEP is a multiple of NT_DUMP_ATTENUATION
-    !         NT_DUMP_ATTENUATION = 301, NSTEP = 1204, NSUBSET_ITERATIONS = 4, iteration_on_subset = 1 -> 4,
-    !              1. subset, it_temp goes from 301 down to 1
-    !              2. subset, it_temp goes from 602 down to 302
-    !              3. subset, it_temp goes from 903 down to 603
-    !              4. subset, it_temp goes from 1204 down to 904
-    !valid for multiples only:
-    !it_tmp = iteration_on_subset * NT_DUMP_ATTENUATION - it_of_this_subset + 1
-    !
-    ! example: NSTEP is **NOT** a multiple of NT_DUMP_ATTENUATION
-    !          NT_DUMP_ATTENUATION = 301, NSTEP = 900, NSUBSET_ITERATIONS = 3, iteration_on_subset = 1 -> 3
-    !              1. subset, it_temp goes from (900 - 602) = 298 down to 1
-    !              2. subset, it_temp goes from (900 - 301) = 599 down to 299
-    !              3. subset, it_temp goes from (900 - 0)   = 900 down to 600
-    !works always:
-    it_tmp = NSTEP - (NSUBSET_ITERATIONS - iteration_on_subset)*NT_DUMP_ATTENUATION - it_of_this_subset + 1
-  else
-    it_tmp = it
-  endif
-
   ! forward simulations
   if (NOISE_TOMOGRAPHY == 0 .and. nsources_local > 0) then
+
+    ! iteration step
+    if (UNDO_ATTENUATION_AND_OR_PML) then
+      ! example: NSTEP is a multiple of NT_DUMP_ATTENUATION
+      !         NT_DUMP_ATTENUATION = 301, NSTEP = 1204, NSUBSET_ITERATIONS = 4, iteration_on_subset = 1 -> 4,
+      !              1. subset, it_temp goes from 301 down to 1
+      !              2. subset, it_temp goes from 602 down to 302
+      !              3. subset, it_temp goes from 903 down to 603
+      !              4. subset, it_temp goes from 1204 down to 904
+      !valid for multiples only:
+      !it_tmp = iteration_on_subset * NT_DUMP_ATTENUATION - it_of_this_subset + 1
+      !
+      ! example: NSTEP is **NOT** a multiple of NT_DUMP_ATTENUATION
+      !          NT_DUMP_ATTENUATION = 301, NSTEP = 900, NSUBSET_ITERATIONS = 3, iteration_on_subset = 1 -> 3
+      !              1. subset, it_temp goes from (900 - 602) = 298 down to 1
+      !              2. subset, it_temp goes from (900 - 301) = 599 down to 299
+      !              3. subset, it_temp goes from (900 - 0)   = 900 down to 600
+      !works always:
+      it_tmp = NSTEP - (NSUBSET_ITERATIONS - iteration_on_subset)*NT_DUMP_ATTENUATION - it_of_this_subset + 1
+    else
+      it_tmp = it
+    endif
+
     ! sets current initial time
     if (USE_LDDRK) then
       ! LDDRK
@@ -805,6 +788,10 @@
         time_t = dble(NSTEP-it_tmp-1)*DT - dble(C_LDDRK(istage))*DT - t0
       endif
     else
+      ! Newmark
+      ! note: b_displ() is read in after Newmark time scheme, thus
+      !       b_displ(it=1) corresponds to -t0 + (NSTEP-1)*DT.
+      !       thus indexing is NSTEP - it , instead of NSTEP - it - 1
       time_t = dble(NSTEP-it_tmp)*DT - t0
     endif
 
@@ -818,13 +805,24 @@
       ! stores precomputed source time function factor
       stf_pre_compute(isource) = stf
     enddo
+
     ! only implements SIMTYPE=3
     call compute_add_sources_el_s3_cuda(Mesh_pointer,stf_pre_compute,NSOURCES)
   endif
 
   ! for noise simulations
   if (NOISE_TOMOGRAPHY > 0) then
-    stop 'for NOISE simulations, backward GPU routine is not implemented yet'
+    ! we have two loops indicated by iphase ("inner elements/points" or "boundary elements/points")
+    ! here, we add all noise sources once, when we are calculating for boundary points (iphase==1),
+    ! because boundary points are calculated first!
+    if (NOISE_TOMOGRAPHY == 3) then
+      ! third step of noise tomography, i.e., read the surface movie saved at every timestep
+      ! use the movie to reconstruct the ensemble forward wavefield
+      ! the ensemble adjoint wavefield is done as usual
+      ! note instead of "NSTEP-it+1", now we use "it", since reconstruction is a reversal of reversal
+      call noise_read_add_surface_movie_GPU(noise_surface_movie,it,num_free_surface_faces, &
+                                            Mesh_pointer,NOISE_TOMOGRAPHY)
+    endif
   endif
 
   end subroutine compute_add_sources_viscoelastic_backward_GPU
@@ -895,13 +893,13 @@
       ! Brune source time function
       ! hdur is the source duration or the rise time
       ! Frequency parameter:
-      f0=1.d0/hdur(isource)
+      f0 = 1.d0/hdur(isource)
       stf = comp_source_time_function_brune(time_source_dble,f0)
     case (6)
       ! Smoothed Brune source time function
       ! hdur is the source duration or the rise time
       ! Frequency parameter:
-      f0=1.d0/hdur(isource)
+      f0 = 1.d0/hdur(isource)
       stf = comp_source_time_function_smooth_brune(time_source_dble,f0)
     case default
       stop 'unsupported force_stf value!'

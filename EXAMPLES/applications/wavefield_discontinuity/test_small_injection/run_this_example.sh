@@ -5,6 +5,7 @@ module load intel/2020u4 intelmpi/2020u4
 
 ## set number of processors
 NPROC=4
+GPU_MODE=false # set to true if using GPU
 
 currentdir=`pwd`
 
@@ -43,7 +44,7 @@ cp DATA/STATIONS OUTPUT_FILES/
 # prepare to run the mesher
 # at this point the meshfem3D files must be well-prepared,
 # the Par_file should be set properly to turn on IS_WAVEFIELD_DISCONTINUITY,
-# an empty FORCESOLUTION file should be present to indicate 
+# an empty FORCESOLUTION file should be present to indicate
 # there is no external source,
 # and a wavefield_discontinuity_box file to designate the interface
 mkdir -p MESH/
@@ -95,10 +96,19 @@ mpirun -np $NPROC ./bin/xgenerate_databases
 # DATABASES_MPI/proc*_wavefield_discontinuity.bin files
 mpirun -np $NPROC ../fk_coupling/compute_fk_injection_field
 
-echo
-echo "  launch solver..."
-echo
-mpirun -np $NPROC ./bin/xspecfem3D
+if ${GPU_MODE}; then
+  sed -i "/^GPU_MODE/c\GPU_MODE                           = .true." DATA/Par_file
+  echo
+  echo "  launch solver on GPU..."
+  echo
+  CUDA_VISIBLE_DEVICES=0 mpirun -np $NPROC ./bin/xspecfem3D
+else
+  sed -i "/^GPU_MODE/c\GPU_MODE                           = .false." DATA/Par_file
+  echo
+  echo "  launch solver on CPU ..."
+  echo
+  mpirun -np $NPROC ./bin/xspecfem3D
+fi
 
 # compute reference seismograms using FK
 ../fk_coupling/compute_fk_receiver

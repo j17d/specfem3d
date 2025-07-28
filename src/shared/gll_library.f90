@@ -536,14 +536,14 @@
 
   double precision, parameter :: zero = 0.d0,one = 1.d0,two = 2.d0,tol_zero = 1.d-30
 
-  integer np
-  double precision alpha,beta
-  double precision z(np), w(np)
+  integer, intent(in) :: np
+  double precision, intent(in) :: alpha,beta
+  double precision, intent(out) :: z(np), w(np)
 
   ! local parameters
-  integer n,nm1,i
-  double precision p,pd,pm1,pdm1,pm2,pdm2
-  double precision alpg,betg
+  integer :: n,nm1,i
+  double precision :: p,pd,pm1,pdm1,pm2,pdm2
+  double precision :: alpg,betg
   double precision, external :: endw1,endw2
 
   p = zero

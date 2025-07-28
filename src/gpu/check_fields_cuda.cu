@@ -222,7 +222,7 @@ void FC_FUNC_(get_norm_acoustic_from_device,
 
   Mesh* mp = (Mesh*)(*Mesh_pointer); //get mesh pointer out of fortran integer container
   realw max = 0.0;
-  realw *d_max;
+  realw *d_max = NULL;
 
   //initializes
   *norm = 0.0f;
@@ -275,6 +275,7 @@ void FC_FUNC_(get_norm_acoustic_from_device,
 
   // on host (allocates & initializes to zero)
   h_max = (realw*) calloc(num_blocks_x*num_blocks_y,sizeof(realw));
+  if (!h_max) { exit_on_error("Error: allocating temporary host h_max array"); }
 
   // allocates memory on device
   gpuMalloc_realw((void**)&d_max,num_blocks_x*num_blocks_y);
@@ -382,7 +383,7 @@ void FC_FUNC_(get_norm_elastic_from_device,
 
   Mesh* mp = (Mesh*)(*Mesh_pointer); //get mesh pointer out of fortran integer container
   realw max,res;
-  realw *d_max;
+  realw *d_max = NULL;
 
   //initializes
   *norm = 0.0f;
@@ -402,6 +403,7 @@ void FC_FUNC_(get_norm_elastic_from_device,
 
   // on host (allocates & initializes to zero)
   h_max = (realw*) calloc(num_blocks_x*num_blocks_y,sizeof(realw));
+  if (!h_max) { exit_on_error("Error: allocating temporary host h_max array"); }
 
   // allocates memory on device
   gpuMalloc_realw((void**)&d_max,num_blocks_x*num_blocks_y);

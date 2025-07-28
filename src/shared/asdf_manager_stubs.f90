@@ -30,9 +30,11 @@
 !------------------------------------------------------------------------------
 module asdf_manager_mod
 
+  implicit none
+
 contains
 
-subroutine no_asdf_err()
+  subroutine no_asdf_err()
   implicit none
 
   integer :: myrank
@@ -46,19 +48,23 @@ subroutine no_asdf_err()
     print *, "----------------------------------------------------"
   endif
   call abort_mpi()
-end subroutine
+  end subroutine no_asdf_err
 
 !==============================================================================
 !> Initialize ASDF
-subroutine asdf_setup()
+  subroutine asdf_setup()
+  implicit none
+
   call no_asdf_err()
-end subroutine asdf_setup
+  end subroutine asdf_setup
 
 !==============================================================================
 !> Finalize ASDF
-subroutine asdf_cleanup()
+  subroutine asdf_cleanup()
+  implicit none
+
   call no_asdf_err()
-end subroutine asdf_cleanup
+  end subroutine asdf_cleanup
 
 end module asdf_manager_mod
 

@@ -237,8 +237,14 @@ def geo2utm(lon,lat,zone):
     PI      = math.pi
     degrad  = PI/180.0
     raddeg  = 180.0/PI
-    semimaj = 6378206.4
-    semimin = 6356583.8
+
+    # Clarke 1866
+    #semimaj = 6378206.4
+    #semimin = 6356583.8
+    # WGS84 (World Geodetic System 1984) - default
+    semimaj = 6378137.0
+    semimin = 6356752.314245
+
     scfa    = 0.9996
 
     # some extracts about UTM:
@@ -298,17 +304,22 @@ def geo2utm(lon,lat,zone):
     e6 = e2 * e4
     ep2 = e2/(1.0 - e2)
 
+    #----- Set Zone parameters
+    # zone
+    lsouth = False
+    if UTM_PROJECTION_ZONE < 0: lsouth = True
+    zone = abs(UTM_PROJECTION_ZONE)
+
+    cm = zone * 6.0 - 183.0       # set central meridian for this zone
+    cmr = cm*degrad
+
     if iway == IUTM2LONGLAT:
         xx = rx
         yy = ry
+        if lsouth: yy = yy - 1.e7
     else:
         dlon = rlon
         dlat = rlat
-
-    #----- Set Zone parameters
-    zone = UTM_PROJECTION_ZONE
-    cm = zone * 6.0 - 183.0       # set central meridian for this zone
-    cmr = cm*degrad
 
     #---- Lat/Lon to UTM conversion
     if iway == ILONGLAT2UTM:
@@ -412,6 +423,7 @@ def geo2utm(lon,lat,zone):
 
     else:
         rx = xx
+        if lsouth: yy = yy + 1.e7
         ry = yy
         rlon = rlon_save
         rlat = rlat_save
@@ -518,6 +530,7 @@ def replace_missing_values_with_average(var_name,var_array,model_data):
     # gets missing value
     try:
         missing_val = model_data.variables[var_name].missing_value
+        print("    missing value: defined as ",missing_val)
     except:
         # array has no missing value specified
         # we assume that there are no such and use a default missing value
@@ -657,6 +670,49 @@ def fill_missing_data_with_average_values(array,missing_val,ndepths,depth_index)
     """
     fills missing data value with the average value from each depth slice
     """
+    # determines initial average value
+    # in case first depth has only missing values, we take next depth layer average
+    previous_average = 0.0
+
+    for i in range(ndepths):
+        # gets depth slice
+        if depth_index == 0:
+            depth_layer = array[i,:,:]
+        elif depth_index == 1:
+            depth_layer = array[:,i,:]
+        else:
+            depth_layer = array[:,:,i]
+
+        # mask out entries w/ missing values
+        mask = depth_layer != missing_val
+
+        #debug
+        #print("debug: mask values in depth layer ",i,mask.sum())
+
+        # mask of nan values
+        nan_mask = np.isnan(depth_layer)
+
+        #debug
+        #print("debug: nan values in depth layer ",i,nan_mask.sum())
+
+        if nan_mask.any():
+            # combine mask with the opposite of the nan mask
+            # (mask is true only for valid entries)
+            mask = mask & ~nan_mask
+
+        # array without missing values
+        masked_layer = depth_layer[mask]
+
+        # takes average value at this depth (ignoring missing value points)
+        average_value = np.mean(masked_layer)
+
+        if not (np.isnan(average_value) or average_value == missing_val):
+            previous_average = average_value
+            break
+
+    #debug
+    #print("debug: initial previous average ",previous_average)
+
     # gets average value for each depth
     for i in range(ndepths):
         # gets depth slice
@@ -670,17 +726,45 @@ def fill_missing_data_with_average_values(array,missing_val,ndepths,depth_index)
         # mask out entries w/ missing values
         mask = depth_layer != missing_val
 
+        # mask of nan values
+        nan_mask = np.isnan(depth_layer)
+
+        #debug
+        #print("debug: nan values in depth layer ",i,nan_mask.sum())
+
+        if nan_mask.any():
+            # combine mask with the opposite of the nan mask
+            # (mask is true only for valid entries)
+            mask = mask & ~nan_mask
+
         # array without missing values
         masked_layer = depth_layer[mask]
 
         # takes average value at this depth (ignoring missing value points)
         average_value = np.mean(masked_layer)
 
+        if average_value == missing_val or np.isnan(average_value):
+            # use average from previous layer
+            average_value = previous_average
+        else:
+            # update previous value
+            previous_average = average_value
+
         #debug
         #print("debug: average in depth layer ",i,average_value)
 
         # fills with average values where missing values
         depth_layer[~mask] = average_value
+
+        # check that there are no nan values after update
+        num_nan_values = np.isnan(depth_layer).sum()
+        if num_nan_values > 0:
+            print(f"Error: depth layer {i} still has {num_nan_values} NaN values after filling missing values")
+            print("Please check input file, exiting...")
+            sys.exit(1)
+
+        #debug
+        #print("debug: depth layer min/max ",i,depth_layer.min(),depth_layer.max())
 
         # replaces array
         if depth_index == 0:
@@ -1118,16 +1202,26 @@ def netCDF_2_tomo(input_file,UTM_zone=None,mesh_area=None,maximum_depth=None):
     if 'geospatial_lat_min' in global_vars:
         model_lat_min = model_data.geospatial_lat_min
         model_lat_max = model_data.geospatial_lat_max
+        if isinstance(model_lat_min,str): model_lat_min = float(model_lat_min)
+        if isinstance(model_lat_max,str): model_lat_max = float(model_lat_max)
+
         if model_data.geospatial_lat_resolution:
             model_dlat = model_data.geospatial_lat_resolution
+            if isinstance(model_dlat,str): model_dlat = float(model_dlat)
 
         model_lon_min = model_data.geospatial_lon_min
         model_lon_max = model_data.geospatial_lon_max
+        if isinstance(model_lon_min,str): model_lon_min = float(model_lon_min)
+        if isinstance(model_lon_max,str): model_lon_max = float(model_lon_max)
+
         if model_data.geospatial_lon_resolution:
             model_dlon = model_data.geospatial_lon_resolution
+            if isinstance(model_dlon,str): model_dlon = float(model_dlon)
 
         model_depth_min = model_data.geospatial_vertical_min
         model_depth_max = model_data.geospatial_vertical_max
+        if isinstance(model_depth_min,str): model_depth_min = float(model_depth_min)
+        if isinstance(model_depth_max,str): model_depth_max = float(model_depth_max)
 
         print("  model range:")
         print("    lon   min/max = {} / {}".format(model_lon_min,model_lon_max))
@@ -1149,6 +1243,9 @@ def netCDF_2_tomo(input_file,UTM_zone=None,mesh_area=None,maximum_depth=None):
 
     # determines scaling factor for depth if given in km
     if model_data.variables['depth'].units == "km":
+        # given in km -> m
+        depth_unit_scale = 1000
+    elif model_data.variables['depth'].units == "kilometers":
         # given in km -> m
         depth_unit_scale = 1000
     elif model_data.variables['depth'].units == "m":
@@ -1252,33 +1349,43 @@ def netCDF_2_tomo(input_file,UTM_zone=None,mesh_area=None,maximum_depth=None):
     else:
         # has regular spacing
         ddepth = dz0
-        print("  has regular depth     spacing ",ddepth,"(km)")
+        print("  has regular depth     spacing ",ddepth,"(m)")
 
     print("")
     print("    dlon/dlat/ddepth = {} (deg) / {} (deg) / {} (km)".format(dlon,dlat,ddepth/1000.0))
     print("    spacing ok")
     print("")
 
-    # checks parameterization
+    # checks parameterization (uses lowercase for parameter names "VPH" -> "vph")
     nc_vars = [var for var in model_data.variables]
     #print("debug: ",nc_vars)
 
-    if ("vpv" in nc_vars and "vph" in nc_vars) or ("vsv" in nc_vars and "vsh" in nc_vars):
+    if ("vpv" in nc_vars and "vph" in nc_vars) or \
+       ("vsv" in nc_vars and "vsh" in nc_vars) or \
+       ("VPV" in nc_vars and "VPH" in nc_vars) or \
+       ("VSV" in nc_vars and "VSH" in nc_vars):
         has_radial_anisotropy = True
     else:
         has_radial_anisotropy = False
 
-    if ("vp" in nc_vars) or ("vs" in nc_vars):
+    if ("vp" in nc_vars) or \
+       ("vs" in nc_vars) or \
+       ("VP" in nc_vars) or \
+       ("VS" in nc_vars):
         has_isotropy = True
     else:
         has_isotropy = False
 
-    if "rho" in nc_vars:
+    if ("rho" in nc_vars) or \
+       ("RHO" in nc_vars):
         has_density = True
     else:
         has_density = False
 
-    if ("qmu" in nc_vars) or ("qs" in nc_vars) :
+    if ("qmu" in nc_vars) or \
+       ("qs" in nc_vars) or \
+       ("QMU" in nc_vars) or \
+       ("QS" in nc_vars):
         has_shear_attenuation = True
     else:
         has_shear_attenuation = False
@@ -1343,21 +1450,37 @@ def netCDF_2_tomo(input_file,UTM_zone=None,mesh_area=None,maximum_depth=None):
     # reads available velocity values
     if has_radial_anisotropy:
         # Vp
-        if "vpv" in nc_vars and "vph" in nc_vars:
-            vpv = read_data_array('vpv',model_data)
-            vph = read_data_array('vph',model_data)
+        if ("vpv" in nc_vars and "vph" in nc_vars) or \
+           ("VPV" in nc_vars and "VPH" in nc_vars):
+            if "vpv" in nc_vars:
+                var_name_vpv = 'vpv'
+            elif "VPV" in nc_vars:
+                var_name_vpv = 'VPV'
+            else:
+                print("Error: vpv array name not found")
+                sys.exit(1)
+            vpv = read_data_array(var_name_vpv,model_data)
+
+            if "vph" in nc_vars:
+                var_name_vph = 'vph'
+            elif "VPV" in nc_vars:
+                var_name_vph = 'VPH'
+            else:
+                print("Error: vph array name not found")
+                sys.exit(1)
+            vph = read_data_array(var_name_vph,model_data)
 
             # file output requires velocities in m/s
             # determines scaling factor
             # (based on vpv array, assuming all other velocity arrays have the same units)
-            if model_data.variables['vpv'].units in ["km.s-1","km/s"]:
+            if model_data.variables[var_name_vpv].units in ["km.s-1","km/s","kilometers/second"]:
                 # given in km/s -> m/s
                 unit_scale = 1000
-            elif model_data.variables['vpv'].units in ["m.s-1","m/s"]:
+            elif model_data.variables[var_name_vpv].units in ["m.s-1","m/s","meters/second"]:
                 # given in m/s
                 unit_scale = 1
             else:
-                print("Error: vpv array has invalid unit ",model_data.variables['vpv'].units)
+                print("Error: vpv array has invalid unit ",model_data.variables[var_name_vpv].units)
                 sys.exit(1)
             # scales velocities to m/s
             if unit_scale != 1:
@@ -1369,21 +1492,37 @@ def netCDF_2_tomo(input_file,UTM_zone=None,mesh_area=None,maximum_depth=None):
             model['vp'] = vp
 
         # Vs
-        if "vsv" in nc_vars and "vsh" in nc_vars:
-            vsv = read_data_array('vsv',model_data)
-            vsh = read_data_array('vsh',model_data)
+        if ("vsv" in nc_vars and "vsh" in nc_vars) or \
+           ("VSV" in nc_vars and "VSH" in nc_vars):
+            if "vsv" in nc_vars:
+                var_name_vsv = 'vsv'
+            elif "VSV" in nc_vars:
+                var_name_vsv = 'VSV'
+            else:
+                print("Error: vsv array name not found")
+                sys.exit(1)
+            vsv = read_data_array(var_name_vsv,model_data)
+
+            if "vsh" in nc_vars:
+                var_name_vsh = 'vsh'
+            elif "VSH" in nc_vars:
+                var_name_vsh = 'VSH'
+            else:
+                print("Error: vsh array name not found")
+                sys.exit(1)
+            vsh = read_data_array(var_name_vsh,model_data)
 
             # file output requires velocities in m/s
             # determines scaling factor
             # (based on vpv array, assuming all other velocity arrays have the same units)
-            if model_data.variables['vsv'].units in ["km.s-1","km/s"]:
+            if model_data.variables[var_name_vsv].units in ["km.s-1","km/s","kilometers/second"]:
                 # given in km/s -> m/s
                 unit_scale = 1000
-            elif model_data.variables['vsv'].units in ["m.s-1","m/s"]:
+            elif model_data.variables[var_name_vsv].units in ["m.s-1","m/s","meters/second"]:
                 # given in m/s
                 unit_scale = 1
             else:
-                print("Error: vsv array has invalid unit ",model_data.variables['vsv'].units)
+                print("Error: vsv array has invalid unit ",model_data.variables[var_name_vsv].units)
                 sys.exit(1)
             # scales velocities to m/s
             if unit_scale != 1:
@@ -1400,20 +1539,28 @@ def netCDF_2_tomo(input_file,UTM_zone=None,mesh_area=None,maximum_depth=None):
         #    eta = read_data_array('eta',model_data)
 
     elif has_isotropy:
-        if "vp" in nc_vars:
+        if ("vp" in nc_vars) or \
+           ("VP" in nc_vars):
             # vp given
-            vp = read_data_array('vp',model_data)
+            if "vp" in nc_vars:
+                var_name_vp = 'vp'
+            elif "VP" in nc_vars:
+                var_name_vp = 'VP'
+            else:
+                print("Error: vp array name not found")
+                sys.exit(1)
+            vp = read_data_array(var_name_vp,model_data)
 
             # file output requires velocities in m/s
             # determines scaling factor
-            if model_data.variables['vp'].units in ["km.s-1","km/s"]:
+            if model_data.variables[var_name_vp].units in ["km.s-1","km/s","kilometers/second"]:
                 # given in km/s -> m/s
                 unit_scale = 1000
-            elif model_data.variables['vp'].units in ["m.s-1","m/s"]:
+            elif model_data.variables[var_name_vp].units in ["m.s-1","m/s","meters/second"]:
                 # given in m/s
                 unit_scale = 1
             else:
-                print("Error: vp array has invalid unit ",model_data.variables['vp'].units)
+                print("Error: vp array has invalid unit ",model_data.variables[var_name_vp].units)
                 sys.exit(1)
             # scales velocities to m/s
             if unit_scale != 1:
@@ -1421,20 +1568,28 @@ def netCDF_2_tomo(input_file,UTM_zone=None,mesh_area=None,maximum_depth=None):
 
             model['vp'] = vp
 
-        if "vs" in nc_vars:
+        if ("vs" in nc_vars) or \
+           ("VS" in nc_vars):
             # vs given
-            vs = read_data_array('vs',model_data)
+            if "vs" in nc_vars:
+                var_name_vs = 'vs'
+            elif "VS" in nc_vars:
+                var_name_vs = 'VS'
+            else:
+                print("Error: vs array name not found")
+                sys.exit(1)
+            vs = read_data_array(var_name_vs,model_data)
 
             # file output requires velocities in m/s
             # determines scaling factor
-            if model_data.variables['vs'].units in ["km.s-1","km/s"]:
+            if model_data.variables[var_name_vs].units in ["km.s-1","km/s","kilometers/second"]:
                 # given in km/s -> m/s
                 unit_scale = 1000
-            elif model_data.variables['vs'].units in ["m.s-1","m/s"]:
+            elif model_data.variables[var_name_vs].units in ["m.s-1","m/s","meters/second"]:
                 # given in m/s
                 unit_scale = 1
             else:
-                print("Error: vs array has invalid unit ",model_data.variables['vs'].units)
+                print("Error: vs array has invalid unit ",model_data.variables[var_name_vs].units)
                 sys.exit(1)
             # scales velocities to m/s
             if unit_scale != 1:
@@ -1456,24 +1611,32 @@ def netCDF_2_tomo(input_file,UTM_zone=None,mesh_area=None,maximum_depth=None):
 
     # adds density
     if has_density:
-        rho = read_data_array('rho',model_data)
+        # vs given
+        if "rho" in nc_vars:
+            var_name_rho = 'rho'
+        elif "RHO" in nc_vars:
+            var_name_rho = 'RHO'
+        else:
+            print("Error: rho array name not found")
+            sys.exit(1)
+        rho = read_data_array(var_name_rho,model_data)
         model['rho'] = rho
 
         # file output requires density in kg/m^3
         # determines scaling factor
-        if model_data.variables['rho'].units in ["g.cm-3","g/cm3"]:
+        if model_data.variables[var_name_rho].units in ["g.cm-3","g/cm3","g/cm^3"]:
             # given in g/cm^3 -> kg/m^3
             # rho [kg/m^3] = rho * 1000 [g/cm^3]
             unit_scale = 1000
-        elif model_data.variables['rho'].units in ["kg.cm-3","kg/cm3"]:
+        elif model_data.variables[var_name_rho].units in ["kg.cm-3","kg/cm3","kg/cm^3"]:
             # given in kg/cm^3 -> kg/m^3
             # rho [kg/m^3] = rho * 1000000 [kg/cm^3]
             unit_scale = 1000000
-        elif model_data.variables['rho'].units in ["kg.m-3","kg/m3"]:
+        elif model_data.variables[var_name_rho].units in ["kg.m-3","kg/m3","kilograms/meter^3"]:
             # given in kg/m^3
             unit_scale = 1
         else:
-            print("Error: rho array has invalid unit ",model_data.variables['rho'].units)
+            print("Error: rho array has invalid unit ",model_data.variables[var_name_rho].units)
             sys.exit(1)
         # converts density to default kg/m^3
         if unit_scale != 1:
@@ -1485,12 +1648,28 @@ def netCDF_2_tomo(input_file,UTM_zone=None,mesh_area=None,maximum_depth=None):
 
     # adds attenuation
     if has_shear_attenuation:
-        if "qmu" in nc_vars:
+        if ("qmu" in nc_vars) or \
+           ("QMU" in nc_vars) :
+            if "qmu" in nc_vars:
+                var_name_qmu = 'qmu'
+            elif "QMU" in nc_vars:
+                var_name_qmu = 'QMU'
+            else:
+                print("Error: qmu array name not found")
+                sys.exit(1)
             # Qs == qmu are equal
-            qs = read_data_array('qmu',model_data)
+            qs = read_data_array(var_name_qmu,model_data)
             model['qs'] = qs
-        if "qs" in nc_vars:
-            qs = read_data_array('qs',model_data)
+        if ("qs" in nc_vars) or \
+           ("QS" in nc_vars):
+            if "qs" in nc_vars:
+                var_name_qs = 'qs'
+            elif "QS" in nc_vars:
+                var_name_qs = 'QS'
+            else:
+                print("Error: qs array name not found")
+                sys.exit(1)
+            qs = read_data_array(var_name_qs,model_data)
             model['qs'] = qs
 
         # checks missing Q arrays
@@ -1498,8 +1677,16 @@ def netCDF_2_tomo(input_file,UTM_zone=None,mesh_area=None,maximum_depth=None):
             print("Error: misses Qs in model, no shear attenuation available")
             sys.exit(1)
 
-        if "qp" in nc_vars:
-            qp = read_data_array('qp',model_data)
+        if ("qp" in nc_vars) or \
+           ("QP" in nc_vars):
+            if "qp" in nc_vars:
+                var_name_qp = 'qp'
+            elif "QP" in nc_vars:
+                var_name_qp = 'QP'
+            else:
+                print("Error: qp array name not found")
+                sys.exit(1)
+            qp = read_data_array(var_name_qp,model_data)
             # Qs == qmu are equal
             model['qp'] = qp
         else:

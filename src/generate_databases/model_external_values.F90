@@ -44,6 +44,7 @@
 ! ADD YOUR MODEL HERE
 !
 !---
+  implicit none
   integer, parameter :: dummy_size = 1
 
   ! only here to illustrate an example
@@ -94,7 +95,7 @@
   if (myrank == 0) call read_external_model()
 
   ! broadcast the information read on the main to the nodes
-  call bcast_all_dp(MEXT_V%dvs, size(MEXT_V%dvs))
+  call bcast_all_dp(MEXT_V%dvs, size(MEXT_V%dvs,kind=4))
 
   end subroutine model_external_broadcast
 

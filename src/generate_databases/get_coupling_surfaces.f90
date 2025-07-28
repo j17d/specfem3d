@@ -981,4 +981,4 @@
   kk = ijk_index(3)
   get_iglob_index = ibool(ii,jj,kk,ispec_in)
 
-  end function
+  end function get_iglob_index

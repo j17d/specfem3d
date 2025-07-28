@@ -110,11 +110,11 @@
       if (ATTENUATION) then
         call transfer_b_rmemory_to_device(Mesh_pointer, &
                                           b_R_xx,b_R_yy,b_R_xy,b_R_xz,b_R_yz, &
-                                          b_R_trace,size(b_R_xx))
+                                          b_R_trace,size(b_R_xx,kind=4))
         call transfer_b_strain_to_device(Mesh_pointer, &
                                          b_epsilondev_xx,b_epsilondev_yy,b_epsilondev_xy, &
                                          b_epsilondev_xz,b_epsilondev_yz, &
-                                         b_epsilondev_trace,size(b_epsilondev_xx))
+                                         b_epsilondev_trace,size(b_epsilondev_xx,kind=4))
       endif
     endif
 
@@ -217,7 +217,7 @@
       if (ATTENUATION) then
         call transfer_b_rmemory_to_device(Mesh_pointer, &
                                           b_R_xx,b_R_yy,b_R_xy,b_R_xz,b_R_yz, &
-                                          b_R_trace,size(b_R_xx))
+                                          b_R_trace,size(b_R_xx,kind=4))
       endif
     endif
 

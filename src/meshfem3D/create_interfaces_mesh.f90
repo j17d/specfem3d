@@ -107,9 +107,12 @@
   allocate(interface_bottom(max_npx_interface,max_npy_interface),stat=ier)
   if (ier /= 0) call exit_MPI_without_rank('error allocating array 1281')
   if (ier /= 0) stop 'Error allocating array interface_bottom'
+  interface_bottom(:,:) = 0.d0
+
   allocate(interface_top(max_npx_interface,max_npy_interface),stat=ier)
   if (ier /= 0) call exit_MPI_without_rank('error allocating array 1282')
   if (ier /= 0) stop 'Error allocating array interface_top'
+  interface_top(:,:) = 0.d0
 
   ! read number of interfaces
   call read_value_integer_mesh(IIN,DONT_IGNORE_JUNK,number_of_interfaces,'NINTERFACES', ier)

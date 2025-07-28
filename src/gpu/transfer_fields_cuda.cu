@@ -303,6 +303,52 @@ void FC_FUNC_(transfer_pml_displ_from_device,
 
 /* ----------------------------------------------------------------------------------------------- */
 
+// prescribed wavefield discontinuity. this needs to be called in every time step
+
+/* ----------------------------------------------------------------------------------------------- */
+
+extern EXTERN_LANG
+void FC_FUNC_(transfer_wavefield_discontinuity_to_device,
+              TRANSFER_WAVEFIELD_DISCONTINUITY_TO_DEVICE)(int* size_point, int* size_face,
+                                                          realw* displ_wd, realw* accel_wd,
+                                                          realw* traction_wd, long* Mesh_pointer) {
+
+  TRACE("transfer_wavefield_discontinuity_to_device");
+
+  Mesh* mp = (Mesh*)(*Mesh_pointer); //get mesh pointer out of fortran integer container
+
+  gpuMemcpy_todevice_realw(mp->d_displ_wd, displ_wd, (*size_point));
+  gpuMemcpy_todevice_realw(mp->d_accel_wd, accel_wd, (*size_point));
+  gpuMemcpy_todevice_realw(mp->d_traction_wd, traction_wd, (*size_face));
+
+}
+
+/* ----------------------------------------------------------------------------------------------- */
+
+/**
+ * @author nqdu
+ * @brief copy injection field from host to device
+ * @param size_face no. of points used = NDIM*num_abs_boundary_faces*NGLLSQUARE
+ * @param veloc/tract_inj velocity/traction
+ * @param Mesh_pointer mesh_ struct
+ */
+extern EXTERN_LANG
+void FC_FUNC_(transfer_injection_field_to_device,
+              TRANSFER_INJECTION_FIELD_TO_DEVICE)(int* size_face,
+                                                  realw* veloc_inj,realw* traction_inj,
+                                                  long* Mesh_pointer) {
+
+  TRACE("transfer_injection_field_to_device");
+
+  Mesh* mp = (Mesh*)(*Mesh_pointer); //get mesh pointer out of fortran integer container
+
+  gpuMemcpy_todevice_realw(mp->d_veloc_inj, veloc_inj, (*size_face));
+  gpuMemcpy_todevice_realw(mp->d_tract_inj, traction_inj, (*size_face));
+
+}
+
+/* ----------------------------------------------------------------------------------------------- */
+
 extern EXTERN_LANG
 void FC_FUNC_(transfer_pml_displ_to_device,
               TRANSFER_PML_DISPL_TO_DEVICE)(int* size, realw* PML_displ_old, realw* PML_displ_new, long* Mesh_pointer) {

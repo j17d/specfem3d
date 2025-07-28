@@ -655,16 +655,17 @@ VTK_INCLUDES
 VTK_MAJOR
 OMP_LIB
 OMP_FCFLAGS
+COND_HIP_PLATFORM_CPU_FALSE
+COND_HIP_PLATFORM_CPU_TRUE
 COND_HIP_PLATFORM_NVIDIA_FALSE
 COND_HIP_PLATFORM_NVIDIA_TRUE
 COND_HIP_PLATFORM_AMD_FALSE
 COND_HIP_PLATFORM_AMD_TRUE
-HIP_LIBS
-HIP_LDFLAGS
 HIP_CPPFLAGS
 HIPCONFIG_PROG
 HIPCC_PROG
-HIP_LIB
+HIP_PLATFORM
+HIP_LIBS
 HIP_INC
 HIP_FLAGS
 HIPCC
@@ -912,7 +913,8 @@ CPP
 HIPCC
 HIP_FLAGS
 HIP_INC
-HIP_LIB
+HIP_LIBS
+HIP_PLATFORM
 OMP_FCFLAGS
 OMP_LIB
 HDF5_INC
@@ -1621,7 +1623,9 @@ Some influential environment variables:
   HIPCC       AMD HIP compiler command
   HIP_FLAGS   HIP compiler flags
   HIP_INC     Location of HIP include files
-  HIP_LIB     Location of HIP library libhip_hcc
+  HIP_LIBS    HIP linking flags
+  HIP_PLATFORM
+              target HIP platform (amd/nvidia/cpu; default amd)
   OMP_FCFLAGS OpenMP Fortran compiler flags
   OMP_LIB     Location of extra OpenMP libraries
   HDF5_INC    HDF5 include directory
@@ -9535,10 +9539,13 @@ then :
 
 
 
+
     # tests HIPCC variable
     if test x"$HIPCC" = x
 then :
 
+        { printf "%s\n" "$as_me:${as_lineno-$LINENO}: using default hip compiler: \`hipcc\`" >&5
+printf "%s\n" "$as_me: using default hip compiler: \`hipcc\`" >&6;}
         HIPCC=hipcc
 
 fi
@@ -9592,7 +9599,7 @@ fi
 
 
     if test -z "$HIPCC_PROG" ; then
-        as_fn_error $? "cannot find '$HIPCC' program, please check your PATH." "$LINENO" 5
+        as_fn_error $? "cannot find '$HIPCC' program; try setting HIPCC, and please check your PATH." "$LINENO" 5
     fi
 
     # sets default HIP path
@@ -9710,19 +9717,21 @@ printf "%s\n" "$as_me: HIP path: $HIP_PATH" >&6;}
     #])
 
     # adds default HIP library
-    if test x"$HIP_LIB" = x -a x"${HIP_PATH}" != x
+    if test x"$HIP_LIBS" = x -a x"${HIP_PATH}" != x
 then :
 
-        HIP_LIB="${HIP_PATH}/lib"
-        { printf "%s\n" "$as_me:${as_lineno-$LINENO}: adding default HIP library path: ${HIP_LIB}" >&5
-printf "%s\n" "$as_me: adding default HIP library path: ${HIP_LIB}" >&6;}
+        HIP_LIBS="-L${HIP_PATH}/lib"
+        { printf "%s\n" "$as_me:${as_lineno-$LINENO}: adding default HIP library path: ${HIP_LIBS}" >&5
+printf "%s\n" "$as_me: adding default HIP library path: ${HIP_LIBS}" >&6;}
 
 fi
 
     # checks platform
-    if test x"$HIPCONFIG_PROG" != x ; then
-      GPU_PLATFORM=`$HIPCONFIG_PROG --platform`
-      if test x"$GPU_PLATFORM" = xnvidia
+    if test x"$HIPCONFIG_PROG" != x -a x"$HIP_PLATFORM" = x
+then :
+
+      HIP_PLATFORM=`$HIPCONFIG_PROG --platform`
+      if test x"$HIP_PLATFORM" = xnvidia
 then :
 
           { printf "%s\n" "$as_me:${as_lineno-$LINENO}: HIP PLATFORM NVIDIA detected." >&5
@@ -9732,7 +9741,7 @@ printf "%s\n" "$as_me: HIP PLATFORM NVIDIA detected." >&6;}
 
 fi
 
-      if test x"$GPU_PLATFORM" = xamd
+      if test x"$HIP_PLATFORM" = xamd
 then :
 
           { printf "%s\n" "$as_me:${as_lineno-$LINENO}: HIP PLATFORM AMD detected." >&5
@@ -9745,18 +9754,12 @@ fi
       case "${HIP_FLAGS}" in
         *HIP_PLATFORM*) { printf "%s\n" "$as_me:${as_lineno-$LINENO}: hip flags contain platform specifier: ${HIP_FLAGS}" >&5
 printf "%s\n" "$as_me: hip flags contain platform specifier: ${HIP_FLAGS}" >&6;} ;;
-        *) { printf "%s\n" "$as_me:${as_lineno-$LINENO}: adding flag for platform specifier ${FLAG_PLATFORM}" >&5
-printf "%s\n" "$as_me: adding flag for platform specifier ${FLAG_PLATFORM}" >&6;};
+        *) { printf "%s\n" "$as_me:${as_lineno-$LINENO}: adding flag for platform specifier: ${FLAG_PLATFORM}" >&5
+printf "%s\n" "$as_me: adding flag for platform specifier: ${FLAG_PLATFORM}" >&6;};
            HIP_FLAGS="${HIP_FLAGS} ${FLAG_PLATFORM}"
            { printf "%s\n" "$as_me:${as_lineno-$LINENO}: HIP_FLAGS: ${HIP_FLAGS}" >&5
 printf "%s\n" "$as_me: HIP_FLAGS: ${HIP_FLAGS}" >&6;} ;;
       esac
-    fi
-    # sets default platform to AMD if not set
-    if test x"$GPU_PLATFORM" = x
-then :
-
-      GPU_PLATFORM=amd
 
 fi
 
@@ -9775,20 +9778,13 @@ printf "%s\n" "$as_me: HIP flags contain position independent code flag -fPIC: $
 printf "%s\n" "$as_me: consider adding compilation flag for position independent code: HIP_FLAGS=\"-fPIC\"" >&6;};;
     esac
 
-    # test lib & include
-    if test x"$HIP_LIB" != x
-then :
-
-        HIP_LDFLAGS="-L$HIP_LIB"
-
-fi
+    # test include
     if test x"$HIP_INC" != x
 then :
 
         HIP_CPPFLAGS="-I$HIP_INC"
 
 fi
-    HIP_LIBS="-lamdhip64"
 
     # checks header file
     ac_ext=c
@@ -9808,6 +9804,8 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
       HIP_CPPFLAGS="-I$HIP_INC"
       CFLAGS="$CFLAGS $HIP_CPPFLAGS"
     fi
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: using hip compilation flags: $CFLAGS" >&5
+printf "%s\n" "$as_me: using hip compilation flags: $CFLAGS" >&6;}
 
     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for hip/hip_runtime.h" >&5
 printf %s "checking for hip/hip_runtime.h... " >&6; }
@@ -9849,17 +9847,9 @@ esac
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
 
-    # checks for HIP library
-    if test "x$HIP_LIB" != "x"; then
-      HIP_LDFLAGS="-L$HIP_LIB"
-      LDFLAGS="$HIP_LDFLAGS $LDFLAGS"
-    fi
-    HIP_LIBS="-lamdhip64"
-    LIBS="$HIP_LIBS $LIBS"
-
     # runs compilation test with hipcc
-    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking hipcc compilation with hipMalloc in -lamdhip64" >&5
-printf %s "checking hipcc compilation with hipMalloc in -lamdhip64... " >&6; }
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for hip compilation with hipMalloc" >&5
+printf %s "checking for hip compilation with hipMalloc... " >&6; }
     ac_compile='$HIPCC -c $CFLAGS conftest.$ac_ext >&5'
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
@@ -9892,16 +9882,41 @@ else case e in #(
   e)
       { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
-      as_fn_error $? "HIP library function with hipcc compilation failed; try setting HIP_INC." "$LINENO" 5
+      as_fn_error $? "HIP library function with hipcc compilation failed; try setting HIP_FLAGS and HIP_INC." "$LINENO" 5
      ;;
 esac
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
 
+    # sets default platform to AMD if not set
+    if test x"$HIP_PLATFORM" = x
+then :
+
+        HIP_PLATFORM=amd
+
+fi
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: HIP_PLATFORM: $HIP_PLATFORM" >&5
+printf "%s\n" "$as_me: HIP_PLATFORM: $HIP_PLATFORM" >&6;}
+
+    # linking library
+    if test x"$HIP_PLATFORM" = xamd
+then :
+
+      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: adding default '-lamdhip64' linking for HIP platform AMD" >&5
+printf "%s\n" "$as_me: adding default '-lamdhip64' linking for HIP platform AMD" >&6;}
+      HIP_LIBS="-lamdhip64"
+
+fi
+
+    # test lib
+    LIBS="$HIP_LIBS $LIBS $LDFLAGS"
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: using hip linking flags: $LIBS" >&5
+printf "%s\n" "$as_me: using hip linking flags: $LIBS" >&6;}
+
     # runs linking test with hipcc
-    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking hipcc linking with hipMalloc in -lamdhip64" >&5
-printf %s "checking hipcc linking with hipMalloc in -lamdhip64... " >&6; }
-    ac_link='$HIPCC -o conftest$ac_exeext $CFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for hip linking with hipMalloc" >&5
+printf %s "checking for hip linking with hipMalloc... " >&6; }
+    ac_link='$HIPCC -o conftest$ac_exeext $CFLAGS conftest.$ac_ext $LIBS >&5'
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -9935,7 +9950,7 @@ else case e in #(
   e)
       { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
-      as_fn_error $? "HIP library linking with HIP failed; try setting HIP_LIB." "$LINENO" 5
+      as_fn_error $? "HIP library linking with HIP failed; try setting HIP_LIBS and HIP_PLATFORM." "$LINENO" 5
      ;;
 esac
 fi
@@ -9960,9 +9975,8 @@ ac_compiler_gnu=$ac_cv_fc_compiler_gnu
 
 
 
-
 fi
- if test x"$GPU_PLATFORM" = xamd; then
+ if test x"$HIP_PLATFORM" = xamd; then
   COND_HIP_PLATFORM_AMD_TRUE=
   COND_HIP_PLATFORM_AMD_FALSE='#'
 else
@@ -9970,7 +9984,7 @@ else
   COND_HIP_PLATFORM_AMD_FALSE=
 fi
 
- if test x"$GPU_PLATFORM" = xnvidia; then
+ if test x"$HIP_PLATFORM" = xnvidia; then
   COND_HIP_PLATFORM_NVIDIA_TRUE=
   COND_HIP_PLATFORM_NVIDIA_FALSE='#'
 else
@@ -9978,6 +9992,13 @@ else
   COND_HIP_PLATFORM_NVIDIA_FALSE=
 fi
 
+ if test x"$HIP_PLATFORM" = xcpu; then
+  COND_HIP_PLATFORM_CPU_TRUE=
+  COND_HIP_PLATFORM_CPU_FALSE='#'
+else
+  COND_HIP_PLATFORM_CPU_TRUE='#'
+  COND_HIP_PLATFORM_CPU_FALSE=
+fi
 
 
 ###
@@ -12425,6 +12446,10 @@ Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${COND_HIP_PLATFORM_NVIDIA_TRUE}" && test -z "${COND_HIP_PLATFORM_NVIDIA_FALSE}"; then
   as_fn_error $? "conditional \"COND_HIP_PLATFORM_NVIDIA\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${COND_HIP_PLATFORM_CPU_TRUE}" && test -z "${COND_HIP_PLATFORM_CPU_FALSE}"; then
+  as_fn_error $? "conditional \"COND_HIP_PLATFORM_CPU\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 

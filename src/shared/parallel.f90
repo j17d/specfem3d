@@ -1405,7 +1405,7 @@ end module my_mpi
   implicit none
 
   integer :: dest,sendcount,ier
-  integer :: tag = 100
+  integer, parameter :: tag = 100
   integer, dimension(sendcount) :: sendbuf
 
   call MPI_SEND(sendbuf,sendcount,MPI_INTEGER,dest,tag,my_local_mpi_comm_world,ier)
@@ -1423,7 +1423,7 @@ end module my_mpi
   implicit none
 
   integer :: source,recvcount,ier
-  integer :: tag = 100
+  integer, parameter :: tag = 100
   integer, dimension(recvcount) :: recvbuf
 
   call MPI_RECV(recvbuf,recvcount,MPI_INTEGER,source,tag,my_local_mpi_comm_world,MPI_STATUS_IGNORE,ier)

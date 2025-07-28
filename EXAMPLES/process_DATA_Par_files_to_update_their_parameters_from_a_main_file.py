@@ -42,6 +42,7 @@ EXCLUDE_DIR_LIST = [ \
 
 # optional parameters in Par_file
 OPTIONAL_PARAMETERS = [
+  "IS_WAVEFIELD_DISCONTINUITY"
 ]
 
 #
@@ -415,7 +416,7 @@ def check_and_update_Par_file(my_parameters,file):
     """
     updates parameter entries
     """
-    global DEPRECATED_RENAMED_PARAMETERS
+    global DEPRECATED_RENAMED_PARAMETERS,OPTIONAL_PARAMETERS
     global main_parameters
     global is_Mesh_Par_file
 

@@ -33,17 +33,12 @@
   use specfem_par_elastic
   use specfem_par_poroelastic
   use specfem_par_movie
+  use specfem_par_coupling, only: do_save_coupling_wavefield
 
   use gravity_perturbation, only: gravity_timeseries, GRAVITY_SIMULATION
 
   ! hdf5 i/o server
   use io_server_hdf5, only: do_io_start_idle,pass_info_to_io
-
-  !! solving wavefield discontinuity problem with non-split-node scheme
-  use wavefield_discontinuity_solver, only: &
-               read_mesh_databases_wavefield_discontinuity, &
-               open_wavefield_discontinuity_file, &
-               finalize_wavefield_discontinuity
 
   implicit none
 
@@ -55,7 +50,7 @@
   ! timing
   double precision, external :: wtime
 #ifdef VTK_VIS
-  logical :: do_restart = .false.
+  logical, parameter :: do_restart = .false.
 #endif
 
   ! hdf5 i/o server
@@ -102,8 +97,12 @@
   if (RECIPROCITY_AND_KH_INTEGRAL) open(unit=158,file='KH_integral',status='unknown')
 
   ! open the file in which we will store the energy curve
-  if (OUTPUT_ENERGY .and. myrank == 0) &
+  if (OUTPUT_ENERGY .and. myrank == 0) then
     open(unit=IOUT_ENERGY,file=trim(OUTPUT_FILES)//'energy.dat',status='unknown',action='write')
+    ! format: #timestep #kinetic_energy #potential_energy #total_energy
+    write(IOUT_ENERGY,*) "#timestep  #total_energy  #kinetic_energy  #potential_energy"
+    flush(IOUT_ENERGY)
+  endif
 
 #ifdef VTK_VIS
   ! restart: goto starting point
@@ -122,6 +121,7 @@
 !
 !   s t a r t   t i m e   i t e r a t i o n s
 !
+
   ! user output
   if (myrank == 0) then
     write(IMAIN,*)
@@ -129,6 +129,7 @@
     write(IMAIN,*)
     call flush_IMAIN()
   endif
+  call synchronize_all()
 
   ! create an empty file to monitor the start of the simulation
   if (myrank == 0) then
@@ -213,13 +214,6 @@
   ! get MPI starting
   time_start = wtime()
 
-  !! solving wavefield discontinuity problem with
-  !! non-split-node scheme
-  if (IS_WAVEFIELD_DISCONTINUITY) then
-    call read_mesh_databases_wavefield_discontinuity()
-    call open_wavefield_discontinuity_file()
-  endif
-
   ! LTS
   if (LTS_MODE) then
     ! LTS steps through its own time iterations - for now
@@ -286,6 +280,8 @@
           call update_displ_Newmark()
         endif
 
+        if (COUPLE_WITH_INJECTION_TECHNIQUE) call fetch_injection_wavefield()
+
         ! computes acoustic domain (first)
         if (ACOUSTIC_SIMULATION) call compute_forces_acoustic_forward_calling()
         ! computes elastic domain
@@ -316,6 +312,9 @@
     ! outputs movie files
     if (MOVIE_SIMULATION) call write_movie_output()
 
+    ! for coupling with specfem injection technique
+    if (do_save_coupling_wavefield) call store_coupling_points_wavefield()
+
     ! first step of noise tomography, i.e., save a surface movie at every time step
     ! modified from the subroutine 'write_movie_surface'
     if (NOISE_TOMOGRAPHY == 1) then
@@ -341,12 +340,6 @@
   !---- end of time iteration loop
   !
   enddo   ! end of main time loop
-
-  !! solving wavefield discontinuity problem with
-  !! non-split-node scheme
-  if (IS_WAVEFIELD_DISCONTINUITY) then
-    call finalize_wavefield_discontinuity()
-  endif
 
 ! goto point for LTS to finish time loop
 777 continue
@@ -418,9 +411,9 @@
 
       if (ATTENUATION) then
         call transfer_rmemory_from_device(Mesh_pointer,R_xx,R_yy,R_xy,R_xz,R_yz, &
-                                          R_trace,size(R_xx))
+                                          R_trace,size(R_xx,kind=4))
         call transfer_strain_from_device(Mesh_pointer,epsilondev_xx,epsilondev_yy,epsilondev_xy,epsilondev_xz,epsilondev_yz, &
-                                         epsilondev_trace,size(epsilondev_xx))
+                                         epsilondev_trace,size(epsilondev_xx,kind=4))
 
       endif
     endif

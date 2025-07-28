@@ -35,6 +35,9 @@
 
 /* ----------------------------------------------------------------------------------------------- */
 
+// coupling direction: elastic wavefield/domain -> acoustic wavefield/domain
+//                                                 (updates acoustic potential_dot_dot wavefield)
+
 extern EXTERN_LANG
 void FC_FUNC_(compute_coupling_ac_el_cuda,
               COMPUTE_COUPLING_AC_EL_CUDA)(long* Mesh_pointer,
@@ -90,7 +93,7 @@ void FC_FUNC_(compute_coupling_ac_el_cuda,
   // launches GPU kernel
 #ifdef USE_CUDA
   if (run_cuda){
-    compute_coupling_acoustic_el_kernel<<<grid,threads>>>(displ,
+    compute_coupling_acoustic_el_kernel<<<grid,threads,0,mp->compute_stream>>>(displ,
                                                           potential_dot_dot,
                                                           num_coupling_ac_el_faces,
                                                           mp->d_coupling_ac_el_ispec,
@@ -104,7 +107,7 @@ void FC_FUNC_(compute_coupling_ac_el_cuda,
 #endif
 #ifdef USE_HIP
   if (run_hip){
-    hipLaunchKernelGGL(compute_coupling_acoustic_el_kernel, dim3(grid), dim3(threads), 0, 0,
+    hipLaunchKernelGGL(compute_coupling_acoustic_el_kernel, dim3(grid), dim3(threads), 0, mp->compute_stream,
                                                             displ,
                                                             potential_dot_dot,
                                                             num_coupling_ac_el_faces,
@@ -130,6 +133,9 @@ void FC_FUNC_(compute_coupling_ac_el_cuda,
 // ELASTIC - ACOUSTIC coupling
 
 /* ----------------------------------------------------------------------------------------------- */
+
+// coupling direction: acoustic wavefield/domain -> elastic wavefield/domain
+//                                                  (updates elastic acceleration wavefield)
 
 extern EXTERN_LANG
 void FC_FUNC_(compute_coupling_el_ac_cuda,
@@ -189,7 +195,7 @@ void FC_FUNC_(compute_coupling_el_ac_cuda,
   // launches GPU kernel
 #ifdef USE_CUDA
   if (run_cuda){
-    compute_coupling_elastic_ac_kernel<<<grid,threads>>>(potential_dot_dot,
+    compute_coupling_elastic_ac_kernel<<<grid,threads,0,mp->compute_stream>>>(potential_dot_dot,
                                                          accel,
                                                          num_coupling_ac_el_faces,
                                                          mp->d_coupling_ac_el_ispec,
@@ -207,7 +213,7 @@ void FC_FUNC_(compute_coupling_el_ac_cuda,
 #endif
 #ifdef USE_HIP
   if (run_hip){
-    hipLaunchKernelGGL(compute_coupling_elastic_ac_kernel, dim3(grid), dim3(threads), 0, 0,
+    hipLaunchKernelGGL(compute_coupling_elastic_ac_kernel, dim3(grid), dim3(threads), 0, mp->compute_stream,
                                                            potential_dot_dot,
                                                            accel,
                                                            num_coupling_ac_el_faces,
@@ -248,7 +254,7 @@ void FC_FUNC_(compute_coupling_ocean_cuda,
 
   // safety check
   if (*FORWARD_OR_ADJOINT != 1 && *FORWARD_OR_ADJOINT != 3) {
-    exit_on_error("Error invalid FORWARD_OR_ADJOINT in update_displacement_ac_cuda() routine");
+    exit_on_error("Error invalid FORWARD_OR_ADJOINT in compute_coupling_ocean_cuda() routine");
   }
 
   // checks if anything to do

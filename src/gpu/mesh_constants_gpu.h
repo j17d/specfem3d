@@ -124,9 +124,28 @@ typedef double realw;
 #endif
 
 // maximum function
+#if !defined(MAX)
 #define MAX(x,y)     (((x) < (y)) ? (y) : (x))
+#endif
 // minimum function
+#if !defined(MIN)
 #define MIN(a,b)     (((a) > (b)) ? (b) : (a))
+#endif
+
+// HIP
+#ifdef USE_HIP
+// for HIP-CPU installation
+#if defined(__HIP_CPU_RT__)
+//#pragma message ("\nCompiling with: HIP-CPU enabled\n")
+// forces __forceinline__ keyword to be inline to avoid "duplicate symbol.." linking errors
+#if defined(__forceinline__)
+#undef __forceinline__
+#endif
+//#define __forceinline__ inline
+// or
+#define __forceinline__ __attribute__((always_inline)) inline
+#endif
+#endif
 
 /* ----------------------------------------------------------------------------------------------- */
 
@@ -260,21 +279,27 @@ typedef double realw;
 
 /* ----------------------------------------------------------------------------------------------- */
 
-// type of "working" variables: see also CUSTOM_REAL
-// double precision temporary variables leads to 10% performance decrease
-// in Kernel_2_impl (not very much..)
-typedef float realw;
-
 // textures
 // note: texture templates are supported only for CUDA versions <= 11.x
 //       since CUDA 12.x, these are deprecated and texture objects should be used instead
 //       see: https://developer.nvidia.com/blog/cuda-pro-tip-kepler-texture-objects-improve-performance-and-flexibility/
+#if CUSTOM_REAL == 4
 #if defined(USE_TEXTURES_FIELDS) || defined(USE_TEXTURES_CONSTANTS)
 #ifdef USE_CUDA
 typedef texture<float, cudaTextureType1D, cudaReadModeElementType> realw_texture;
 #endif
 #ifdef USE_HIP
 typedef texture<float, hipTextureType1D, hipReadModeElementType> realw_texture;
+#endif
+#endif
+#elif CUSTOM_REAL == 8
+#if defined(USE_TEXTURES_FIELDS) || defined(USE_TEXTURES_CONSTANTS)
+#ifdef USE_CUDA
+typedef texture<double, cudaTextureType1D, cudaReadModeElementType> realw_texture;
+#endif
+#ifdef USE_HIP
+typedef texture<double, hipTextureType1D, hipReadModeElementType> realw_texture;
+#endif
 #endif
 #endif
 
@@ -712,6 +737,8 @@ typedef struct mesh_ {
   realw* d_pml_convolution_coef_strain;
   realw* d_pml_convolution_coef_abar;
 
+  realw pml_theta;  // passed from constants.h (by default CPML_THETA = 1.0 / 8.0)
+
   // ------------------------------------------------------------------ //
   // acoustic wavefield
   // ------------------------------------------------------------------ //
@@ -764,8 +791,67 @@ typedef struct mesh_ {
   int use_Kelvin_Voigt_damping;
   realw* d_Kelvin_Voigt_eta;
 
+  // prescribed wavefield discontinuity on an interface
+  int is_wavefield_discontinuity;
+  int* d_ispec_to_elem_wd;
+  int* d_ibool_wd;
+  int* d_boundary_to_iglob_wd;
+  realw* d_mass_in_wd;
+  int* d_face_ijk_wd;
+  int* d_face_ispec_wd;
+  realw* d_face_normal_wd;
+  realw* d_face_jacobian2Dw_wd;
+  realw* d_displ_wd;
+  realw* d_accel_wd;
+  realw* d_traction_wd;
+
+  // coupling with injection wavefield on interface
+  int is_couple_with_injection;
+  realw *d_veloc_inj, *d_tract_inj;
+  realw *d_b_boundary_injection_field;
+  realw *d_b_boundary_injection_potential;
+
   // for option NB_RUNS_FOR_ACOUSTIC_GPU
   int* run_number_of_the_source;
+
+  // ------------------------------------------------------------------ //
+  // local time stepping
+  // ------------------------------------------------------------------ //
+  int lts_mode;
+  int lts_num_p_level;
+
+  // LTS wavefields
+  realw* d_lts_displ_p;
+  realw* d_lts_veloc_p;
+
+  int* d_lts_iglob_p_refine;
+  int* d_lts_p_level_coarser_to_update;
+  int* d_lts_element_list;
+  int* lts_num_element_list;
+
+  // boundary contributions
+  int* d_lts_boundary_node;
+  int* d_lts_boundary_ilevel_from;
+  int* d_lts_boundary_ispec;
+
+  realw* d_lts_displ_tmp;
+  realw* d_lts_accel_tmp;
+
+  // accel collected
+  int lts_use_accel_collected;
+  realw* d_lts_accel_collected;
+  int* d_lts_mask_ibool_collected;
+
+  // LTS modified mass matrices
+  realw* d_lts_rmassxyz;
+  realw* d_lts_rmassxyz_mod;
+  realw* d_lts_cmassxyz;
+
+  // MPI for LTS
+  int* d_lts_num_interface_p_refine_ibool;
+  int* d_lts_interface_p_refine_ibool;
+  int* d_lts_interface_p_refine_boundary;
+  int lts_max_nibool_interfaces_boundary;
 
 } Mesh;
 

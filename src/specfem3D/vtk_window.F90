@@ -1040,12 +1040,12 @@ end module vtk_window_par
     if (NPROC > 1) then
       if (myrank == 0) then
         ! gather data
-        call gatherv_all_cr(vtkdata,size(vtkdata), &
+        call gatherv_all_cr(vtkdata,size(vtkdata,kind=4), &
                             vtkdata_all,vtkdata_points_all,vtkdata_offset_all, &
                             vtkdata_numpoints_all,NPROC)
       else
         ! all other process just send data
-        call gatherv_all_cr(vtkdata,size(vtkdata), &
+        call gatherv_all_cr(vtkdata,size(vtkdata,kind=4), &
                             dummy,vtkdata_points_all,vtkdata_offset_all, &
                             1,NPROC)
       endif

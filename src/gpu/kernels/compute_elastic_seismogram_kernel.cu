@@ -115,7 +115,7 @@ __global__ void compute_elastic_seismogram_kernel(int nrec_local,
         const int gravity = 0; // not used yet
         int ispec_irreg = d_irregular_element_number[ispec] - 1;
 
-        compute_gradient_kernel(tx,ispec,ispec_irreg,scalar_field,vec_elem,
+        compute_gradient_kernel(tx,ispec_irreg,scalar_field,vec_elem,
                                 d_hprime_xx,
                                 d_xix,d_xiy,d_xiz,d_etax,d_etay,d_etaz,d_gammax,d_gammay,d_gammaz,
                                 rhol,xix_regular,gravity);

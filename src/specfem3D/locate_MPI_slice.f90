@@ -69,6 +69,17 @@
   double precision, dimension(npoints_subset,0:NPROC-1) :: final_distance_all
   double precision, dimension(NDIM,NDIM,npoints_subset,0:NPROC-1) :: nu_all
 
+  double precision :: xi,eta,gamma
+
+  ! point inside element
+  logical :: found_point_inside
+
+  ! prefer slice with point location inside element rather than just selecting slice with closest location
+  logical, parameter :: DO_PREFER_INSIDE_ELEMENT = .true.
+
+  !debug
+  !integer,dimension(1) :: iproc_min
+
   ! initializes with dummy values
   ispec_selected_all(:,:) = -1
   idomain_all(:,:) = -1000
@@ -98,33 +109,117 @@
   ! find the slice and element to put the source
   if (myrank == 0) then
 
-    ! loops over subset
-    do ipoin_in_this_subset = 1,npoints_subset
+    ! we prefer slices with point locations inside an element over slices with a closer point distance
+    ! but a point location outside the (best) element
+    if (DO_PREFER_INSIDE_ELEMENT) then
 
-      ! mapping from station/source number in current subset to real station/source number in all the subsets
-      ipoin = ipoin_in_this_subset + ipoin_already_done
+      ! loops over subset
+      do ipoin_in_this_subset = 1,npoints_subset
+        ! mapping from station/source number in current subset to real station/source number in all the subsets
+        ipoin = ipoin_in_this_subset + ipoin_already_done
 
-      distmin = HUGEVAL
-      do iproc = 0,NPROC-1
-        if (final_distance_all(ipoin_in_this_subset,iproc) < distmin) then
-          distmin =  final_distance_all(ipoin_in_this_subset,iproc)
+        ! checks first if we have a close point inside an element
+        found_point_inside = .false.
+        distmin = HUGEVAL
+        do iproc = 0,NPROC-1
+          ! point position
+          xi = xi_all(ipoin_in_this_subset,iproc)
+          eta = eta_all(ipoin_in_this_subset,iproc)
+          gamma = gamma_all(ipoin_in_this_subset,iproc)
 
-          islice_selected(ipoin) = iproc
-          ispec_selected(ipoin) = ispec_selected_all(ipoin_in_this_subset,iproc)
-          idomain(ipoin) = idomain_all(ipoin_in_this_subset,iproc)
+          ! points inside an element have xi/eta/gamma <= 1.0
+          if (abs(xi) <= 1.d0 .and. abs(eta) <= 1.d0 .and. abs(gamma) <= 1.d0) then
+            ! takes point if closer
+            if (final_distance_all(ipoin_in_this_subset,iproc) < distmin) then
+              found_point_inside = .true.
 
-          xi_point(ipoin)    = xi_all(ipoin_in_this_subset,iproc)
-          eta_point(ipoin)   = eta_all(ipoin_in_this_subset,iproc)
-          gamma_point(ipoin) = gamma_all(ipoin_in_this_subset,iproc)
-          nu_point(:,:,ipoin) = nu_all(:,:,ipoin_in_this_subset,iproc)
+              xi_point(ipoin)    = xi
+              eta_point(ipoin)   = eta
+              gamma_point(ipoin) = gamma
 
-          x_found(ipoin) = x_found_all(ipoin_in_this_subset,iproc)
-          y_found(ipoin) = y_found_all(ipoin_in_this_subset,iproc)
-          z_found(ipoin) = z_found_all(ipoin_in_this_subset,iproc)
+              distmin =  final_distance_all(ipoin_in_this_subset,iproc)
+
+              islice_selected(ipoin) = iproc
+              ispec_selected(ipoin) = ispec_selected_all(ipoin_in_this_subset,iproc)
+              idomain(ipoin) = idomain_all(ipoin_in_this_subset,iproc)
+
+              nu_point(:,:,ipoin) = nu_all(:,:,ipoin_in_this_subset,iproc)
+
+              x_found(ipoin) = x_found_all(ipoin_in_this_subset,iproc)
+              y_found(ipoin) = y_found_all(ipoin_in_this_subset,iproc)
+              z_found(ipoin) = z_found_all(ipoin_in_this_subset,iproc)
+            endif
+          endif
+        enddo
+
+        ! if we haven't found a close point inside an element, then look for just the closest possible
+        if (.not. found_point_inside) then
+          do iproc = 0,NPROC-1
+            if (final_distance_all(ipoin_in_this_subset,iproc) < distmin) then
+              distmin =  final_distance_all(ipoin_in_this_subset,iproc)
+
+              islice_selected(ipoin) = iproc
+              ispec_selected(ipoin) = ispec_selected_all(ipoin_in_this_subset,iproc)
+              idomain(ipoin) = idomain_all(ipoin_in_this_subset,iproc)
+
+              xi_point(ipoin)    = xi_all(ipoin_in_this_subset,iproc)
+              eta_point(ipoin)   = eta_all(ipoin_in_this_subset,iproc)
+              gamma_point(ipoin) = gamma_all(ipoin_in_this_subset,iproc)
+
+              nu_point(:,:,ipoin) = nu_all(:,:,ipoin_in_this_subset,iproc)
+
+              x_found(ipoin) = x_found_all(ipoin_in_this_subset,iproc)
+              y_found(ipoin) = y_found_all(ipoin_in_this_subset,iproc)
+              z_found(ipoin) = z_found_all(ipoin_in_this_subset,iproc)
+            endif
+          enddo
         endif
+
+        final_distance(ipoin) = distmin
+
+        !debug
+        !iproc_min = minloc(final_distance_all(ipoin_in_this_subset,:)) - 1 ! -1 to start procs at 0
+        !print *,'debug: locate MPI point',ipoin,ipoin_in_this_subset,'dist',final_distance_all(ipoin_in_this_subset,:), &
+        !  'iproc min',iproc_min(1), &
+        !  'xi min',xi_all(ipoin_in_this_subset,iproc_min(1)), &
+        !           eta_all(ipoin_in_this_subset,iproc_min(1)), &
+        !           gamma_all(ipoin_in_this_subset,iproc_min(1)), &
+        !  'iproc found',islice_selected(ipoin),'dist found',final_distance(ipoin), &
+        !  'xi found',xi_point(ipoin),eta_point(ipoin),gamma_point(ipoin)
       enddo
-      final_distance(ipoin) = distmin
-    enddo
+
+    else
+      ! old version takes closest point
+
+      ! loops over subset
+      do ipoin_in_this_subset = 1,npoints_subset
+
+        ! mapping from station/source number in current subset to real station/source number in all the subsets
+        ipoin = ipoin_in_this_subset + ipoin_already_done
+
+        distmin = HUGEVAL
+        do iproc = 0,NPROC-1
+          if (final_distance_all(ipoin_in_this_subset,iproc) < distmin) then
+            distmin =  final_distance_all(ipoin_in_this_subset,iproc)
+
+            islice_selected(ipoin) = iproc
+            ispec_selected(ipoin) = ispec_selected_all(ipoin_in_this_subset,iproc)
+            idomain(ipoin) = idomain_all(ipoin_in_this_subset,iproc)
+
+            xi_point(ipoin)    = xi_all(ipoin_in_this_subset,iproc)
+            eta_point(ipoin)   = eta_all(ipoin_in_this_subset,iproc)
+            gamma_point(ipoin) = gamma_all(ipoin_in_this_subset,iproc)
+            nu_point(:,:,ipoin) = nu_all(:,:,ipoin_in_this_subset,iproc)
+
+            x_found(ipoin) = x_found_all(ipoin_in_this_subset,iproc)
+            y_found(ipoin) = y_found_all(ipoin_in_this_subset,iproc)
+            z_found(ipoin) = z_found_all(ipoin_in_this_subset,iproc)
+          endif
+        enddo
+        final_distance(ipoin) = distmin
+      enddo
+
+    endif
 
   endif ! end of section executed by main process only
 

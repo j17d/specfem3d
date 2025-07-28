@@ -129,6 +129,17 @@
 !     determine if the element falls on an MPI cut plane along xi
 ! *******************************************************************
 
+  ! define topology of faces of cube for skewness
+  ! (see hex_nodes.f90)
+  !
+  !           5 * -------- * 8
+  !            /|         /|
+  !         6 * -------- *7|
+  !           |1* - - -  | * 4                 z
+  !           |/         |/                   |
+  !           * -------- *                    o--> eta==y (S-N)
+  !          2           3       xi==x (W-E) /
+
 ! detect the MPI cut planes along xi in the cubed sphere
 
   iMPIcut_xi(:,ispec) = .false.
@@ -141,14 +152,14 @@
 
   target_val = UTM_X_MIN + iproc_xi*sizeslice + TOLERANCE_METERS
   if (xelm(1) < target_val .and. xelm(4) < target_val .and. xelm(5) < target_val .and. xelm(8) < target_val) &
-    iMPIcut_xi(1,ispec) = .true.
+    iMPIcut_xi(1,ispec) = .true.    ! XI_min (W-interface)
 
 ! right cut-plane in the current slice along X = constant (Xmax of this slice)
 ! and add geometrical tolerance
 
   target_val = UTM_X_MIN + (iproc_xi+1)*sizeslice - TOLERANCE_METERS
   if (xelm(2) > target_val .and. xelm(3) > target_val .and. xelm(6) > target_val .and. xelm(7) > target_val) &
-    iMPIcut_xi(2,ispec) = .true.
+    iMPIcut_xi(2,ispec) = .true.    ! XI_max (E-interface)
 
 ! ********************************************************************
 !     determine if the element falls on an MPI cut plane along eta
@@ -164,14 +175,14 @@
 
   target_val = UTM_Y_MIN + iproc_eta*sizeslice + TOLERANCE_METERS
   if (yelm(1) < target_val .and. yelm(2) < target_val .and. yelm(5) < target_val .and. yelm(6) < target_val) &
-    iMPIcut_eta(1,ispec) = .true.
+    iMPIcut_eta(1,ispec) = .true.   ! ETA_min (S-interface)
 
 ! right cut-plane in the current slice along Y = constant (Ymax of this slice)
 ! and add geometrical tolerance
 
   target_val = UTM_Y_MIN + (iproc_eta+1)*sizeslice - TOLERANCE_METERS
   if (yelm(3) > target_val .and. yelm(4) > target_val .and. yelm(7) > target_val .and. yelm(8) > target_val) &
-    iMPIcut_eta(2,ispec) = .true.
+    iMPIcut_eta(2,ispec) = .true.   ! ETA_max (N-interface)
 
   end subroutine get_flags_boundaries
 

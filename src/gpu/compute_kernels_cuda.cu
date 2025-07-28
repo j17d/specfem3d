@@ -59,7 +59,7 @@ void FC_FUNC_(compute_kernels_elastic_cuda,
     // backward/reconstructed wavefield strain will be re-computed locally here
 #ifdef USE_CUDA
     if (run_cuda){
-      compute_element_strain_cudakernel<<<grid,threads>>>(mp->d_ispec_is_elastic,mp->d_ibool,
+      compute_element_strain_cudakernel<<<grid,threads,0,mp->compute_stream>>>(mp->d_ispec_is_elastic,mp->d_ibool,
                                                           mp->d_b_displ,
                                                           mp->d_b_epsilondev_xx,
                                                           mp->d_b_epsilondev_yy,
@@ -79,7 +79,7 @@ void FC_FUNC_(compute_kernels_elastic_cuda,
 #endif
 #ifdef USE_HIP
     if (run_hip){
-      hipLaunchKernelGGL(compute_element_strain_cudakernel, dim3(grid), dim3(threads), 0, 0,
+      hipLaunchKernelGGL(compute_element_strain_cudakernel, dim3(grid), dim3(threads), 0, mp->compute_stream,
                                                             mp->d_ispec_is_elastic,mp->d_ibool,
                                                             mp->d_b_displ,
                                                             mp->d_b_epsilondev_xx,
@@ -105,7 +105,7 @@ void FC_FUNC_(compute_kernels_elastic_cuda,
     // anisotropic kernel
 #ifdef USE_CUDA
     if (run_cuda){
-      compute_kernels_ani_cudakernel<<<grid,threads>>>(mp->d_ispec_is_elastic,mp->d_ibool,
+      compute_kernels_ani_cudakernel<<<grid,threads,0,mp->compute_stream>>>(mp->d_ispec_is_elastic,mp->d_ibool,
                                                        mp->d_accel, mp->d_b_displ,
                                                        mp->d_epsilondev_xx,
                                                        mp->d_epsilondev_yy,
@@ -127,7 +127,7 @@ void FC_FUNC_(compute_kernels_elastic_cuda,
 #endif
 #ifdef USE_HIP
     if (run_hip){
-      hipLaunchKernelGGL(compute_kernels_ani_cudakernel, dim3(grid), dim3(threads), 0, 0,
+      hipLaunchKernelGGL(compute_kernels_ani_cudakernel, dim3(grid), dim3(threads), 0, mp->compute_stream,
                                                          mp->d_ispec_is_elastic,mp->d_ibool,
                                                          mp->d_accel, mp->d_b_displ,
                                                          mp->d_epsilondev_xx,
@@ -153,7 +153,7 @@ void FC_FUNC_(compute_kernels_elastic_cuda,
     // isotropic kernel
 #ifdef USE_CUDA
     if (run_cuda){
-      compute_kernels_cudakernel<<<grid,threads>>>(mp->d_ispec_is_elastic,mp->d_ibool,
+      compute_kernels_cudakernel<<<grid,threads,0,mp->compute_stream>>>(mp->d_ispec_is_elastic,mp->d_ibool,
                                                    mp->d_accel, mp->d_b_displ,
                                                    mp->d_epsilondev_xx,
                                                    mp->d_epsilondev_yy,
@@ -176,7 +176,7 @@ void FC_FUNC_(compute_kernels_elastic_cuda,
 #endif
 #ifdef USE_HIP
     if (run_hip){
-      hipLaunchKernelGGL(compute_kernels_cudakernel, dim3(grid), dim3(threads), 0, 0,
+      hipLaunchKernelGGL(compute_kernels_cudakernel, dim3(grid), dim3(threads), 0, mp->compute_stream,
                                                      mp->d_ispec_is_elastic,mp->d_ibool,
                                                      mp->d_accel, mp->d_b_displ,
                                                      mp->d_epsilondev_xx,
@@ -234,7 +234,7 @@ void FC_FUNC_(compute_kernels_strgth_noise_cu,
 
 #ifdef USE_CUDA
   if (run_cuda){
-    compute_kernels_strength_noise_cuda_kernel<<<grid,threads>>>(mp->d_displ,
+    compute_kernels_strength_noise_cuda_kernel<<<grid,threads,0,mp->compute_stream>>>(mp->d_displ,
                                                                  mp->d_free_surface_ispec,
                                                                  mp->d_free_surface_ijk,
                                                                  mp->d_ibool,
@@ -248,7 +248,7 @@ void FC_FUNC_(compute_kernels_strgth_noise_cu,
 #endif
 #ifdef USE_HIP
   if (run_hip){
-    hipLaunchKernelGGL(compute_kernels_strength_noise_cuda_kernel, dim3(grid), dim3(threads), 0, 0,
+    hipLaunchKernelGGL(compute_kernels_strength_noise_cuda_kernel, dim3(grid), dim3(threads), 0, mp->compute_stream,
                                                                    mp->d_displ,
                                                                    mp->d_free_surface_ispec,
                                                                    mp->d_free_surface_ijk,
@@ -293,7 +293,7 @@ void FC_FUNC_(compute_kernels_acoustic_cuda,
 
 #ifdef USE_CUDA
   if (run_cuda){
-    compute_kernels_acoustic_kernel<<<grid,threads>>>(mp->d_ispec_is_acoustic,
+    compute_kernels_acoustic_kernel<<<grid,threads,0,mp->compute_stream>>>(mp->d_ispec_is_acoustic,
                                                       mp->d_ibool,
                                                       mp->d_rhostore,
                                                       mp->d_hprime_xx,
@@ -303,7 +303,6 @@ void FC_FUNC_(compute_kernels_acoustic_cuda,
                                                       mp->d_gammax,mp->d_gammay,mp->d_gammaz,
                                                       mp->xix_regular,
                                                       mp->d_potential_acoustic,
-                                                      mp->d_potential_dot_dot_acoustic,
                                                       mp->d_b_potential_acoustic,
                                                       mp->d_b_potential_dot_dot_acoustic,
                                                       mp->d_rho_ac_kl,
@@ -315,7 +314,7 @@ void FC_FUNC_(compute_kernels_acoustic_cuda,
 #endif
 #ifdef USE_HIP
   if (run_hip){
-    hipLaunchKernelGGL(compute_kernels_acoustic_kernel, dim3(grid), dim3(threads), 0, 0,
+    hipLaunchKernelGGL(compute_kernels_acoustic_kernel, dim3(grid), dim3(threads), 0, mp->compute_stream,
                                                       mp->d_ispec_is_acoustic,
                                                       mp->d_ibool,
                                                       mp->d_rhostore,
@@ -326,7 +325,6 @@ void FC_FUNC_(compute_kernels_acoustic_cuda,
                                                       mp->d_gammax,mp->d_gammay,mp->d_gammaz,
                                                       mp->xix_regular,
                                                       mp->d_potential_acoustic,
-                                                      mp->d_potential_dot_dot_acoustic,
                                                       mp->d_b_potential_acoustic,
                                                       mp->d_b_potential_dot_dot_acoustic,
                                                       mp->d_rho_ac_kl,
@@ -368,7 +366,7 @@ void FC_FUNC_(compute_kernels_hess_cuda,
   if (*ELASTIC_SIMULATION) {
 #ifdef USE_CUDA
     if (run_cuda){
-      compute_kernels_hess_el_cudakernel<<<grid,threads>>>(mp->d_ispec_is_elastic,
+      compute_kernels_hess_el_cudakernel<<<grid,threads,0,mp->compute_stream>>>(mp->d_ispec_is_elastic,
                                                            mp->d_ibool,
                                                            mp->d_accel,
                                                            mp->d_b_accel,
@@ -389,7 +387,7 @@ void FC_FUNC_(compute_kernels_hess_cuda,
 #endif
 #ifdef USE_HIP
     if (run_hip){
-      hipLaunchKernelGGL(compute_kernels_hess_el_cudakernel, dim3(grid), dim3(threads), 0, 0,
+      hipLaunchKernelGGL(compute_kernels_hess_el_cudakernel, dim3(grid), dim3(threads), 0, mp->compute_stream,
                                                              mp->d_ispec_is_elastic,
                                                              mp->d_ibool,
                                                              mp->d_accel,
@@ -414,7 +412,7 @@ void FC_FUNC_(compute_kernels_hess_cuda,
   if (*ACOUSTIC_SIMULATION) {
 #ifdef USE_CUDA
     if (run_cuda){
-      compute_kernels_hess_ac_cudakernel<<<grid,threads>>>(mp->d_ispec_is_acoustic,
+      compute_kernels_hess_ac_cudakernel<<<grid,threads,0,mp->compute_stream>>>(mp->d_ispec_is_acoustic,
                                                            mp->d_ibool,
                                                            mp->d_potential_dot_dot_acoustic,
                                                            mp->d_b_potential_dot_dot_acoustic,
@@ -437,7 +435,7 @@ void FC_FUNC_(compute_kernels_hess_cuda,
 #endif
 #ifdef USE_HIP
     if (run_hip){
-      hipLaunchKernelGGL(compute_kernels_hess_ac_cudakernel, dim3(grid), dim3(threads), 0, 0,
+      hipLaunchKernelGGL(compute_kernels_hess_ac_cudakernel, dim3(grid), dim3(threads), 0, mp->compute_stream,
                                                              mp->d_ispec_is_acoustic,
                                                              mp->d_ibool,
                                                              mp->d_potential_dot_dot_acoustic,

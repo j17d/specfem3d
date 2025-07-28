@@ -70,6 +70,12 @@
   real(kind=CUSTOM_REAL), dimension(:),allocatable :: test_flag_cr
   integer, dimension(:,:), allocatable :: ibool_interfaces_dummy
 
+  ! debugging
+  integer, dimension(:), allocatable :: iglob_tmp
+  character(len=3) :: str_interface
+  character(len=MAX_STRING_LEN) :: filename
+  logical, parameter :: DEBUG_INTERFACES = .false.
+
   ! define sort geometrical tolerance based upon typical size of the model
   ! (compare with get_global() which uses same tolerance)
   !
@@ -114,6 +120,26 @@
                             my_nelmnts_neighbors_ext_mesh, my_interfaces_ext_mesh, &
                             ibool_interfaces_ext_mesh, &
                             nibool_interfaces_ext_mesh,NGNOD )
+
+  ! debugging
+  if (DEBUG_INTERFACES) then
+    do iinterface = 1, num_interfaces_ext_mesh
+      ! MPI interface points
+      num_interface_points = nibool_interfaces_ext_mesh(iinterface)
+      allocate(iglob_tmp(num_interface_points),stat=ier)
+      if (ier /= 0) stop 'Error allocating array iglob_tmp'
+      iglob_tmp(:) = 0
+      do ilocnum = 1,num_interface_points
+        iglob = ibool_interfaces_ext_mesh(ilocnum,iinterface)
+        iglob_tmp(ilocnum) = iglob
+      enddo
+      write(str_interface,'(i0)') iinterface
+      filename = prname(1:len_trim(prname))//'MPI_interface'//trim(str_interface)//'_points'
+      call write_VTK_data_points(nglob_unique,xstore_unique,ystore_unique,zstore_unique, &
+                                 iglob_tmp,num_interface_points,filename)
+      deallocate(iglob_tmp)
+    enddo
+  endif
 
   ! sorts ibool comm buffers lexicographically for all MPI interfaces
   num_points1 = 0
@@ -191,6 +217,7 @@
   call sum_all_i(num_points2,ilocnum)
   if (myrank == 0) then
     write(IMAIN,*) '     total MPI interface points: ',ilocnum
+    call flush_IMAIN()
   endif
 
   ! checks with assembly of test fields
@@ -266,6 +293,7 @@
   call sum_all_i(j,iglob)
   if (myrank == 0) then
     write(IMAIN,*) '     total assembled MPI interface points:',inum
+    call flush_IMAIN()
     if (inum /= iglob .or. inum > ilocnum) call exit_mpi(myrank,'error MPI assembly')
   endif
 

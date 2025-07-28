@@ -631,7 +631,7 @@
   integer,intent(in) :: NSPEC_AB,NGLOB_AB
   integer,dimension(NGLLX,NGLLY,NGLLZ,NSPEC_AB),intent(in) :: ibool
   real(kind=CUSTOM_REAL),dimension(NGLOB_AB),intent(in) :: xstore, ystore, zstore
-  real(kind=CUSTOM_REAL),dimension(NGLLY,NGLLY,NGLLZ,NSPEC_AB),intent(in) :: data
+  real(kind=CUSTOM_REAL),dimension(NGLLX,NGLLY,NGLLZ,NSPEC_AB),intent(in) :: data
 
   integer, intent(inout) :: numpoin,np
 
@@ -860,7 +860,7 @@
   integer,intent(in) :: NSPEC_AB,NGLOB_AB
   integer,dimension(NGLLX,NGLLY,NGLLZ,NSPEC_AB),intent(in) :: ibool
   real(kind=CUSTOM_REAL),dimension(NGLOB_AB),intent(in) :: xstore, ystore, zstore
-  real(kind=CUSTOM_REAL),dimension(NGLLY,NGLLY,NGLLZ,NSPEC_AB),intent(in) :: data
+  real(kind=CUSTOM_REAL),dimension(NGLLX,NGLLY,NGLLZ,NSPEC_AB),intent(in) :: data
 
   integer,intent(inout) :: numpoin,np
 

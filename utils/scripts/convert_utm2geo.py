@@ -104,15 +104,6 @@ def utm_geo(lon,lat,zone,iway,ellipsoid=23):
 
     #---------------------------------------------------------------
 
-    # lon/lat
-    if iway == IUTM2LONGLAT:
-        xx = lon
-        yy = lat
-    else:
-        dlon = lon
-        dlat = lat
-
-
     #----- Set Zone parameters
     # zone
     UTM_PROJECTION_ZONE = zone
@@ -123,6 +114,15 @@ def utm_geo(lon,lat,zone,iway,ellipsoid=23):
 
     cm = zone * 6.0 - 183.0       # set central meridian for this zone
     cmr = cm * degrad
+
+    # lon/lat
+    if iway == IUTM2LONGLAT:
+        xx = lon
+        yy = lat
+        if lsouth: yy = yy - 1.e7
+    else:
+        dlon = lon
+        dlat = lat
 
     #---- Lat/Lon to UTM conversion
     if iway == ILONGLAT2UTM:

@@ -8,5 +8,7 @@ For further informations, see:
 - [METIS](http://glaros.dtc.umn.edu/gkhome/metis/metis/overview)
 - [PaToH](https://www.cc.gatech.edu/~umit/software.html)
 
+for GPU HIP version testing on CPUs:
+- [HIP-CPU](https://github.com/ROCm/HIP-CPU)
 
 

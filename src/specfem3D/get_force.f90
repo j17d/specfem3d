@@ -58,7 +58,7 @@
   double precision :: length
   character(len=7) :: dummy
   character(len=MAX_STRING_LEN) :: string
-  character(len=MAX_STRING_LEN) :: external_source_time_function_filename
+  character(len=MAX_STRING_LEN) :: external_stf_filename
 
   ! initializes
   lat(:) = 0.d0
@@ -201,10 +201,10 @@
       read(IIN,"(a)") string
       ! suppress white spaces if any
       string = adjustl(string)
-      external_source_time_function_filename = trim(string)
-      if (trim(external_source_time_function_filename) == 'REUSE' .or. &
-         trim(external_source_time_function_filename) == 'Reuse' .or. &
-         trim(external_source_time_function_filename) == 'reuse') then
+      external_stf_filename = trim(string)
+      if (trim(external_stf_filename) == 'REUSE' .or. &
+         trim(external_stf_filename) == 'Reuse' .or. &
+         trim(external_stf_filename) == 'reuse') then
         ! Reuse the source time function of the first source.
         if (isource == 1) then
           stop 'Error: "reuse" option cannot be used for the first source!'
@@ -215,7 +215,7 @@
         user_source_time_function(ishift+1:NSTEP_STF,isource) = user_source_time_function(1:nright,1)
       else
         ! reads in stf values
-        call read_external_source_time_function(isource,user_source_time_function,external_source_time_function_filename)
+        call read_external_stf(isource,user_source_time_function,external_stf_filename)
       endif
     endif
 

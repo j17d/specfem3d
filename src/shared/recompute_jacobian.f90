@@ -30,7 +30,7 @@
   subroutine recompute_jacobian(xelm,yelm,zelm,xi,eta,gamma,x,y,z, &
                                 xix,xiy,xiz,etax,etay,etaz,gammax,gammay,gammaz,NGNOD)
 
-  use constants, only: NDIM,ZERO
+  use constants, only: NDIM,ZERO,myrank
 
   implicit none
 
@@ -56,7 +56,7 @@
 
 ! recompute jacobian for any (xi,eta,gamma) point, not necessarily a GLL point
 
-! check that the parameter file is correct
+  ! check that the parameter file is correct
   if (NGNOD /= 8 .and. NGNOD /= 27) stop 'elements should have 8 or 27 control nodes'
 
   if (NGNOD == 8) then
@@ -71,51 +71,66 @@
   x = ZERO
   y = ZERO
   z = ZERO
+
   xxi = ZERO
   xeta = ZERO
   xgamma = ZERO
+
   yxi = ZERO
   yeta = ZERO
   ygamma = ZERO
+
   zxi = ZERO
   zeta = ZERO
   zgamma = ZERO
 
   do ia = 1,NGNOD
-    x = x+shape3D(ia)*xelm(ia)
-    y = y+shape3D(ia)*yelm(ia)
-    z = z+shape3D(ia)*zelm(ia)
+    x = x + shape3D(ia) * xelm(ia)
+    y = y + shape3D(ia) * yelm(ia)
+    z = z + shape3D(ia) * zelm(ia)
 
     ! Jacobian matrix elements
     ! dx/dxi, dx/deta, etc.
-    xxi = xxi+dershape3D(1,ia)*xelm(ia)
-    xeta = xeta+dershape3D(2,ia)*xelm(ia)
-    xgamma = xgamma+dershape3D(3,ia)*xelm(ia)
-    yxi = yxi+dershape3D(1,ia)*yelm(ia)
-    yeta = yeta+dershape3D(2,ia)*yelm(ia)
-    ygamma = ygamma+dershape3D(3,ia)*yelm(ia)
-    zxi = zxi+dershape3D(1,ia)*zelm(ia)
-    zeta = zeta+dershape3D(2,ia)*zelm(ia)
-    zgamma = zgamma+dershape3D(3,ia)*zelm(ia)
+    xxi = xxi + dershape3D(1,ia)*xelm(ia)
+    xeta = xeta + dershape3D(2,ia)*xelm(ia)
+    xgamma = xgamma + dershape3D(3,ia)*xelm(ia)
+
+    yxi = yxi + dershape3D(1,ia)*yelm(ia)
+    yeta = yeta + dershape3D(2,ia)*yelm(ia)
+    ygamma = ygamma + dershape3D(3,ia)*yelm(ia)
+
+    zxi = zxi + dershape3D(1,ia)*zelm(ia)
+    zeta = zeta + dershape3D(2,ia)*zelm(ia)
+    zgamma = zgamma + dershape3D(3,ia)*zelm(ia)
   enddo
 
   ! Jacobian determinant
   jacobian = xxi*(yeta*zgamma-ygamma*zeta) - xeta*(yxi*zgamma-ygamma*zxi) + xgamma*(yxi*zeta-yeta*zxi)
 
-  if (jacobian <= ZERO) stop '3D Jacobian undefined'
+  if (jacobian <= ZERO) then
+    ! info
+    print *,'Error Jacobian rank:',myrank,'has invalid Jacobian ',jacobian
+    print *,'  input xi/eta/gamma: ',xi,eta,gamma
+    print *,'  Jacobian: ',jacobian,'xxi',xxi,xeta,xgamma,'yxi',yxi,yeta,ygamma,'zxi',zxi,zeta,zgamma
+    print *,'  location x/y/z: ',x,y,z
+
+    stop '3D Jacobian undefined'
+  endif
 
   ! inverse Jacobian matrix
   !
   ! invert the relation (Fletcher p. 50 vol. 2)
-  xix = (yeta*zgamma-ygamma*zeta)/jacobian
-  xiy = (xgamma*zeta-xeta*zgamma)/jacobian
-  xiz = (xeta*ygamma-xgamma*yeta)/jacobian
-  etax = (ygamma*zxi-yxi*zgamma)/jacobian
-  etay = (xxi*zgamma-xgamma*zxi)/jacobian
-  etaz = (xgamma*yxi-xxi*ygamma)/jacobian
-  gammax = (yxi*zeta-yeta*zxi)/jacobian
-  gammay = (xeta*zxi-xxi*zeta)/jacobian
-  gammaz = (xxi*yeta-xeta*yxi)/jacobian
+  xix = (yeta*zgamma - ygamma*zeta) / jacobian
+  xiy = (xgamma*zeta - xeta*zgamma) / jacobian
+  xiz = (xeta*ygamma - xgamma*yeta) / jacobian
+
+  etax = (ygamma*zxi - yxi*zgamma) / jacobian
+  etay = (xxi*zgamma - xgamma*zxi) / jacobian
+  etaz = (xgamma*yxi - xxi*ygamma) / jacobian
+
+  gammax = (yxi*zeta - yeta*zxi) / jacobian
+  gammay = (xeta*zxi - xxi*zeta) / jacobian
+  gammaz = (xxi*yeta - xeta*yxi) / jacobian
 
   end subroutine recompute_jacobian
 

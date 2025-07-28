@@ -30,16 +30,20 @@ cuda_kernels_OBJS := \
 	$O/kernel_3_acoustic_cuda_device.cuda-kernel.o \
 	$O/kernel_3_cuda_device.cuda-kernel.o \
 	$O/kernel_3_veloc_cuda_device.cuda-kernel.o \
+	$O/lts_assembly_mpi_kernel.cuda-kernel.o \
+	$O/lts_compute_forces_viscoelastic_kernel.cuda-kernel.o \
 	$O/noise_read_add_surface_movie_cuda_kernel.cuda-kernel.o \
 	$O/pml_impose_boundary_condition_cuda_kernel.cuda-kernel.o \
 	$O/pml_kernel_2_viscoelastic_impl.cuda-kernel.o \
 	$O/prepare_boundary_accel_on_device.cuda-kernel.o \
 	$O/prepare_boundary_potential_on_device.cuda-kernel.o \
 	$O/process_smooth.cuda-kernel.o \
+	$O/smooth_pde_kernels.cuda-kernel.o \
 	$O/synchronize_boundary_accel_on_device.cuda-kernel.o \
 	$O/transfer_surface_to_host_kernel.cuda-kernel.o \
 	$O/UpdateDispVeloc_kernel.cuda-kernel.o \
 	$O/UpdatePotential_kernel.cuda-kernel.o \
+	$O/wavefield_discontinuity_kernel.cuda-kernel.o \
 	$(EMPTY_MACRO)
 
 

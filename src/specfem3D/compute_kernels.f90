@@ -464,7 +464,7 @@
   real(kind=CUSTOM_REAL),dimension(NDIM,NGLLX,NGLLY,NGLLZ):: b_accel_elm,accel_elm,b_veloc_elm
   real(kind=CUSTOM_REAL), dimension(5) :: b_epsilondev_loc
   real(kind=CUSTOM_REAL) :: b_eps_trace_l
-  real(kind=CUSTOM_REAL) :: kappal,rhol
+  real(kind=CUSTOM_REAL) :: kappal_inv,rhol
   integer :: i,j,k,ispec,iglob
 
   ! updates Hessian kernels
@@ -500,9 +500,9 @@
                                                            + b_veloc_elm(2,i,j,k) * b_veloc_elm(2,i,j,k) &
                                                            + b_veloc_elm(3,i,j,k) * b_veloc_elm(3,i,j,k))
 
-              kappal = 1._CUSTOM_REAL / kappastore(i,j,k,ispec)
+              kappal_inv = 1._CUSTOM_REAL / kappastore(i,j,k,ispec)
               hess_kappa_ac_kl(i,j,k,ispec) = hess_kappa_ac_kl(i,j,k,ispec) &
-                                            + deltat * kappal  &
+                                            + deltat * kappal_inv  &
                                             * b_potential_dot_acoustic(iglob) &
                                             * b_potential_dot_acoustic(iglob)
 

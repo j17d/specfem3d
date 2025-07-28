@@ -32,7 +32,8 @@
   subroutine locate_point_in_mesh(x_target, y_target, z_target, &
                                   POINT_CAN_BE_BURIED, elemsize_max_glob, &
                                   ispec_selected, xi_found, eta_found, gamma_found, &
-                                  x_found, y_found, z_found, domain, nu_point, final_distance_squared)
+                                  x_found, y_found, z_found, &
+                                  domain, nu_point, final_distance_squared)
 
   use constants, only: CUSTOM_REAL,NGLLX,NGLLY,NGLLZ,NDIM, &
                        IDOMAIN_ACOUSTIC,IDOMAIN_ELASTIC,IDOMAIN_POROELASTIC, &
@@ -69,6 +70,7 @@
   double precision :: distmin_squared,dist_squared
   double precision :: x,y,z
   double precision :: xi,eta,gamma
+  double precision :: dx,dy,dz
 
   integer :: ix_initial_guess, iy_initial_guess, iz_initial_guess
 
@@ -152,6 +154,8 @@
     y_found = -HUGEVAL
     z_found = -HUGEVAL
 
+    nu_point(:,:) = 0.d0
+
     !   store final distance squared between asked and found
     final_distance_squared = HUGEVAL
 
@@ -215,9 +219,10 @@
     endif
 
     ! distance to element midpoint
-    dist_squared = (x_target - xyz_midpoints(1,ispec))*(x_target - xyz_midpoints(1,ispec)) &
-                 + (y_target - xyz_midpoints(2,ispec))*(y_target - xyz_midpoints(2,ispec)) &
-                 + (z_target - xyz_midpoints(3,ispec))*(z_target - xyz_midpoints(3,ispec))
+    dx = x_target - xyz_midpoints(1,ispec)
+    dy = y_target - xyz_midpoints(2,ispec)
+    dz = z_target - xyz_midpoints(3,ispec)
+    dist_squared = dx*dx + dy*dy + dz*dz
 
     ! we compare squared distances instead of distances to speed up the comparison by avoiding computing a square root
     if (dist_squared > maximal_elem_size_squared) cycle ! exclude elements that are too far from target
@@ -239,9 +244,10 @@
           z = dble(zstore(iglob))
 
           ! distance to GLL point
-          dist_squared = (x_target - x)*(x_target - x) &
-                       + (y_target - y)*(y_target - y) &
-                       + (z_target - z)*(z_target - z)
+          dx = x_target - x
+          dy = y_target - y
+          dz = z_target - z
+          dist_squared = dx*dx + dy*dy + dz*dz
 
           if (dist_squared < distmin_squared) then
             distmin_squared = dist_squared
@@ -317,7 +323,10 @@
                               ispec_selected,ix_initial_guess,iy_initial_guess,iz_initial_guess)
 
   ! compute distance squared between asked and found
-  dist_squared = (x_target-x)*(x_target-x) + (y_target-y)*(y_target-y) + (z_target-z)*(z_target-z)
+  dx = x_target - x
+  dy = y_target - y
+  dz = z_target - z
+  dist_squared = dx*dx + dy*dy + dz*dz
 
   ! initial point estimate
   xi_found = xi
@@ -426,8 +435,6 @@
   use specfem_par, only: xstore,ystore,zstore,ibool,NGNOD,anchor_iax,anchor_iay,anchor_iaz, &
                          xigll,yigll,zigll
 
-  !use constants, only: myrank
-
   implicit none
 
   double precision,intent(in) :: x_target,y_target,z_target
@@ -531,19 +538,22 @@
     !
     ! note: we are more conservative here than in the 3D_GLOBE version, since the mesh can have voids or complex shapes,
     !       and we want the point location not to be too far off the mesh volume
-    if (xi > 1.01d0) xi =  1.01d0
-    if (xi < -1.01d0) xi = -1.01d0
-    if (eta > 1.01d0) eta =  1.01d0
-    if (eta < -1.01d0) eta = -1.01d0
-    if (gamma > 1.01d0) gamma =  1.01d0
-    if (gamma < -1.01d0) gamma = -1.01d0
+    !if (xi > 1.01d0) xi =  1.01d0
+    !if (xi <-1.01d0) xi = -1.01d0
+    if (abs(xi) > 1.01d0) xi = sign(1.01d0,xi)
+    !if (eta > 1.01d0) eta =  1.01d0
+    !if (eta <-1.01d0) eta = -1.01d0
+    if (abs(eta) > 1.01d0) eta = sign(1.01d0,eta)
+    !if (gamma > 1.01d0) gamma =  1.01d0
+    !if (gamma <-1.01d0) gamma = -1.01d0
+    if (abs(gamma) > 1.01d0) gamma = sign(1.01d0,gamma)
 
   ! end of non linear iterations
   enddo
 
   ! position refinements
   ! check distance and add more refinement if too far off
-  if (d_min_sq > 1.0) then
+  if (d_min_sq > 1.d0) then
     ! only refine if still within element
     if (abs(xi) <= 1.d0 .and. abs(eta) <= 1.d0 .and. abs(gamma) <= 1.d0) then
       ! moves point slightly off current position
@@ -596,20 +606,26 @@
         eta = eta + deta
         gamma = gamma + dgamma
 
-        if (xi > 1.01d0) xi =  1.01d0
-        if (xi < -1.01d0) xi = -1.01d0
-        if (eta > 1.01d0) eta =  1.01d0
-        if (eta < -1.01d0) eta = -1.01d0
-        if (gamma > 1.01d0) gamma =  1.01d0
-        if (gamma < -1.01d0) gamma = -1.01d0
+        !if (xi > 1.01d0) xi =  1.01d0
+        !if (xi <-1.01d0) xi = -1.01d0
+        if (abs(xi) > 1.01d0) xi = sign(1.01d0,xi)
+        !if (eta > 1.01d0) eta =  1.01d0
+        !if (eta <-1.01d0) eta = -1.01d0
+        if (abs(eta) > 1.01d0) eta = sign(1.01d0,eta)
+        !if (gamma > 1.01d0) gamma =  1.01d0
+        !if (gamma <-1.01d0) gamma = -1.01d0
+        if (abs(gamma) > 1.01d0) gamma = sign(1.01d0,gamma)
 
         ! stop if point moves outside of that element
-        if (xi >= 1.01d0) exit
-        if (xi <= -1.01d0) exit
-        if (eta >= 1.01d0) exit
-        if (eta <= -1.01d0) exit
-        if (gamma >= 1.01d0) exit
-        if (gamma <= -1.01d0) exit
+        !if (xi >= 1.01d0) exit
+        !if (xi <= -1.01d0) exit
+        !if (eta >= 1.01d0) exit
+        !if (eta <= -1.01d0) exit
+        !if (gamma >= 1.01d0) exit
+        !if (gamma <= -1.01d0) exit
+        if (abs(xi) >= 1.01d0) exit
+        if (abs(eta) >= 1.01d0) exit
+        if (abs(gamma) >= 1.01d0) exit
 
         ! stop criteria with accuracy below 1.d-10
         if (d_min_sq < 1.d-10) exit
@@ -644,6 +660,10 @@
   use specfem_par_acoustic, only: ispec_is_acoustic
   use specfem_par_elastic, only: ispec_is_elastic
 
+  !debug
+  use constants, only: myrank
+  use specfem_par, only: NSPEC_AB
+
   implicit none
 
   double precision,                      intent(in)     :: x_target, y_target, z_target
@@ -657,11 +677,12 @@
   logical,                               intent(in)     :: POINT_CAN_BE_BURIED
 
   ! locals
-  integer :: ispec,i,j,k,iglob
+  integer :: ispec_ref,ispec,i,j,k,iglob
   ! location search
   double precision :: final_distance_squared_this_element
   double precision :: x,y,z
   double precision :: xi,eta,gamma
+  double precision :: dx,dy,dz
 
   ! neighbor elements
   integer :: num_neighbors
@@ -670,16 +691,45 @@
   double precision :: distmin_squared_guess,dist_squared
   logical :: is_better_location
 
+  ! for close points
+  double precision, parameter :: TOL_POINT_DISTANCE = 1.d-10
+  ! for close points relative to each other
+  double precision, parameter :: TOL_RELATIVE_POINT_DISTANCE = 1.d-15
+
   ! note: find_local_coordinates(..) gets first called in any case in the calling routine locate point for an initial guess,
   !       before running this neighbor point search.
   !       we can thus skip the reference element (ispec_selected) and only loop over neighbors.
 
+  ! reference element is the initial selection
+  ! we will try to find a better position in these neighbor elements and update the `ispec_selected` selection accordingly
+  ispec_ref = ispec_selected
+
   ! loops over neighboring elements
-  num_neighbors = neighbors_xadj(ispec_selected+1) - neighbors_xadj(ispec_selected)
+  num_neighbors = neighbors_xadj(ispec_ref+1) - neighbors_xadj(ispec_ref)
   do ii = 1,num_neighbors
-    ! get neighbor
-    ientry = neighbors_xadj(ispec_selected) + ii
+    ! gets neighbor index
+    ientry = neighbors_xadj(ispec_ref) + ii
+
+    ! checks entry
+    if (ientry < 1 .or. ientry > size(neighbors_adjncy)) then
+      print *,'Error: neighbor entry not valid for referenc element ',ispec_ref
+      print *,'       num_neighbors  : ',num_neighbors
+      print *,'       neighbor entry : ',ientry,'out of',size(neighbors_adjncy)
+      print *,'       neighbor_xadj  : ',neighbors_xadj(ispec_ref),neighbors_xadj(ispec_ref+1)
+      print *,'       neighbor_adjncy: ',neighbors_adjncy(neighbors_xadj(ispec_ref):neighbors_xadj(ispec_ref)+num_neighbors)
+      call exit_MPI(myrank,'Invalid neighbors_xadj array')
+    endif
+
+    ! gets element index
     ispec = neighbors_adjncy(ientry)
+
+    ! checks element index
+    if (ispec < 1 .or. ispec > NSPEC_AB) then
+      print *,'Error: neighbor not valid for reference element ',ispec_ref
+      print *,'       total neighbors: ',num_neighbors
+      print *,'       neighbor entry:  ',ientry,'out of',size(neighbors_adjncy),' has element ispec = ',ispec
+      call exit_MPI(myrank,'Invalid neighbors_adjncy array')
+    endif
 
     ! only loop through surface elements if point location must stick to surface
     if (.not. POINT_CAN_BE_BURIED) then
@@ -713,9 +763,10 @@
           z = dble(zstore(iglob))
 
           ! distance to GLL point
-          dist_squared = (x_target - x)*(x_target - x) &
-                       + (y_target - y)*(y_target - y) &
-                       + (z_target - z)*(z_target - z)
+          dx = x_target - x
+          dy = y_target - y
+          dz = z_target - z
+          dist_squared = dx*dx + dy*dy + dz*dz
 
           !  keep this point if it is closer to the receiver
           !  we compare squared distances instead of distances themselves to significantly speed up calculations
@@ -734,13 +785,16 @@
                                 ispec,ix_initial_guess,iy_initial_guess,iz_initial_guess)
 
     ! compute final distance squared between asked and found
-    final_distance_squared_this_element = (x_target-x)*(x_target-x) + (y_target-y)*(y_target-y) + (z_target-z)*(z_target-z)
+    dx = x_target - x
+    dy = y_target - y
+    dz = z_target - z
+    final_distance_squared_this_element = dx*dx + dy*dy + dz*dz
 
     ! flag to determine if taking new position
     is_better_location = .false.
 
     ! if we found a close point
-    if (final_distance_squared_this_element < 1.d-10) then
+    if (final_distance_squared_this_element < TOL_POINT_DISTANCE) then
       ! checks if position within element
       if (abs(xi) <= 1.d0 .and. abs(eta) <= 1.d0 .and. abs(gamma) <= 1.d0) then
         ! takes position if old position has xi/eta/gamma outside of element
@@ -769,7 +823,7 @@
       !       has been located slightly away from the element. thus, we try to check if the previous location
       !       was accurate enough with coordinates still within an element.
       is_better_location = .true.
-      if (abs(final_distance_squared_this_element - final_distance_squared) < 1.d-15) then
+      if (abs(final_distance_squared_this_element - final_distance_squared) < TOL_RELATIVE_POINT_DISTANCE) then
         if (abs(xi) > 1.d0 .or. abs(eta) > 1.d0 .or. abs(gamma) > 1.d0) then
           if (abs(xi_found) > 1.d0 .or. abs(eta_found) > 1.d0 .or. abs(gamma_found) > 1.d0) then
             ! old position is also out of element, let's take the new one

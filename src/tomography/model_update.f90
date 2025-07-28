@@ -722,6 +722,7 @@ subroutine get_external_mesh()
   allocate(rhostore(NGLLX,NGLLY,NGLLZ,NSPEC_AB),stat=ier)
   if (ier /= 0) call exit_MPI_without_rank('error allocating rho array 943')
   if (ier /= 0) stop 'Error allocating arrays for material properties'
+  kappastore(:,:,:,:) = 0.0_CUSTOM_REAL; mustore(:,:,:,:) = 0.0_CUSTOM_REAL; rhostore(:,:,:,:) = 0.0_CUSTOM_REAL
 
   ! material flags
   allocate(ispec_is_acoustic(NSPEC_AB),stat=ier)

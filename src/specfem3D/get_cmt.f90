@@ -59,7 +59,7 @@
   integer :: i,itype,istart,iend,ier,ipos
   double precision :: t_shift(NSOURCES)
   character(len=256) :: string
-  character(len=MAX_STRING_LEN) :: external_source_time_function_filename
+  character(len=MAX_STRING_LEN) :: external_stf_filename
 
   ! initializes
   lat(:) = 0.d0
@@ -374,10 +374,10 @@
       read(IIN,"(a)") string
       ! suppress white spaces if any
       string = adjustl(string)
-      external_source_time_function_filename = trim(string)
-      if (trim(external_source_time_function_filename) == 'REUSE' .or. &
-         trim(external_source_time_function_filename) == 'Reuse' .or. &
-         trim(external_source_time_function_filename) == 'reuse') then
+      external_stf_filename = trim(string)
+      if (trim(external_stf_filename) == 'REUSE' .or. &
+         trim(external_stf_filename) == 'Reuse' .or. &
+         trim(external_stf_filename) == 'reuse') then
         ! Reuse the source time function of the first source.
         if (isource == 1) then
           stop 'Error: "reuse" option cannot be used for the first source!'
@@ -388,7 +388,7 @@
         user_source_time_function(ishift+1:NSTEP_STF,isource) = user_source_time_function(1:nright,1)
       else
         ! reads in stf values
-        call read_external_source_time_function(isource,user_source_time_function,external_source_time_function_filename)
+        call read_external_stf(isource,user_source_time_function,external_stf_filename)
       endif
     endif
 
@@ -440,7 +440,7 @@
     is_numeric = .true.
   endif
 
-  end function
+  end function is_numeric
 
   !--------------------------------------------------------------
 
@@ -457,7 +457,7 @@
     is_digit = .true.
   endif
 
-  end function
+  end function is_digit
 
   end subroutine get_cmt
 
@@ -512,7 +512,7 @@
   ! return value (in dyne-cm)
   get_cmt_scalar_moment = scalar_moment * scaleM
 
-  end function
+  end function get_cmt_scalar_moment
 
 !
 !-------------------------------------------------------------------------------------------------
@@ -520,17 +520,42 @@
 
   double precision function get_cmt_moment_magnitude(Mxx,Myy,Mzz,Mxy,Mxz,Myz)
 
-  ! calculates scalar moment (M0)
+  ! calculates moment magnitude (Mw)
 
   implicit none
 
   double precision, intent(in) :: Mxx,Myy,Mzz,Mxy,Mxz,Myz
+
   ! local parameters
   double precision :: M0,Mw
   double precision,external :: get_cmt_scalar_moment
+  double precision,external :: get_cmt_moment_magnitude_from_M0
 
-  ! scalar moment (in dyne-cm)
+  ! scalar moment
   M0 = get_cmt_scalar_moment(Mxx,Myy,Mzz,Mxy,Mxz,Myz)
+
+  ! moment magnitude
+  Mw = get_cmt_moment_magnitude_from_M0(M0)
+
+  ! return value
+  get_cmt_moment_magnitude = Mw
+
+  end function get_cmt_moment_magnitude
+
+!
+!-------------------------------------------------------------------------------------------------
+!
+
+  double precision function get_cmt_moment_magnitude_from_M0(M0)
+
+  ! calculates moment magnitude (Mw) from seismic moment M0
+
+  implicit none
+
+  double precision, intent(in) :: M0
+
+  ! local parameters
+  double precision :: Mw
 
   ! moment magnitude by Hanks & Kanamori, 1979
   ! Mw = 2/3 log( M0 ) - 10.7       (dyne-cm)
@@ -563,6 +588,6 @@
   endif
 
   ! return value
-  get_cmt_moment_magnitude = Mw
+  get_cmt_moment_magnitude_from_M0 = Mw
 
-  end function
+  end function get_cmt_moment_magnitude_from_M0

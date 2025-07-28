@@ -48,11 +48,11 @@
 
   use constants, only: NDIM,CUSTOM_REAL,VERYSMALLVAL,FIX_UNDERFLOW_PROBLEM,IMAIN,itag,myrank
 
-  use shared_parameters, only: DT,NSTEP,NPROC,SIMULATION_TYPE,LTS_MODE,GPU_MODE,USE_LDDRK, &
+  use shared_parameters, only: DT,NSTEP,NPROC,SIMULATION_TYPE,LTS_MODE,USE_LDDRK, &
     SAVE_SEISMOGRAMS_ACCELERATION,CREATE_SHAKEMAP
 
   use specfem_par, only: ACOUSTIC_SIMULATION,ELASTIC_SIMULATION,POROELASTIC_SIMULATION, &
-    deltat,NGLOB_AB
+    deltat,NGLOB_AB,PML_CONDITIONS
 
   ! MPI interfaces
   use specfem_par, only: num_interfaces_ext_mesh,ibool_interfaces_ext_mesh,nibool_interfaces_ext_mesh, &
@@ -94,7 +94,7 @@
 
   if (SIMULATION_TYPE /= 1) call exit_MPI(myrank,'LTS routines only implemented for forward simulations (SIMULATION_TYPE == 1)')
   if (USE_LDDRK) call exit_MPI(myrank,'LTS routines only implemented for Newark time scheme (USE_LDDRK == .false.)')
-  if (GPU_MODE) call exit_MPI(myrank,'LTS routines only implemented for CPU-only runs (GPU_MODE == .false.)')
+  if (PML_CONDITIONS) call exit_MPI(myrank,'LTS mode w/ PML boundaries not implemented yet')
 
   ! user output
   if (myrank == 0) then
@@ -125,6 +125,7 @@
   ! checks iglob range
   if (p_level_iglob_start(1) /= 1) call exit_mpi(myrank,"ASSERT: p-level iglob should start at 1")
   if (p_level_iglob_end(num_p_level) /= NGLOB_AB) call exit_mpi(myrank,"ASSERT: coarsest p-level must have all iglobs!")
+
   ! checks levels
   do ilevel = 1,num_p_level
     ! start index of current p-level
@@ -161,7 +162,7 @@
   ! set "global" DT (coarsest step)
   ! DT as given in Par_file is the minimum step in smallest element
   deltat_lts = DT * dble(p_max)
-  deltat = deltat_lts
+  deltat = real(deltat_lts,kind=CUSTOM_REAL)
 
   ! counts number of local time step evaluations
   lts_it_local = 0
@@ -690,10 +691,10 @@
   !integer :: cmp_function
 
   ! local parameters
-  integer :: ilevel, iphase, ispec_p, ispec, num_elements, iglob
+  integer :: ilevel, iphase, ispec_p, ispec, num_elements, iglob, iilevel
   integer :: jlevel, iglob_n, ipoin, iinterface, ipoin_n, ier, ipoin_old
   integer :: p,m
-  integer :: i,j,k,icounter,inum_poin,inum_spec
+  integer :: i,j,k,icounter,inum_counter,inum_poin,inum_spec
   integer :: coarser_counter, coarser_counter_new, num_ipoin_coarser_neighbor
   integer :: is,ie
   integer :: p_node
@@ -782,10 +783,6 @@
     current_lts_boundary_elem => boundary_elem(:,ilevel)
 
     do iphase = 1,2
-
-      num_p_level_boundary_nodes(iphase,ilevel) = 0
-      num_p_level_boundary_ispec(iphase,ilevel) = 0
-
       ! choses inner/outer elements
       if (iphase == 1) then
         num_elements = nspec_outer_elastic
@@ -796,6 +793,7 @@
       ! counters
       inum_spec = 0
       inum_poin = 0
+
       mask_ibool(:) = .false.
 
       do ispec_p = 1,num_elements
@@ -807,7 +805,6 @@
           ! boundary elements
           inum_spec = inum_spec + 1
 
-          num_p_level_boundary_ispec(iphase,ilevel) = inum_spec
           p_level_boundary_ispec(inum_spec,iphase,ilevel) = ispec
 
           do k = 1,NGLLZ
@@ -824,9 +821,8 @@
                   ! counter
                   inum_poin = inum_poin + 1
 
-                  num_p_level_boundary_nodes(iphase,ilevel) = inum_poin
+                  ! stores boundary point
                   p_level_boundary_node(inum_poin,iphase,ilevel) = iglob
-
                   p_level_boundary_ilevel_from(inum_poin,iphase,ilevel) = p_level_ilevel_map(p_node)
 
                   ! adds node to coarser nodes
@@ -840,12 +836,77 @@
           enddo
         endif
       enddo ! ispec
+
+      ! store total number of boundary points/elements for current phase & p-level
+      num_p_level_boundary_nodes(iphase,ilevel) = inum_poin
+      num_p_level_boundary_ispec(iphase,ilevel) = inum_spec
+
     enddo ! iphase
   enddo ! ilevel
 
+  !debug
+  !print *,'debug: num_p_level_boundary_nodes: ',num_p_level_boundary_nodes
+  !print *,'debug: num_p_level_boundary_ispec: ',num_p_level_boundary_ispec
+
+  ! boundary arrays check
+  ! checks if setup of p-values on boundary nodes arrays are okay for lts_boundary_contribution() routine
+  do ilevel = 1,num_p_level
+    do iphase = 1,2
+      num_points = num_p_level_boundary_nodes(iphase,ilevel)
+      ! loop only over boundary nodes
+      do ipoin = 1,num_points
+        ! checks global index
+        iglob = p_level_boundary_node(ipoin,iphase,ilevel)
+        if (iglob < 1 .or. iglob > NGLOB_AB) then
+          print *,'Error: boundary node ',ipoin,' out of ',num_points,' has invalid iglob: ',iglob
+          print *,'       iglob ',iglob ,'iphase/ilevel',iphase,ilevel,' - iglob should be <= ',NGLOB_AB
+          call exit_mpi(myrank,"Error: boundary nodes has invalid iglob")
+        endif
+
+        ! p (dt/p) refinement number in this specified p-level
+        p = p_level(ilevel)
+        ! check if p-level value is valid
+        if (p < 1) then
+          print *,'Error: boundary check level is invalid: ',ilevel,' has p-value ',p,' should be > 0'
+          print *,'       p_level: ',p_level
+          call exit_mpi(myrank,"Error: boundary check level has invalid p-value")
+        endif
+
+        ! checks if node belongs to this or coarser p-level
+        p_node = iglob_p_refine(iglob)
+        if (p_node > p) then
+          print *,'Error: boundary node p value is invalid: ',p_node,'should be <= ',p
+          print *,'       iglob ',iglob ,'iphase/ilevel',iphase,ilevel !,'i/j/k/ispec',i,j,k,ispec
+          print *,'       p_level_ilevel_map = ',p_level_ilevel_map(p_node)
+          call exit_mpi(myrank,"Error: boundary nodes are this level or coarser only")
+        endif
+
+        ! checks associated p-level
+        iilevel = p_level_boundary_ilevel_from(ipoin,iphase,ilevel)
+        if (iilevel < 1 .or. iilevel > num_p_level) then
+          print *,'Error: boundary node ',ipoin,' out of ',num_points,' has invalid p-level: ',iilevel
+          print *,'       iilevel ',iilevel,'iglob ',iglob ,'iphase/ilevel',iphase,ilevel,' - iilevel should be <= ',num_p_level
+          call exit_mpi(myrank,"Error: boundary nodes has invalid iilevel")
+        endif
+        if (iilevel /= p_level_ilevel_map(p_node)) then
+          print *,'Error: boundary node ',ipoin,' with incoherent iilevel',iilevel,'should be ',p_level_ilevel_map(p_node)
+          print *,'       iglob ',iglob ,'iphase/ilevel',iphase,ilevel,'p_node',p_node
+          call exit_mpi(myrank,"Error: boundary nodes has incoherent iilevel")
+        endif
+      enddo   ! ipoin
+    enddo  ! iphase
+  enddo  ! ilevel
+  ! user output
+  if (myrank == 0) then
+    write(IMAIN,*) "    boundary nodes okay"
+    write(IMAIN,*) "    maximum boundary nodes: ",maxval(num_p_level_boundary_nodes)
+    call flush_IMAIN()
+  endif
+  call synchronize_all()
+
   ! gets maximum number of coarser nodes
   if (myrank == 0) then
-    write(IMAIN,*) "    maximum coarser nodes: ",maxval(num_p_level_coarser_nodes(:))
+    write(IMAIN,*) "    maximum coarser nodes : ",maxval(num_p_level_coarser_nodes(:))
     call flush_IMAIN()
   endif
   call synchronize_all()
@@ -1044,7 +1105,7 @@
 
       ! determines all MPI interface nodes in a coarser p-level
       interface_p_refine_ipoin(:) = 0
-      icounter = 0
+      inum_counter = 0
       do ipoin = 1, nibool_interfaces_ext_mesh(iinterface)
         iglob = ibool_interfaces_ext_mesh(ipoin,iinterface)
 
@@ -1053,17 +1114,17 @@
           ! if (iglob > -1) then
           ! num_interface_p_refine_ibool(iinterface,ilevel) = num_interface_p_refine_ibool(iinterface,ilevel) + 1
           ! interface_p_refine_ibool(num_interface_p_refine_ibool(iinterface,ilevel),iinterface,ilevel) = iglob
-          icounter = icounter + 1
-          interface_p_refine_ipoin(icounter) = ipoin
+          inum_counter = inum_counter + 1
+          interface_p_refine_ipoin(inum_counter) = ipoin
         else
           ! node belongs to coarser levels (on p-level boundary)
           if (count(p_level_coarser_to_update(1:num_p_level_coarser_to_update(ilevel),ilevel) == iglob) > 0) then
-            icounter = icounter + 1
-            interface_p_refine_ipoin(icounter) = ipoin
+            inum_counter = inum_counter + 1
+            interface_p_refine_ipoin(inum_counter) = ipoin
           endif
         endif
       enddo
-      coarser_counter = icounter
+      coarser_counter = inum_counter
 
       ! we now have the coarser points that are on the
       ! mpi-partition-boundary. The neighbor can have different
@@ -1103,8 +1164,13 @@
             ipoin_coarser(coarser_counter_new) = ipoin
 
             iglob = ibool_interfaces_ext_mesh(ipoin,iinterface)
-            num_p_level_coarser_to_update(ilevel) = num_p_level_coarser_to_update(ilevel) + 1
-            p_level_coarser_to_update(num_p_level_coarser_to_update(ilevel),ilevel) = iglob
+
+            ! adds node
+            icounter = num_p_level_coarser_to_update(ilevel)
+            icounter = icounter + 1
+
+            num_p_level_coarser_to_update(ilevel) = icounter
+            p_level_coarser_to_update(icounter,ilevel) = iglob
             ! print *, "adding:", iglob, "myrank:",myrank,"ilevel",ilevel
           endif
         enddo
@@ -1138,8 +1204,12 @@
           endif
           ! adds point to interface
           iglob = ibool_interfaces_ext_mesh(ipoin,iinterface)
-          num_interface_p_refine_ibool(iinterface,ilevel) = num_interface_p_refine_ibool(iinterface,ilevel) + 1
-          interface_p_refine_ibool(num_interface_p_refine_ibool(iinterface,ilevel),iinterface,ilevel) = iglob
+
+          icounter = num_interface_p_refine_ibool(iinterface,ilevel)
+          icounter = icounter + 1
+
+          num_interface_p_refine_ibool(iinterface,ilevel) = icounter
+          interface_p_refine_ibool(icounter,iinterface,ilevel) = iglob
         enddo
 
         ! tests MPI interface arrays
@@ -1426,13 +1496,15 @@
 
   ! sorting routine
   subroutine Bubble_Sort(a,len)
+    implicit none
     integer :: len
     integer, INTENT(inout), DIMENSION(len) :: a
 
     integer :: temp
     INTEGER :: i, j
-    LOGICAL :: swapped = .true.
+    LOGICAL :: swapped
 
+    swapped = .true.
     DO j = len-1, 1, -1
       swapped = .false.
       DO i = 1, j
@@ -1453,6 +1525,7 @@
 
   ! comparison function for sorting integers
   integer function cmp_function(a1, a2)
+    implicit none
     integer a1, a2
     cmp_function = a1 - a2
   end function cmp_function
@@ -1756,189 +1829,232 @@
 
   subroutine lts_prepare_gpu()
 
+! sets up GPU transfers of LTS arrays
 
-!#TODO: LTS gpu setup
-!       note that this routine will need to be called after prepare_constants_device()
-!       as the Mesh_pointer will get created there, which is needed here.
+  use constants, only: myrank,IMAIN
+  use specfem_par, only: Mesh_pointer,NSPEC_AB,NPROC,num_interfaces_ext_mesh,max_nibool_interfaces_ext_mesh
+  use specfem_par_elastic, only: nspec_inner_elastic,nspec_outer_elastic,phase_ispec_inner_elastic
 
-  stop 'LTS setup on GPU not implemented yet'
+  use specfem_par_lts, only: num_interface_p_refine_boundary,interface_p_refine_boundary,interface_p_refine_ibool, &
+    num_interface_p_refine_ibool,max_nibool_interfaces_boundary, &
+    num_p_level,iglob_p_refine,p_elem, &
+    p_level_boundary_ilevel_from,p_level_coarser_to_update, &
+    p_level_boundary_ispec,p_level_boundary_node,boundary_elem, &
+    rmassxyz,rmassxyz_mod,cmassxyz, &
+    use_accel_collected
 
-!  use specfem_par, only: Mesh_pointer
-!
-!  use specfem_par_lts, only: &
-!    num_interface_p_refine_boundary, interface_p_refine_boundary, max_nibool_interfaces_boundary, &
-!    p_elem
-!
-!  implicit none
-!
-!  integer, dimension(:,:,:), allocatable :: element_list
-!  integer, dimension(:,:), allocatable :: num_element_list
-!  integer :: iispec
-!
-!  ! timing
-!  logical, parameter :: DEBUG_TIMING = .false.
-!  double precision, external :: wtime
-!  double precision :: time_start,tCPU
-!
-!  ! sets up GPU transfers of LTS arrays
-!
-!  ! timing
-!  if (DEBUG_TIMING) time_start = wtime()
-!
-!  ! user output
-!  if (myrank == 0) then
-!    write(IMAIN,*) "  loading LTS arrays"
-!    call flush_IMAIN()
-!  endif
-!  call synchronize_all()
-!
-!  ! transfers LTS mass matrices
-!  call prepare_mass_boundary_fields_lts_device(Mesh_pointer, rmassxyz, rmassxyz_mod, cmassxyz)
+  !use specfem_par_lts, only: current_lts_elem,current_lts_boundary_elem,lts_type_compute_pelem
 
-!  ! user output
-!  if (myrank == 0) then
-!    write(IMAIN,*) "  transfering LTS p-level boundary arrays to GPU"
-!    call flush_IMAIN()
-!  endif
-!  call synchronize_all()
-!
-!  ! allocates temporary arrays
-!  allocate(element_list(NSPEC_AB,2,num_p_level), &
-!           num_element_list(2,num_p_level),stat=ier)
-!  if (ier /= 0) stop 'Error allocating arrays element_list,...'
-!  element_list(:,:,:) = 0
-!  num_element_list(:,:) = 0
-!
-!  ! builds list of elements belonging to p-level, without boundary elements
-!  do ilevel = 1,num_p_level
-!    do iphase = 1,2
-!      if (iphase == 1) then
-!        num_elements = nspec_outer_elastic
-!      else
-!        num_elements = nspec_inner_elastic
-!      endif
-!      ! loops over all inner/outer elements
-!      iispec = 1
-!      num_element_list(iphase,ilevel) = 0
-!      do ispec=1,num_elements
-!        ispec_p = phase_ispec_inner_elastic(ispec,iphase)
-!
-!        ! skips elements in other p-levels
-!        if (.not. p_elem(ispec_p,ilevel)) cycle
-!        ! skips elements belonging to p-level boundary
-!        if (boundary_elem(ispec_p,ilevel) .eqv. .true.) cycle
-!
-!        ! adds element
-!        element_list(iispec,iphase,ilevel) = ispec_p
-!        num_element_list(iphase,ilevel) = iispec
-!        iispec = iispec + 1
-!      enddo
-!    enddo ! iphase
-!  enddo ! ilevel
-!
-!  ! sends p-element list to GPU
-!  call transfer_element_list_to_device(Mesh_pointer,element_list,num_element_list)
-!
-!  ! transfer ibool and ilevel from CPU to GPU
-!  call transfer_boundary_element_list_to_device(Mesh_pointer,p_level_boundary_node, &
-!                                                p_level_boundary_ilevel_from,p_level_boundary_ispec)
-!
-!  ! sends list for coarser nodes to GPU
-!  call setup_r_boundaries_time_stepping(Mesh_pointer,p_level_coarser_to_update)
-!
-!  ! sets up interface points
-!  allocate(num_interface_p_refine_boundary(num_p_level),stat=ier)
-!  if (ier /= 0) stop 'Error allocating arrays num_interface_p_refine_boundary'
-!  num_interface_p_refine_boundary(:) = 0
-!
-!  ! counts all nodes on MPI interfaces between levels
-!  max_nibool_interfaces_boundary = 0
-!  do ilevel = 1,num_p_level-1
-!    num_interface_p_refine_boundary(ilevel) = 0
-!    do iinterface = 1, num_interfaces_ext_mesh
-!      ! loops over all points on this interface
-!      do ipoin = 1, num_interface_p_refine_ibool(iinterface,ilevel)
-!        ! increases points counter
-!        num_interface_p_refine_boundary(ilevel) = num_interface_p_refine_boundary(ilevel) + 1
-!      enddo
-!    enddo
-!
-!    ! gets maximum number of points on a refine interface
-!    if (num_interface_p_refine_boundary(ilevel) > max_nibool_interfaces_boundary) then
-!      max_nibool_interfaces_boundary = num_interface_p_refine_boundary(ilevel)
-!    endif
-!  enddo
-!  ! checks
-!  if (num_p_level > 1 .and. NPROC > 1 .and. max_nibool_interfaces_boundary == 0) &
-!    stop 'Error LTS refinement without refinement nodes'
-!
-!  ! debug output
-!  !do i = 0,NPROC
-!  !  if (myrank == i) then
-!  !    print *,'rank',myrank
-!  !    do ilevel = 1,num_p_level-1
-!  !      print *,'  level',ilevel,' num_interface_p_refine_boundary = ',num_interface_p_refine_boundary(ilevel)
-!  !    enddo
-!  !    print *,'  max_nibool_interfaces_ext_mesh = ',max_nibool_interfaces_ext_mesh,max_nibool_interfaces_boundary
-!  !  endif
-!  !  call synchronize_all()
-!  !enddo
-!
-!  ! allocates refinement interfaces
-!  allocate(interface_p_refine_boundary(max_nibool_interfaces_boundary,num_p_level),stat=ier)
-!  if (ier /= 0) stop 'Error allocating arrays interface_p_refine_boundary'
-!
-!  ! Precompute list of iglob nodes for each level that will be sent over MPI
-!  num_interface_p_refine_boundary(:) = 0
-!  interface_p_refine_boundary(:,:) = 0
-!  do ilevel = 1,num_p_level-1
-!    do iinterface = 1, num_interfaces_ext_mesh
-!      ! loops over all points on this interface
-!      do ipoin = 1, num_interface_p_refine_ibool(iinterface,ilevel)
-!        ! gets global index
-!        iglob = interface_p_refine_ibool(ipoin,iinterface,ilevel)
-!
-!        ! increases points counter
-!        num_interface_p_refine_boundary(ilevel) = num_interface_p_refine_boundary(ilevel) + 1
-!
-!        ! checks
-!        if (num_interface_p_refine_boundary(ilevel) > max_nibool_interfaces_boundary) then
-!          print *,'Error rank: ',myrank,'level ',ilevel,'out of ',num_p_level, &
-!                  ' num_interface_p_refine_boundary =',num_interface_p_refine_boundary(ilevel), &
-!                  ' exceeds ',max_nibool_interfaces_ext_mesh,max_nibool_interfaces_boundary
-!          stop 'Error num_interface_p_refine_boundary exceeds bounds'
-!        endif
-!
-!        ! adds global index to interface
-!        interface_p_refine_boundary(num_interface_p_refine_boundary(ilevel),ilevel) = iglob
-!      enddo
-!    enddo
-!  enddo
-!
-!  ! sends interface lists to GPU
-!  call setup_mpi_boundaries_lts(Mesh_pointer, &
-!                                num_interface_p_refine_ibool, &
-!                                interface_p_refine_ibool, &
-!                                num_interface_p_refine_boundary, &
-!                                interface_p_refine_boundary, &
-!                                num_interfaces_ext_mesh, &
-!                                max_nibool_interfaces_ext_mesh, &
-!                                max_nibool_interfaces_boundary, &
-!                                num_p_level)
-!
-!  ! frees temporary arrays
-!  deallocate(element_list)
-!  deallocate(num_element_list)
-!
-!  ! user output
-!  call synchronize_all()
-!  if (DEBUG_TIMING) then
-!    ! timing
-!    if (myrank == 0 ) then
-!      tCPU = wtime() - time_start
-!      write(IMAIN,*) "   time in seconds = ", tCPU
-!      call flush_IMAIN()
-!    endif
-!  endif
+  implicit none
+
+  ! local parameters
+  integer, dimension(:,:,:), allocatable :: element_list
+  integer, dimension(:,:), allocatable :: num_element_list
+  integer :: iispec,iinterface,ier,iglob,ilevel,iphase,ipoin,ispec,ispec_p
+  integer :: num_elements
+  ! timing
+  logical, parameter :: DEBUG_TIMING = .false.
+  double precision, external :: wtime
+  double precision :: time_start,tCPU
+
+! this routine will need to be called after prepare_constants_device()
+! as the Mesh_pointer will get created there, which is needed here.
+
+  ! timing
+  if (DEBUG_TIMING) time_start = wtime()
+
+  ! user output
+  if (myrank == 0) then
+    write(IMAIN,*) "  loading LTS arrays"
+    call flush_IMAIN()
+  endif
+
+  ! initial array allocations
+  call prepare_lts_device(Mesh_pointer,num_p_level,iglob_p_refine,use_accel_collected)
+
+  ! user output
+  if (myrank == 0) then
+    write(IMAIN,*) "    transfering LTS mass matrices"
+    call flush_IMAIN()
+  endif
+  call synchronize_all()
+
+  ! transfers LTS mass matrices
+  call prepare_lts_mass_boundary_fields_device(Mesh_pointer, rmassxyz, rmassxyz_mod, cmassxyz)
+
+  ! user output
+  if (myrank == 0) then
+    write(IMAIN,*) "    transfering LTS p-level boundary arrays to GPU"
+    call flush_IMAIN()
+  endif
+  call synchronize_all()
+
+  ! allocates temporary arrays
+  allocate(element_list(NSPEC_AB,2,num_p_level), &
+           num_element_list(2,num_p_level),stat=ier)
+  if (ier /= 0) stop 'Error allocating arrays element_list,...'
+  element_list(:,:,:) = 0
+  num_element_list(:,:) = 0
+
+  ! builds list of elements belonging to p-level, without boundary elements
+  ! pre-builds array for lts_type_compute_pelem == .true.
+  !lts_type_compute_pelem = .true.
+
+  do ilevel = 1,num_p_level
+
+    !! sets current p-level elements
+    !current_lts_elem => p_elem(:,ilevel)
+    !! sets current boundary-level elements
+    !current_lts_boundary_elem => boundary_elem(:,ilevel)
+
+    do iphase = 1,2
+      if (iphase == 1) then
+        num_elements = nspec_outer_elastic
+      else
+        num_elements = nspec_inner_elastic
+      endif
+
+      ! initializes
+      num_element_list(iphase,ilevel) = 0
+      iispec = 0
+
+      ! loops over all inner/outer elements
+      do ispec_p = 1,num_elements
+        ispec = phase_ispec_inner_elastic(ispec_p,iphase)
+
+        ! same check as in compute_forces_viscoelastic() routine
+        !if (lts_type_compute_pelem) then
+        !  ! p-element call
+        !  ! if not in this p-level, skip
+        !  if (.not. current_lts_elem(ispec)) cycle
+        !  ! only work on elements _strictly_ in this level (all 125 nodes in P)
+        !  if (current_lts_boundary_elem(ispec)) cycle
+        !endif
+
+        ! w/out the need of the current_lts_elem()/current_lts_boundary_elem() array pointers
+        ! skips elements in other p-levels
+        if (.not. p_elem(ispec,ilevel)) cycle
+        ! skips elements belonging to p-level boundary
+        if (boundary_elem(ispec,ilevel)) cycle
+
+        ! adds element
+        iispec = iispec + 1
+        element_list(iispec,iphase,ilevel) = ispec
+      enddo
+
+      ! store number of current elements
+      num_element_list(iphase,ilevel) = iispec
+
+    enddo ! iphase
+  enddo ! ilevel
+
+  ! sends p-element list to GPU
+  call transfer_element_list_to_device(Mesh_pointer,element_list,num_element_list)
+
+  ! transfer ibool and ilevel from CPU to GPU
+  call transfer_boundary_element_list_to_device(Mesh_pointer,p_level_boundary_node, &
+                                                p_level_boundary_ilevel_from,p_level_boundary_ispec)
+
+  ! sends list for coarser nodes to GPU
+  call setup_r_boundaries_time_stepping(Mesh_pointer,p_level_coarser_to_update)
+
+  ! sets up interface points
+  allocate(num_interface_p_refine_boundary(num_p_level),stat=ier)
+  if (ier /= 0) stop 'Error allocating arrays num_interface_p_refine_boundary'
+  num_interface_p_refine_boundary(:) = 0
+
+  ! counts all nodes on MPI interfaces between levels
+  max_nibool_interfaces_boundary = 0
+
+  if (NPROC > 1) then
+    do ilevel = 1,num_p_level-1
+      num_interface_p_refine_boundary(ilevel) = 0
+      do iinterface = 1, num_interfaces_ext_mesh
+        ! loops over all points on this interface
+        do ipoin = 1, num_interface_p_refine_ibool(iinterface,ilevel)
+          ! increases points counter
+          num_interface_p_refine_boundary(ilevel) = num_interface_p_refine_boundary(ilevel) + 1
+        enddo
+      enddo
+
+      ! gets maximum number of points on a refine interface
+      if (num_interface_p_refine_boundary(ilevel) > max_nibool_interfaces_boundary) then
+        max_nibool_interfaces_boundary = num_interface_p_refine_boundary(ilevel)
+      endif
+    enddo
+  endif
+
+  ! checks
+  if (num_p_level > 1 .and. NPROC > 1 .and. max_nibool_interfaces_boundary == 0) &
+    stop 'Error LTS preparation for GPU has refinement without refinement nodes'
+
+  ! debug output
+  !do i = 0,NPROC
+  !  if (myrank == i) then
+  !    print *,'rank',myrank
+  !    do ilevel = 1,num_p_level-1
+  !      print *,'  level',ilevel,' num_interface_p_refine_boundary = ',num_interface_p_refine_boundary(ilevel)
+  !    enddo
+  !    print *,'  max_nibool_interfaces_ext_mesh = ',max_nibool_interfaces_ext_mesh,max_nibool_interfaces_boundary
+  !  endif
+  !  call synchronize_all()
+  !enddo
+
+  ! allocates refinement interfaces
+  allocate(interface_p_refine_boundary(max_nibool_interfaces_boundary,num_p_level),stat=ier)
+  if (ier /= 0) stop 'Error allocating arrays interface_p_refine_boundary'
+  interface_p_refine_boundary(:,:) = 0
+
+  ! Precompute list of iglob nodes for each level that will be sent over MPI
+  num_interface_p_refine_boundary(:) = 0
+  if (NPROC > 1) then
+    do ilevel = 1,num_p_level-1
+      do iinterface = 1, num_interfaces_ext_mesh
+        ! loops over all points on this interface
+        do ipoin = 1, num_interface_p_refine_ibool(iinterface,ilevel)
+          ! gets global index
+          iglob = interface_p_refine_ibool(ipoin,iinterface,ilevel)
+
+          ! increases points counter
+          num_interface_p_refine_boundary(ilevel) = num_interface_p_refine_boundary(ilevel) + 1
+
+          ! checks
+          if (num_interface_p_refine_boundary(ilevel) > max_nibool_interfaces_boundary) then
+            print *,'Error rank: ',myrank,'level ',ilevel,'out of ',num_p_level, &
+                    ' num_interface_p_refine_boundary =',num_interface_p_refine_boundary(ilevel), &
+                    ' exceeds ',max_nibool_interfaces_ext_mesh,max_nibool_interfaces_boundary
+            stop 'Error num_interface_p_refine_boundary exceeds bounds'
+          endif
+
+          ! adds global index to interface
+          interface_p_refine_boundary(num_interface_p_refine_boundary(ilevel),ilevel) = iglob
+        enddo
+      enddo
+    enddo
+  endif
+
+  ! sends interface lists to GPU
+  call setup_mpi_boundaries_lts(Mesh_pointer, &
+                                num_interface_p_refine_ibool, &
+                                interface_p_refine_ibool, &
+                                interface_p_refine_boundary, &
+                                num_interfaces_ext_mesh, &
+                                max_nibool_interfaces_boundary, &
+                                num_p_level)
+
+  ! frees temporary arrays
+  deallocate(element_list)
+  deallocate(num_element_list)
+
+  ! user output
+  call synchronize_all()
+  if (DEBUG_TIMING) then
+    ! timing
+    if (myrank == 0 ) then
+      tCPU = wtime() - time_start
+      write(IMAIN,*) "   time in seconds = ", tCPU
+      call flush_IMAIN()
+    endif
+  endif
 
   end subroutine lts_prepare_gpu

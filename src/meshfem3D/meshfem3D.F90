@@ -193,7 +193,7 @@
                           NSPEC_AB,NSPEC2D_A_XI,NSPEC2D_B_XI, &
                           NSPEC2D_A_ETA,NSPEC2D_B_ETA, &
                           NSPEC2DMAX_XMIN_XMAX,NSPEC2DMAX_YMIN_YMAX,NSPEC2D_BOTTOM,NSPEC2D_TOP, &
-                          NPOIN2DMAX_XMIN_XMAX,NPOIN2DMAX_YMIN_YMAX,NGLOB_AB, &
+                          NGLOB_AB, &
                           USE_REGULAR_MESH,NDOUBLINGS,ner_doublings)
 
   ! check that the code is running with the requested nb of processes
@@ -292,53 +292,91 @@
     call flush_IMAIN()
   endif
 
-  ! check that the constants.h file is correct
-  if (NGNOD /= 8 .and. NGNOD /= 27) &
-    call exit_MPI(myrank,'Error must have set NGNOD == 8 or NGNOD == 27')
-  if (NGNOD2D /= 4 .and. NGNOD2D /= 9) &
-    call exit_MPI(myrank,'Error must have set NGNOD2D == 4 or NGNOD2D == 9')
+  ! main process checks settings
+  if (myrank == 0) then
+    ! check that the constants.h file is correct
+    if (NGNOD /= 8 .and. NGNOD /= 27) &
+      call exit_MPI(myrank,'Error must have set NGNOD == 8 or NGNOD == 27')
+    if (NGNOD2D /= 4 .and. NGNOD2D /= 9) &
+      call exit_MPI(myrank,'Error must have set NGNOD2D == 4 or NGNOD2D == 9')
 
-  if (NGLLX_M == 2 .and. NGLLY_M == 2 .and. NGLLZ_M == 2) then
-    if (NGNOD /= 8) &
-      call exit_MPI(myrank,'With NGLLX_M == 2, volume elements should have NGNOD == 8 control nodes in our internal mesher')
-    if (NGNOD2D /= 4) &
-      call exit_MPI(myrank,'With NGLLX_M == 2, surface elements should have NGNOD2D == 4 control nodes in our internal mesher')
-  endif
+    if (NGLLX_M == 2 .and. NGLLY_M == 2 .and. NGLLZ_M == 2) then
+      if (NGNOD /= 8) &
+        call exit_MPI(myrank,'With NGLLX_M == 2, volume elements should have NGNOD == 8 control nodes in our internal mesher')
+      if (NGNOD2D /= 4) &
+        call exit_MPI(myrank,'With NGLLX_M == 2, surface elements should have NGNOD2D == 4 control nodes in our internal mesher')
+    endif
 
-  if (NGNOD == 27 .and. (NGLLX_M < 3 .or. NGLLY_M < 3 .or. NGLLZ_M < 3)) &
-    call exit_MPI(myrank,'NGNOD = 27 control nodes needs at least NGLLX_M == NGLLY_M == NGLLZ_M >= 3 in our internal mesher')
-  if (NGNOD2D == 9 .and. (NGLLX_M < 3 .or. NGLLY_M < 3 .or. NGLLZ_M < 3)) &
-    call exit_MPI(myrank,'NGNOD2D = 9 control nodes needs at least NGLLX_M == NGLLY_M == NGLLZ_M >= 3 in our internal mesher')
+    if (NGNOD == 27 .and. (NGLLX_M < 3 .or. NGLLY_M < 3 .or. NGLLZ_M < 3)) &
+      call exit_MPI(myrank,'NGNOD = 27 control nodes needs at least NGLLX_M == NGLLY_M == NGLLZ_M >= 3 in our internal mesher')
+    if (NGNOD2D == 9 .and. (NGLLX_M < 3 .or. NGLLY_M < 3 .or. NGLLZ_M < 3)) &
+      call exit_MPI(myrank,'NGNOD2D = 9 control nodes needs at least NGLLX_M == NGLLY_M == NGLLZ_M >= 3 in our internal mesher')
 
-!  if (.not. USE_REGULAR_MESH .and. NGLLX_M >= 3) &
-!    call exit_MPI(myrank,'NGLLX_M == NGLLY_M == NGLLZ_M >= 3 only supported with USE_REGULAR_MESH = .true. at the moment')
+  !  if (.not. USE_REGULAR_MESH .and. NGLLX_M >= 3) &
+  !    call exit_MPI(myrank,'NGLLX_M == NGLLY_M == NGLLZ_M >= 3 only supported with USE_REGULAR_MESH = .true. at the moment')
 
-  ! check that reals are either 4 or 8 bytes
-  if (CUSTOM_REAL /= SIZE_REAL .and. CUSTOM_REAL /= SIZE_DOUBLE) call exit_MPI(myrank,'wrong size of CUSTOM_REAL for reals')
+    ! check that reals are either 4 or 8 bytes
+    if (CUSTOM_REAL /= SIZE_REAL .and. CUSTOM_REAL /= SIZE_DOUBLE) call exit_MPI(myrank,'wrong size of CUSTOM_REAL for reals')
 
-  ! check that number of slices is at least 1 in each direction
-  if (NPROC_XI < 1) call exit_MPI(myrank,'NPROC_XI must be greater than 1')
-  if (NPROC_ETA < 1) call exit_MPI(myrank,'NPROC_ETA must be greater than 1')
+    ! check that number of slices is at least 1 in each direction
+    if (NPROC_XI < 1) call exit_MPI(myrank,'NPROC_XI must be greater than 1')
+    if (NPROC_ETA < 1) call exit_MPI(myrank,'NPROC_ETA must be greater than 1')
 
-  ! check that mesh can be cut into the right number of slices
-  if (mod(NEX_XI,NPROC_XI) /= 0) call exit_MPI(myrank,'NEX_XI must be a multiple of NPROC_XI for a regular mesh')
-  if (mod(NEX_ETA,NPROC_ETA) /= 0) call exit_MPI(myrank,'NEX_ETA must be a multiple of NPROC_ETA for a regular mesh')
+    ! check that mesh can be cut into the right number of slices
+    if (mod(NEX_XI,NPROC_XI) /= 0) call exit_MPI(myrank,'NEX_XI must be a multiple of NPROC_XI for a regular mesh')
+    if (mod(NEX_ETA,NPROC_ETA) /= 0) call exit_MPI(myrank,'NEX_ETA must be a multiple of NPROC_ETA for a regular mesh')
 
-  ! also check that mesh can be coarsened in depth twice (block size multiple of 8)
-  ! i.e. check that NEX is divisible by 8 and that NEX_PER_PROC is divisible by 8
-  ! This is not required for a regular mesh
-  if (.not. USE_REGULAR_MESH) then
-    if (mod(NEX_XI,8) /= 0) call exit_MPI(myrank,'NEX_XI must be a multiple of 8')
-    if (mod(NEX_ETA,8) /= 0) call exit_MPI(myrank,'NEX_ETA must be a multiple of 8')
+    ! also check that mesh can be coarsened in depth twice (block size multiple of 8)
+    ! i.e. check that NEX is divisible by 8 and that NEX_PER_PROC is divisible by 8
+    ! This is not required for a regular mesh
+    if (.not. USE_REGULAR_MESH) then
+      if (mod(NEX_XI,8) /= 0) call exit_MPI(myrank,'NEX_XI must be a multiple of 8')
+      if (mod(NEX_ETA,8) /= 0) call exit_MPI(myrank,'NEX_ETA must be a multiple of 8')
 
-    if (mod(NEX_PER_PROC_XI,8) /= 0) call exit_MPI(myrank,'NEX_PER_PROC_XI must be a multiple of 8')
-    if (mod(NEX_PER_PROC_ETA,8) /= 0) call exit_MPI(myrank,'NEX_PER_PROC_ETA must be a multiple of 8')
+      if (mod(NEX_PER_PROC_XI,8) /= 0) then
+        if (myrank == 0) then
+          print *,'Error: NEX_XI ',NEX_XI,' and NPROC_XI ',NPROC_XI,' lead to NEX_PER_PROC_XI == ',NEX_PER_PROC_XI
+          print *,'       which must be a multiple of 8'
+          print *
+          print *,'For the current NPROC_XI, you should set at least NEX_XI = ',NPROC_XI * 8
+          print *,'Please modify the Mesh_Par_file accordingly and re-run this mesher.'
+        endif
+        call exit_MPI(myrank,'NEX_PER_PROC_XI must be a multiple of 8')
+      endif
+      if (mod(NEX_PER_PROC_ETA,8) /= 0) then
+        if (myrank == 0) then
+          print *,'Error: NEX_ETA ',NEX_ETA,' and NPROC_ETA ',NPROC_ETA,' lead to NEX_PER_PROC_ETA == ',NEX_PER_PROC_ETA
+          print *,'       which must be a multiple of 8'
+          print *
+          print *,'For the current NPROC_ETA, you should set at least NEX_ETA = ',NPROC_ETA * 8
+          print *,'Please modify the Mesh_Par_file accordingly and re-run this mesher.'
+        endif
+        call exit_MPI(myrank,'NEX_PER_PROC_ETA must be a multiple of 8')
+      endif
 
-    if (mod(NEX_PER_PROC_XI, 2**NDOUBLINGS * 2) /= 0 ) &
-      call exit_MPI(myrank,'NEX_PER_PROC_XI must be a multiple of 2 * 2**NDOUBLINGS')
-    if (mod(NEX_PER_PROC_ETA, 2**NDOUBLINGS * 2) /= 0 ) &
-      call exit_MPI(myrank,'NEX_PER_PROC_ETA must be a multiple of 2 * 2**NDOUBLINGS')
-  endif
+      if (mod(NEX_PER_PROC_XI, 2**NDOUBLINGS * 2) /= 0 ) then
+        if (myrank == 0) then
+          print *,'Error: NEX_XI ',NEX_XI,' and NPROC_XI ',NPROC_XI,' lead to NEX_PER_PROC_XI == ',NEX_PER_PROC_XI
+          print *,'       which must be a multiple of 2 * 2**NDOUBLINGS == ',(2**NDOUBLINGS * 2)
+          print *
+          print *,'For the current NPROC_XI, you should set at least NEX_XI = ',NPROC_XI * (2**NDOUBLINGS * 2)
+          print *,'Please modify the Mesh_Par_file accordingly and re-run this mesher.'
+        endif
+        call exit_MPI(myrank,'NEX_PER_PROC_XI must be a multiple of 2 * 2**NDOUBLINGS')
+      endif
+      if (mod(NEX_PER_PROC_ETA, 2**NDOUBLINGS * 2) /= 0 ) then
+        if (myrank == 0) then
+          print *,'Error: NEX_ETA ',NEX_ETA,' and NPROC_ETA ',NPROC_ETA,' lead to NEX_PER_PROC_ETA == ',NEX_PER_PROC_ETA
+          print *,'       which must be a multiple of 2 * 2**NDOUBLINGS == ',(2**NDOUBLINGS * 2)
+          print *
+          print *,'For the current NPROC_ETA, you should set at least NEX_ETA = ',NPROC_ETA * (2**NDOUBLINGS * 2)
+          print *,'Please modify the Mesh_Par_file accordingly and re-run this mesher.'
+        endif
+        call exit_MPI(myrank,'NEX_PER_PROC_ETA must be a multiple of 2 * 2**NDOUBLINGS')
+      endif
+    endif
+  endif ! myrank == 0
+  call synchronize_all()
 
   if (myrank == 0) then
     write(IMAIN,*) 'region selected:'
@@ -384,6 +422,14 @@
       write(IMAIN,*) 'PML thickness in X direction = ',sngl(THICKNESS_OF_X_PML),str_unit
       write(IMAIN,*) 'PML thickness in Y direction = ',sngl(THICKNESS_OF_Y_PML),str_unit
       write(IMAIN,*) 'PML thickness in Z direction = ',sngl(THICKNESS_OF_Z_PML),str_unit
+      write(IMAIN,*)
+      if (ADD_PML_AS_EXTRA_MESH_LAYERS) then
+        write(IMAIN,*) 'PML layers will be added as extra mesh layers around defined mesh region'
+        write(IMAIN,*) 'PML layers to add on each side of the mesh = ',NUMBER_OF_PML_LAYERS_TO_ADD
+      else
+        write(IMAIN,*) 'PML layers determined by selected thicknesses and without adding extra layers'
+      endif
+      write(IMAIN,*)
     endif
     write(IMAIN,*)
     call flush_IMAIN()

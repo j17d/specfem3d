@@ -17,6 +17,7 @@ import sys
 import subprocess
 import math
 import datetime
+import numpy
 
 ## elevation package
 # see: https://github.com/bopen/elevation
@@ -136,6 +137,9 @@ toposcale = 0.1
 
 ## local data directory
 datadir = 'topo_data'
+
+# AVS boundaries file, add selected country borders
+gmt_country = ''  # for Switzerland: '-ECH'
 
 #########################################################################
 
@@ -262,6 +266,7 @@ def get_topo(lon_min,lat_min,lon_max,lat_max):
     global incr_dx
     global SRTM_type
     global gmt_region
+    global utm_zone
 
     # region format: #lon_min #lat_min #lon_max #lat_max (left bottom right top) in degrees
     # for example: region = (12.35, 41.8, 12.65, 42.0)
@@ -273,9 +278,97 @@ def get_topo(lon_min,lat_min,lon_max,lat_max):
     print("  region: ",region)
     print("")
 
+    # enlarge data region slightly to fit desired locations
+    # note: xmeshfem will determine the min/max UTM coordinates of the given lat/lon region
+    #       and build mesh element coordinates by adding element steps from these UTM coordinates.
+    #       to assign topography elevation, it will then convert the UTM coordinates back to lat/lon for reading topo interfaces.
+    # get corner UTM coordinates
+    utm_xmin = float('inf') # hugeval
+    utm_xmax = float('-inf')
+    utm_ymin = float('inf')
+    utm_ymax = float('-inf')
+    # define corner points
+    corners = [ (lon_min,lat_min), (lon_min,lat_max), (lon_max,lat_min), (lon_max,lat_max) ]
+    for lon,lat in corners:
+          # converts to UTM x/y
+          x,y = geo2utm(lon,lat,utm_zone,iway=2)   # iway==2 LONGLAT2UTM
+          # determines min/max
+          if x < utm_xmin: utm_xmin = x
+          if x > utm_xmax: utm_xmax = x
+          if y < utm_ymin: utm_ymin = y
+          if y > utm_ymax: utm_ymax = y
+
+    print(f"  corner UTM coordinates: X min/max = {utm_xmin} / {utm_xmax}")
+    print(f"                          Y min/max = {utm_ymin} / {utm_ymax}")
+    print("")
+
+    # check
+    if utm_xmin == float('inf') or utm_xmax == float('-inf') or utm_ymin == float('inf') or utm_ymax == float('-inf'):
+        print("Error: could not determine UTM min/max range")
+        sys.exit(1)
+
+    # converts back to get extended region
+    ext_lon_min = float('inf') # hugeval
+    ext_lon_max = float('-inf')
+    ext_lat_min = float('inf')
+    ext_lat_max = float('-inf')
+    # define corners
+    utm_corners = [ (utm_xmin,utm_ymin), (utm_xmin,utm_ymax),(utm_xmax,utm_ymin),(utm_xmax,utm_ymax) ]
+    for x,y in utm_corners:
+          # converts to lon/lat
+          lon,lat = geo2utm(x,y,utm_zone,iway=1)   # iway==1 UTM2LONGLAT
+          # determines min/max
+          if lon < ext_lon_min: ext_lon_min = lon
+          if lon > ext_lon_max: ext_lon_max = lon
+          if lat < ext_lat_min: ext_lat_min = lat
+          if lat > ext_lat_max: ext_lat_max = lat
+
+    # fixed margin extension
+    #eps = 0.0001
+    #ext_lon_min = lon_min - eps; ext_lat_min = lat_min - eps; ext_lon_max = lon_max + eps; ext_lat_max = lat_max + eps
+
+    print(f"  extended region       : lon min/max = {ext_lon_min} / {ext_lon_max}")
+    print(f"                          lat min/max = {ext_lat_min} / {ext_lat_max}")
+    print("")
+
+    # round up/down to first digit
+    def my_ceil(a,precision=1):
+        return round(a + 0.5 * 10**(-precision),precision)
+    def my_floor(a,precision=1):
+        return round(a - 0.5 * 10**(-precision),precision)
+    def get_digits_after_decimal():
+        # determines number of digits for rounding precision
+        # based on given arguments
+        str_lon_min = sys.argv[1]
+        str_lat_min = sys.argv[2]
+        str_lon_max = sys.argv[3]
+        str_lat_max = sys.argv[4]
+        # example: "89.1" -> precision = 1
+        #          "89.15" -> precision = 2
+        precision = 1
+        if "." in str_lon_min: precision = max(len(str_lon_min.split(".")[1]),precision)
+        if "." in str_lat_min: precision = max(len(str_lat_min.split(".")[1]),precision)
+        if "." in str_lon_max: precision = max(len(str_lon_max.split(".")[1]),precision)
+        if "." in str_lat_max: precision = max(len(str_lat_max.split(".")[1]),precision)
+        return precision
+
+    # gets rounding precision
+    precision = get_digits_after_decimal()
+
+    region_extended = ( my_floor(ext_lon_min,precision),
+                        my_floor(ext_lat_min,precision),
+                        my_ceil(ext_lon_max,precision),
+                        my_ceil(ext_lat_max,precision) )
+
+    print("  region extended: ",region_extended)
+    print("")
+
     ## gmt
     # region format: e.g. -R123.0/132.0/31.0/40.0
-    gmt_region = '-R' + str(lon_min) + '/' + str(lon_max) + '/' + str(lat_min) + '/' + str(lat_max)
+    #gmt_region = '-R' + str(lon_min) + '/' + str(lon_max) + '/' + str(lat_min) + '/' + str(lat_max)
+    # uses extended region
+    gmt_region = '-R' + str(region_extended[0]) + '/' + str(region_extended[2]) + '/' + str(region_extended[1]) + '/' + str(region_extended[3])
+
     # sampling fine (~1.1km)
     gmt_interval = '-I' + str(incr_dx) + '/' + str(incr_dx)
 
@@ -291,11 +384,8 @@ def get_topo(lon_min,lat_min,lon_max,lat_max):
 
     ## get topo file
     if SRTM_type == 'low' or SRTM_type == 'high':
-        # enlarge data region slightly to fit desired locations
-        #eps = 0.0001
-        #region_extended = ( lon_min - eps, lat_min - eps, lon_max + eps, lat_max + eps)
         # SRTM data
-        get_topo_DEM(region,filename,res=SRTM_type)
+        get_topo_DEM(region_extended,filename,res=SRTM_type)
     elif SRTM_type == 'etopo2' \
       or SRTM_type == 'topo30' \
       or SRTM_type == 'srtm30s' \
@@ -542,7 +632,7 @@ def plot_map(gmt_region,gridfile="ptopo.sampled.grd"):
 def create_AVS_file():
     global datadir
     global utm_zone
-    global gmt_region
+    global gmt_region,gmt_country
 
     print("*******************************")
     print("creating AVS border file ...")
@@ -555,7 +645,12 @@ def create_AVS_file():
 
     # GMT segment file
     name = "map_segment.dat"
-    cmd = 'gmt pscoast ' + gmt_region + ' -Dh -W -M > ' + name + ';'
+    if len(gmt_country) > 0:
+        # uses country border (w/ full resolution -Df)
+        cmd = 'gmt pscoast ' + gmt_region + ' ' + gmt_country + ' -Df -M > ' + name + ';'
+    else:
+        # shore lines (w/ high resolution -Dh)
+        cmd = 'gmt pscoast ' + gmt_region + ' -W -Dh -M > ' + name + ';'
     status = subprocess.call(cmd, shell=True)
     check_status(status)
     print("  GMT segment file plotted in file: ",name)
@@ -737,8 +832,6 @@ def topo_extract(filename):
     print("extracting interface data for xmeshfem3D ...")
     print("*******************************")
 
-    import numpy
-
     ## shift/downscale topography
     print("  topo shift   = ",toposhift,"(m)")
     print("  scale factor = ",toposcale)
@@ -833,7 +926,10 @@ def topo_extract(filename):
     print("  deltay = ",deltay,"average = ",(ymax-ymin)/(ny-1))
     print("  --------------------------------------------")
     print("")
-    return nx,ny,deltax,deltay
+
+    interface_region = ( xmin, xmax, ymin, ymax )
+
+    return nx,ny,deltax,deltay,interface_region
 
 
 
@@ -851,20 +947,30 @@ def check_status(status):
 #-----------------------------------------------------------------------------
 #
 
-def update_Mesh_Par_file(dir,lon_min,lat_min,lon_max,lat_max,nx,ny,dx,dy,xyz_file):
+def update_Mesh_Par_file(dir,lon_min,lat_min,lon_max,lat_max,nx,ny,dx,dy,interface_region,xyz_file):
     global datadir
     global utm_zone
 
     # change working directory back to DATA/
     path = dir + '/' + 'DATA/meshfem3D_files/'
+
+    # checks if DATA/meshfem3D_files/ folder available
+    if not os.path.isdir(path):
+        print("#")
+        print("# Info: DATA/meshfem3D_files/ folder not found in current directory,")
+        print("#       will continue without modifying Mesh_Par_file ...")
+        print("# ")
+        return
+
+    # updates Mesh_Par_file
     os.chdir(path)
 
     print("*******************************")
     print("updating Mesh_Par_file ...")
     print("*******************************")
     print("  working directory: ",os.getcwd())
-    print("  min lon/lat      : ",lon_min,"/",lat_min)
-    print("  max lon/lat      : ",lon_max,"/",lat_max)
+    print("  Mesh_Par_file region min lon/lat      : ",lon_min,"/",lat_min)
+    print("                       max lon/lat      : ",lon_max,"/",lat_max)
     print("")
 
     cmd = 'echo "";'
@@ -883,6 +989,15 @@ def update_Mesh_Par_file(dir,lon_min,lat_min,lon_max,lat_max,nx,ny,dx,dy,xyz_fil
     print("")
 
     # interfaces.dat file
+    interface_lon_min = interface_region[0]   # xmin
+    interface_lon_max = interface_region[1]   # xmax
+    interface_lat_min = interface_region[2]   # ymin
+    interface_lat_max = interface_region[3]   # ymax
+
+    print("  interfaces region min lon/lat      : ",interface_lon_min,"/",interface_lat_min)
+    print("                    max lon/lat      : ",interface_lon_max,"/",interface_lat_max)
+    print("")
+
     nxi = nx
     neta = ny
 
@@ -891,17 +1006,17 @@ def update_Mesh_Par_file(dir,lon_min,lat_min,lon_max,lat_max,nx,ny,dx,dy,xyz_fil
 
     if dx < 0.0:
         # negative increment, starts from maximum location
-        lon = lon_max
+        lon = interface_lon_max
     else:
         # positive increment, starts from minimum location
-        lon = lon_min
+        lon = interface_lon_min
 
     if dy < 0.0:
         # negative increment, starts from maximum location
-        lat = lat_max
+        lat = interface_lat_max
     else:
         # positive increment, starts from minimum location
-        lat = lat_min
+        lat = interface_lat_min
 
     # format:
     # #SUPPRESS_UTM_PROJECTION #NXI #NETA #LONG_MIN #LAT_MIN #SPACING_XI #SPACING_ETA
@@ -946,6 +1061,16 @@ def update_Par_file(dir):
 
     # change working directory back to DATA/
     path = dir + '/' + 'DATA/'
+
+    # checks if DATA/ folder available
+    if not os.path.isdir(path):
+        print("#")
+        print("# Info: DATA/ folder not found in current directory,")
+        print("#       will continue without modifying Par_file ...")
+        print("# ")
+        return
+
+    # updates Par_file in DATA/ folder
     os.chdir(path)
 
     print("*******************************")
@@ -972,13 +1097,14 @@ def update_Par_file(dir):
 #
 
 
-def geo2utm(lon,lat,zone):
+def geo2utm(lon,lat,zone,iway=2):
     """
     from utm_geo.f90
 
     convert geodetic longitude and latitude to UTM, and back
     use iway = ILONGLAT2UTM for long/lat to UTM, IUTM2LONGLAT for UTM to lat/long
     a list of UTM zones of the world is available at www.dmap.co.uk/utmworld.htm
+    Use zones +1 to +60 for the Northern hemisphere, -1 to -60 for the Southern hemisphere
 
     implicit none
 
@@ -1007,8 +1133,14 @@ def geo2utm(lon,lat,zone):
     PI      = math.pi
     degrad  = PI/180.0
     raddeg  = 180.0/PI
-    semimaj = 6378206.4
-    semimin = 6356583.8
+
+    # Clarke 1866
+    #semimaj = 6378206.4
+    #semimin = 6356583.8
+    # WGS84 (World Geodetic System 1984) - default
+    semimaj = 6378137.0
+    semimin = 6356752.314245
+
     scfa    = 0.9996
 
     # some extracts about UTM:
@@ -1044,21 +1176,25 @@ def geo2utm(lon,lat,zone):
     ILONGLAT2UTM = 2
 
     #---------------------------------------------------------------
-    # use conversion to UTM
-    iway = ILONGLAT2UTM
+    # default uses conversion to UTM
+    #iway = ILONGLAT2UTM
 
     # zone
     UTM_PROJECTION_ZONE = zone
 
     # lon/lat
-    rlon = lon
-    rlat = lat
-
-    rx = 0.0
-    ry = 0.0
+    if iway == ILONGLAT2UTM:
+        rlon = lon
+        rlat = lat
+        rx = 0.0
+        ry = 0.0
+    else:
+        rx = lon
+        ry = lat
+        rlon = 0.0
+        rlat = 0.0
 
     #---------------------------------------------------------------
-
 
     # save original parameters
     rlon_save = rlon
@@ -1072,17 +1208,22 @@ def geo2utm(lon,lat,zone):
     e6 = e2 * e4
     ep2 = e2/(1.0 - e2)
 
+    #----- Set Zone parameters
+    # zone
+    lsouth = False
+    if UTM_PROJECTION_ZONE < 0: lsouth = True
+    zone = abs(UTM_PROJECTION_ZONE)
+
+    cm = zone * 6.0 - 183.0       # set central meridian for this zone
+    cmr = cm*degrad
+
     if iway == IUTM2LONGLAT:
         xx = rx
         yy = ry
+        if lsouth: yy = yy - 1.e7
     else:
         dlon = rlon
         dlat = rlat
-
-    #----- Set Zone parameters
-    zone = UTM_PROJECTION_ZONE
-    cm = zone * 6.0 - 183.0       # set central meridian for this zone
-    cmr = cm*degrad
 
     #---- Lat/Lon to UTM conversion
     if iway == ILONGLAT2UTM:
@@ -1186,6 +1327,7 @@ def geo2utm(lon,lat,zone):
 
     else:
         rx = xx
+        if lsouth: yy = yy + 1.e7
         ry = yy
         rlon = rlon_save
         rlat = rlat_save
@@ -1204,7 +1346,7 @@ def convert_lonlat2utm(file_in,zone,file_out):
     print("  zone: %i " % zone)
 
     # checks argument
-    if zone < 1 or zone > 60:  sys.exit("error zone: zone not UTM zone")
+    if abs(zone) < 1 or abs(zone) > 60:  sys.exit("error zone: zone not UTM zone")
 
     # grab all the locations in file
     with open(file_in,'r') as f:
@@ -1281,21 +1423,44 @@ def setup_simulation(lon_min,lat_min,lon_max,lat_max):
         lon_min = lon_max
         lon_max = tmp
 
-    # get topography data
-    xyz_file = get_topo(lon_min,lat_min,lon_max,lat_max)
+    # use longitude range in [-180,180]
+    # (there could be issues with determining the correct UTM zone in routine utm.latlon_to_zone_number() below
+    #  if the longitudes are > 180)
+    if lon_min < -180.0 and lon_max < -180.0:
+        lon_min += 360.0
+        lon_max += 360.0
+    if lon_min > 180.0 and lon_max > 180:
+        lon_min -= 360.0
+        lon_max -= 360.0
 
     ## UTM zone
     print("*******************************")
     print("determining UTM coordinates...")
     print("*******************************")
+    print(f"  region: lon min/max = {lon_min} / {lon_max}")
+    print(f"          lat min/max = {lat_min} / {lat_max}")
+    print("")
 
     midpoint_lat = (lat_min + lat_max)/2.0
     midpoint_lon = (lon_min + lon_max)/2.0
 
+    utm_zone_letter = utm.latitude_to_zone_letter(midpoint_lat)  # zone letters: XWVUTSRQPN north, MLKJHGFEDC south
+    hemisphere = 'N' if utm_zone_letter in "XWVUTSRQPN" else 'S'
+
     utm_zone = utm.latlon_to_zone_number(midpoint_lat,midpoint_lon)
     print("  region midpoint lat/lon: %f / %f " %(midpoint_lat,midpoint_lon))
-    print("  UTM zone: %d" % utm_zone)
+    print("  UTM zone: {}{}".format(utm_zone,hemisphere))
     print("")
+
+    # SPECFEM uses positive (+) zone numbers for Northern, negative (-) zone numbers for Southern hemisphere
+    if hemisphere == 'S':
+        utm_zone = - utm_zone
+        print("  Southern hemisphere")
+        print("  using negative zone number: {} (for SPECFEM format)".format(utm_zone))
+        print("")
+
+    # get topography data
+    xyz_file = get_topo(lon_min,lat_min,lon_max,lat_max)
 
     # converting to utm
     utm_file = 'ptopo.utm'
@@ -1313,14 +1478,14 @@ def setup_simulation(lon_min,lat_min,lon_max,lat_max):
 
     # extracts interface data for xmeshfem3D
     # uses file with degree increments to determine dx,dy in degrees, as needed for interfaces.dat
-    nx,ny,dx,dy = topo_extract(xyz_file)
+    nx,ny,dx,dy,interface_region = topo_extract(xyz_file)
 
     # creates parameter files
     # main Par_file
     update_Par_file(dir)
 
     # mesher Mesh_Par_file
-    update_Mesh_Par_file(dir,lon_min,lat_min,lon_max,lat_max,nx,ny,dx,dy,xyz_file)
+    update_Mesh_Par_file(dir,lon_min,lat_min,lon_max,lat_max,nx,ny,dx,dy,interface_region,xyz_file)
 
     print("")
     print("topo output in directory: ",datadir)

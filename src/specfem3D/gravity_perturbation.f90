@@ -61,13 +61,12 @@ contains
 
   use constants, only: IMAIN,IIN_G,myrank,NGLLX,NGLLY,NGLLZ
 
-  use specfem_par, only: NGLOB_AB, NSTEP, NSPEC_AB, mustore, &
+  use specfem_par, only: NGLOB_AB, NSTEP, NSPEC_AB, &
+       rhostore, &
        xstore, ystore, zstore, &
        xigll, yigll, zigll, &
        wxgll, wygll, wzgll, &
        NGNOD, ibool
-
-  use specfem_par_elastic, only: rho_vs
 
   implicit none
 
@@ -174,7 +173,7 @@ contains
 
   do ispec = 1,NSPEC_AB
 
-    rho_elem = rho_vs(:,:,:,ispec)*rho_vs(:,:,:,ispec)/mustore(:,:,:,ispec)
+    rho_elem = rhostore(:,:,:,ispec)
 
     do ia = 1,NGNOD
       iglob = ibool(iax(ia),iay(ia),iaz(ia),ispec)

@@ -66,7 +66,7 @@ You could install GEOCUBIT with administrator privilege (for running script in t
 
 `/usr/bin/python2.7 setup.py install --install-lib=/Library/Python/2.7/site-packages/`
 
-and in addition if you want to run meshing scripts in python (outside of the GUI)   
+and in addition if you want to run meshing scripts in python (outside of the GUI)
 
 ```
 export CUBITDIR=$CUBITHOME

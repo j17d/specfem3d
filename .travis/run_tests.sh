@@ -101,10 +101,12 @@ elif [ "$TESTID" == "14" ]; then
   ./run_this_example.sh
 else
   # default setup
-  # limit time steps for testing
-  sed -i "s:^NSTEP .*:NSTEP    = 200:" DATA/Par_file
-  # shortens output interval to avoid timeouts
-  sed -i "s:^NTSTEP_BETWEEN_OUTPUT_INFO .*:NTSTEP_BETWEEN_OUTPUT_INFO    = 50:" DATA/Par_file
+  if [ -e DATA/Par_file ]; then
+    # limit time steps for testing
+    sed -i "s:^NSTEP .*:NSTEP    = 200:" DATA/Par_file
+    # shortens output interval to avoid timeouts
+    sed -i "s:^NTSTEP_BETWEEN_OUTPUT_INFO .*:NTSTEP_BETWEEN_OUTPUT_INFO    = 50:" DATA/Par_file
+  fi
 
   # more specific directory setups
   # acoustic examples

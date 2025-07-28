@@ -6,12 +6,10 @@ program convert_nonlinear
   implicit none
 
   character(len=256) :: infile,outfile,ch_power,ch_zmax
-  real*8 :: power,zmax,zmin
+  double precision :: power,zmax,zmin
   logical :: calculate_zmax
   integer :: ios,i,j
-  real*8 :: lon,lat,zv
-
-
+  double precision :: lon,lat,zv
 
   call get_command_argument(1,infile)
   call get_command_argument(2,outfile)

@@ -77,7 +77,7 @@ __global__ void compute_coupling_elastic_ac_kernel(field* potential_dot_dot_acou
     jacobianw = coupling_ac_el_jacobian2Dw[INDEX2(NGLL2,igll,iface)];
 
     // acoustic pressure on global point
-    if (gravity ){
+    if (gravity){
       // takes density (from acoustic? element)
       rhol = rhostore[INDEX4_PADDED(NGLLX,NGLLX,NGLLX,i,j,k,ispec)];
 

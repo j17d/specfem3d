@@ -34,6 +34,8 @@
 
   module salton_trough_par
 
+  implicit none
+
   !  Salton Sea Gocad voxet
   integer, parameter :: GOCAD_ST_NU = 638, GOCAD_ST_NV = 219, GOCAD_ST_NW = 76
   double precision, parameter :: &
@@ -71,7 +73,7 @@
   if (myrank == 0) call read_salton_sea_model()
 
   ! broadcast the information read on the main to the nodes
-  call bcast_all_r(vp_array, size(vp_array))
+  call bcast_all_r(vp_array, size(vp_array,kind=4))
 
   end subroutine model_salton_trough_broadcast
 

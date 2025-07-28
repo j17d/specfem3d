@@ -35,22 +35,22 @@
   implicit none
 
   ! Gauss-Lobatto-Legendre points of integration and weights
-  double precision, dimension(NGLLX) :: xigll,wxgll
-  double precision, dimension(NGLLY) :: yigll,wygll
-  double precision, dimension(NGLLZ) :: zigll,wzgll
+  double precision, dimension(NGLLX), intent(out) :: xigll,wxgll
+  double precision, dimension(NGLLY), intent(out) :: yigll,wygll
+  double precision, dimension(NGLLZ), intent(out) :: zigll,wzgll
 
   ! array with derivatives of Lagrange polynomials and precalculated products
-  real(kind=CUSTOM_REAL), dimension(NGLLX,NGLLX) :: hprime_xx,hprimewgll_xx
-  real(kind=CUSTOM_REAL), dimension(NGLLY,NGLLY) :: hprime_yy,hprimewgll_yy
-  real(kind=CUSTOM_REAL), dimension(NGLLZ,NGLLZ) :: hprime_zz,hprimewgll_zz
-  real(kind=CUSTOM_REAL), dimension(NGLLX,NGLLY) :: wgllwgll_xy
-  real(kind=CUSTOM_REAL), dimension(NGLLX,NGLLZ) :: wgllwgll_xz
-  real(kind=CUSTOM_REAL), dimension(NGLLY,NGLLZ) :: wgllwgll_yz
+  real(kind=CUSTOM_REAL), dimension(NGLLX,NGLLX), intent(out) :: hprime_xx,hprimewgll_xx
+  real(kind=CUSTOM_REAL), dimension(NGLLY,NGLLY), intent(out) :: hprime_yy,hprimewgll_yy
+  real(kind=CUSTOM_REAL), dimension(NGLLZ,NGLLZ), intent(out) :: hprime_zz,hprimewgll_zz
+  real(kind=CUSTOM_REAL), dimension(NGLLX,NGLLY), intent(out) :: wgllwgll_xy
+  real(kind=CUSTOM_REAL), dimension(NGLLX,NGLLZ), intent(out) :: wgllwgll_xz
+  real(kind=CUSTOM_REAL), dimension(NGLLY,NGLLZ), intent(out) :: wgllwgll_yz
 
   ! function for calculating derivatives of Lagrange polynomials
   double precision, external :: lagrange_deriv_GLL
 
-  integer i,j,k,i1,i2,j1,j2,k1,k2
+  integer :: i,j,k,i1,i2,j1,j2,k1,k2
 
   ! set up coordinates of the Gauss-Lobatto-Legendre points
   call zwgljd(xigll,wxgll,NGLLX,GAUSSALPHA,GAUSSBETA)

@@ -606,14 +606,25 @@
   ! local parameters
   integer:: iphase
 
-  ! safety check
+  ! runs with the additionally optimized GPU routine
+  ! (combines forward/backward fields in main compute_kernel_acoustic)
   if (.not. GPU_MODE) return
-  ! check
+
+  ! safety check
+  if (SIMULATION_TYPE /= 3) &
+    call exit_MPI(myrank,'routine compute_forces_acoustic_GPU_calling() works only for SIMULATION_TYPE == 3')
+
+  ! checks if for kernel simulation with both, forward & backward fields
+  if (UNDO_ATTENUATION_AND_OR_PML) return                       ! pure elastic / acoustic simulation w/out attenuation
+  if (ELASTIC_SIMULATION .and. ACOUSTIC_SIMULATION) return      ! single domain only - coupling requires switching ordering
+
+  ! safety check
   if (PML_CONDITIONS) call exit_MPI(myrank,'PML conditions for acoustic domains not yet implemented on GPUs')
 
   ! enforces free surface (zeroes potentials at free surface)
-  call acoustic_enforce_free_surf_cuda(Mesh_pointer,STACEY_INSTEAD_OF_FREE_SURFACE,1)
-  if (SIMULATION_TYPE == 3) call acoustic_enforce_free_surf_cuda(Mesh_pointer,STACEY_INSTEAD_OF_FREE_SURFACE,3)
+  ! assumes SIMULATION_TYPE == 3
+  call acoustic_enforce_free_surf_cuda(Mesh_pointer,STACEY_INSTEAD_OF_FREE_SURFACE,1)   ! 1 == forward
+  call acoustic_enforce_free_surf_cuda(Mesh_pointer,STACEY_INSTEAD_OF_FREE_SURFACE,3)   ! 3 == backward
 
   ! distinguishes two runs: for elements on MPI interfaces, and elements within the partitions
   do iphase = 1,2
@@ -634,8 +645,9 @@
 
       ! elastic coupling
       if (ELASTIC_SIMULATION) then
-        call compute_coupling_ac_el_cuda(Mesh_pointer,iphase,num_coupling_ac_el_faces,1) ! 1 == forward
-        if (SIMULATION_TYPE == 3) call compute_coupling_ac_el_cuda(Mesh_pointer,iphase,num_coupling_ac_el_faces,3)
+        ! assumes SIMULATION_TYPE == 3
+        call compute_coupling_ac_el_cuda(Mesh_pointer,iphase,num_coupling_ac_el_faces,1)  ! 1 == forward
+        call compute_coupling_ac_el_cuda(Mesh_pointer,iphase,num_coupling_ac_el_faces,3)  ! 3 == backward
       endif
 
       ! poroelastic coupling
@@ -660,7 +672,7 @@
       ! adds sources
       ! note: we will add all source contributions in the first pass, when iphase == 1
       !       to avoid calling the same routine twice and to check if the source element is an inner/outer element
-      !
+      ! assumes SIMULATION_TYPE == 3
       call compute_add_sources_acoustic_GPU()          ! forward/adjoint sources
       call compute_add_sources_acoustic_backward_GPU() ! backward sources
     endif ! iphase
@@ -680,43 +692,37 @@
                                          request_send_scalar_ext_mesh,request_recv_scalar_ext_mesh)
 
       ! adjoint simulations
-      if (SIMULATION_TYPE == 3) then
-        call transfer_boun_pot_from_device(Mesh_pointer, &
-                                           b_buffer_send_scalar_ext_mesh, &
-                                           3) ! -- 3 == adjoint b_accel
+      ! assumes SIMULATION_TYPE == 3
+      call transfer_boun_pot_from_device(Mesh_pointer, &
+                                         b_buffer_send_scalar_ext_mesh, &
+                                         3) ! -- 3 == adjoint b_accel
 
-        call assemble_MPI_scalar_send_cuda(NPROC, &
-                                           b_buffer_send_scalar_ext_mesh,b_buffer_recv_scalar_ext_mesh, &
-                                           num_interfaces_ext_mesh,max_nibool_interfaces_ext_mesh, &
-                                           nibool_interfaces_ext_mesh, &
-                                           my_neighbors_ext_mesh, &
-                                           b_request_send_scalar_ext_mesh,b_request_recv_scalar_ext_mesh)
-
-      endif
+      call assemble_MPI_scalar_send_cuda(NPROC, &
+                                         b_buffer_send_scalar_ext_mesh,b_buffer_recv_scalar_ext_mesh, &
+                                         num_interfaces_ext_mesh,max_nibool_interfaces_ext_mesh, &
+                                         nibool_interfaces_ext_mesh, &
+                                         my_neighbors_ext_mesh, &
+                                         b_request_send_scalar_ext_mesh,b_request_recv_scalar_ext_mesh)
 
     else
-
       ! waits for send/receive requests to be completed and assembles values
       call assemble_MPI_scalar_write_cuda(NPROC,NGLOB_AB,potential_dot_dot_acoustic, &
                                           Mesh_pointer, &
                                           buffer_recv_scalar_ext_mesh, &
                                           num_interfaces_ext_mesh, &
                                           max_nibool_interfaces_ext_mesh, &
-                                         ! nibool_interfaces_ext_mesh,ibool_interfaces_ext_mesh, &
                                           request_send_scalar_ext_mesh,request_recv_scalar_ext_mesh, &
-                                          1)
+                                          1)  ! 1 == forward
 
       ! adjoint simulations
-      if (SIMULATION_TYPE == 3) then
-        call assemble_MPI_scalar_write_cuda(NPROC,NGLOB_AB,b_potential_dot_dot_acoustic, &
-                                            Mesh_pointer, &
-                                            b_buffer_recv_scalar_ext_mesh, &
-                                            num_interfaces_ext_mesh, &
-                                            max_nibool_interfaces_ext_mesh, &
-                                           ! nibool_interfaces_ext_mesh,ibool_interfaces_ext_mesh, &
-                                            b_request_send_scalar_ext_mesh,b_request_recv_scalar_ext_mesh, &
-                                            3)
-      endif
+      ! assumes SIMULATION_TYPE == 3
+      call assemble_MPI_scalar_write_cuda(NPROC,NGLOB_AB,b_potential_dot_dot_acoustic, &
+                                          Mesh_pointer, &
+                                          b_buffer_recv_scalar_ext_mesh, &
+                                          num_interfaces_ext_mesh, &
+                                          max_nibool_interfaces_ext_mesh, &
+                                          b_request_send_scalar_ext_mesh,b_request_recv_scalar_ext_mesh, &
+                                          3)  ! 3 == backward
     endif
   enddo
 
@@ -741,9 +747,10 @@
 
   call kernel_3_acoustic_cuda(Mesh_pointer,deltatover2,b_deltatover2,0) ! 0 == both
 
-! enforces free surface (zeroes potentials at free surface)
-  call acoustic_enforce_free_surf_cuda(Mesh_pointer,STACEY_INSTEAD_OF_FREE_SURFACE,1)
-  if (SIMULATION_TYPE == 3) call acoustic_enforce_free_surf_cuda(Mesh_pointer,STACEY_INSTEAD_OF_FREE_SURFACE,3)
+  ! enforces free surface (zeroes potentials at free surface)
+  ! assumes SIMULATION_TYPE == 3
+  call acoustic_enforce_free_surf_cuda(Mesh_pointer,STACEY_INSTEAD_OF_FREE_SURFACE,1)   ! 1 == forward
+  call acoustic_enforce_free_surf_cuda(Mesh_pointer,STACEY_INSTEAD_OF_FREE_SURFACE,3)   ! 3 == backward
 
   end subroutine compute_forces_acoustic_GPU_calling
 

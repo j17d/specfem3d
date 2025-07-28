@@ -9,11 +9,11 @@ program cmt3d_flexwin
 
   character(len=150) :: par_file
   integer :: ier, i
-  real*8, dimension(:,:), allocatable :: A
-  real*8, dimension(:), allocatable :: b,dm
+  double precision, dimension(:,:), allocatable :: A
+  double precision, dimension(:), allocatable :: b,dm
 
   integer :: yr,mo,jda,ho,mi
-  real*8:: sec, t_cmt, hdur, elat, elon, depth, moment_tensor(NM)
+  double precision :: sec, t_cmt, hdur, elat, elon, depth, moment_tensor(NM)
 
 
   ! read and print parameters

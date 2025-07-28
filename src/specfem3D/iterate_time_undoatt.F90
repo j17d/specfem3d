@@ -33,6 +33,7 @@
   use specfem_par_elastic
   use specfem_par_poroelastic
   use specfem_par_movie
+  use specfem_par_coupling, only: do_save_coupling_wavefield
 
   use gravity_perturbation, only: gravity_timeseries, GRAVITY_SIMULATION
 
@@ -56,7 +57,7 @@
   ! timing
   double precision, external :: wtime
 #ifdef VTK_VIS
-  logical :: do_restart = .false.
+  logical, parameter :: do_restart = .false.
 #endif
 
   ! checks if anything to do
@@ -236,9 +237,12 @@
   if (RECIPROCITY_AND_KH_INTEGRAL) open(unit=158,file='KH_integral',status='unknown')
 
   ! open the file in which we will store the energy curve
-  if (OUTPUT_ENERGY .and. myrank == 0) &
+  if (OUTPUT_ENERGY .and. myrank == 0) then
     open(unit=IOUT_ENERGY,file=trim(OUTPUT_FILES)//'energy.dat',status='unknown',action='write')
-
+    ! format: #timestep #kinetic_energy #potential_energy #total_energy
+    write(IOUT_ENERGY,*) "#timestep  #total_energy  #kinetic_energy  #potential_energy"
+    flush(IOUT_ENERGY)
+  endif
 
 #ifdef VTK_VIS
   ! restart: goto starting point
@@ -369,6 +373,9 @@
 
         ! outputs movie files
         if (MOVIE_SIMULATION) call write_movie_output()
+
+        ! for coupling with specfem injection technique
+        if (do_save_coupling_wavefield) call store_coupling_points_wavefield()
 
         ! first step of noise tomography, i.e., save a surface movie at every time step
         ! modified from the subroutine 'write_movie_surface'

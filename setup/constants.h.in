@@ -230,11 +230,32 @@
 !!-----------------------------------------------------------
 
 ! power (exponent) used for the PML damping profile
-  double precision, parameter :: NPOWER = 1.d0
+  double precision, parameter :: CPML_NPOWER = 1.d0
 
 ! C-PML theoretical reflection coefficient
 ! (INRIA research report section 6.1:  http://hal.inria.fr/docs/00/07/32/19/PDF/RR-3471.pdf)
   double precision, parameter :: CPML_Rcoef = 0.001d0
+
+! C-PML scaling factors K
+! the SPECFEM implementation uses
+!   K_x = K_MIN + (K_MAX - ONE) * dist
+! Xie et al. (2014) paper formulates
+!   K_x = K0 + K1 * x/L = K0 + K1 * dist
+! Thus, K0 == K_MIN and K1 == K_MAX - 1 or vice versa K_MAX == K1 + 1
+!
+! As mentioned in Xie et al. (2014, page 1729), as a default and for 2D cases they use
+!   K0 == 1 and K1 == 0 -> that is equal to K_MIN == 1 and K_MAX == 1
+! and for distorted 3D meshes they use
+!   K0 == 4 and K1 == 4 -> that is equal to K_MIN == 4 and K_MAX == 5
+  double precision, parameter :: CPML_K_MIN = 1.d0    ! see also Gedney page 8.11
+  double precision, parameter :: CPML_K_MAX = 1.d0
+
+! C-PML convolution
+! by default, a second-order convolution scheme is used, turn this flag on for first-order scheme
+  logical,parameter :: CPML_FIRST_ORDER_CONVOLUTION = .false.
+
+! time scheme factor (see Xie et al. (2014), p. 1728, suggests 0 <= theta <= 1/4)
+  double precision, parameter :: CPML_THETA = 1.d0/8.d0
 
 ! flags for the seven CPML regions
   integer, parameter :: CPML_X_ONLY = 1
@@ -269,9 +290,10 @@
 !!-----------------------------------------------------------
 
 ! add support for AXISEM and FK as external codes, not only DSM
-  integer, parameter :: INJECTION_TECHNIQUE_IS_DSM    = 1
-  integer, parameter :: INJECTION_TECHNIQUE_IS_AXISEM = 2
-  integer, parameter :: INJECTION_TECHNIQUE_IS_FK     = 3
+  integer, parameter :: INJECTION_TECHNIQUE_IS_DSM        = 1
+  integer, parameter :: INJECTION_TECHNIQUE_IS_AXISEM     = 2
+  integer, parameter :: INJECTION_TECHNIQUE_IS_FK         = 3
+  integer, parameter :: INJECTION_TECHNIQUE_IS_SPECFEM    = 4
 
 ! Big storage version of coupling with DSM (will always set to .false. after the light storage version will be validated)
   logical, parameter :: old_DSM_coupling_from_Vadim = .true.
@@ -284,8 +306,8 @@
 
 ! some old tests (currently unstable; do not remove them though, we might fix this one day)
   integer, parameter :: Ntime_step_dsm = 100
-  integer, parameter :: IIN_veloc_dsm = 51, IIN_tract_dsm = 52
-  integer, parameter :: IIN_displ_axisem = 54
+  integer, parameter :: IIN_veloc_dsm = 59, IIN_tract_dsm = 60
+  integer, parameter :: IIN_displ_axisem = 61
 
 !!-----------------------------------------------------------
 !!

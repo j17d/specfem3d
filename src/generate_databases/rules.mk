@@ -68,6 +68,7 @@ generate_databases_OBJECTS = \
 	$O/model_gll.gen.o \
 	$O/model_salton_trough.gen.o \
 	$O/model_tomography.gen.o \
+	$O/model_vs30.gen.o \
 	$O/pml_set_local_dampingcoeff.gen.o \
 	$O/read_parameters.gen.o \
 	$O/read_partition_files.gen.o \
@@ -92,7 +93,7 @@ generate_databases_MODULES = \
 	$(FC_MODDIR)/model_sep_mod.$(FC_MODEXT) \
 	$(FC_MODDIR)/model_tomography_par.$(FC_MODEXT) \
 	$(FC_MODDIR)/salton_trough_par.$(FC_MODEXT) \
-	$(FC_MODDIR)/wavefield_discontinuity_generate_databases.$(FC_MODEXT) \
+	$(FC_MODDIR)/wavefield_discontinuity_db.$(FC_MODEXT) \
 	$(EMPTY_MACRO)
 
 

@@ -33,11 +33,12 @@
 
   implicit none
 
-  logical :: ignore_junk
-  integer :: iunit
-  integer :: value_to_read
-  integer :: ier
-  character(len=*) :: name
+  logical, intent(in) :: ignore_junk
+  integer, intent(in) :: iunit
+  integer, intent(inout) :: value_to_read
+  integer, intent(inout) :: ier
+  character(len=*), intent(in) :: name
+  ! local parameters
   character(len=MAX_STRING_LEN) :: string_read
 
   call unused_string(name)
@@ -52,17 +53,65 @@
 
 !--------------------
 
+  subroutine read_value_integer_mesh_optional(iunit, value_to_read, name, ier)
+
+! reads an optional integer parameter value if found by name
+
+  use constants, only: MAX_STRING_LEN
+
+  implicit none
+
+  integer, intent(in) :: iunit
+  integer, intent(inout) :: value_to_read
+  character(len=*), intent(in) :: name
+  integer, intent(inout) :: ier
+  ! local parameters
+  character(len=MAX_STRING_LEN) :: string_read
+  integer :: index_equal_sign
+
+  ! reads full line (with parameter name)
+  call read_next_line(iunit,.false.,string_read,ier)
+  if (ier /= 0) return
+
+  ! debug
+  !print *,'optional line: ***',trim(string_read),'*** integer name index: ',index(string_read,trim(name))
+
+  ! reads parameter value if current line contains name string
+  if (index(string_read,trim(name)) > 0) then
+    ! suppress leading parameter name (up to the first equal sign, included)
+    index_equal_sign = index(string_read,'=')
+    if (index_equal_sign <= 1 .or. index_equal_sign == len_trim(string_read)) then
+      print *,'Error reading Mesh_Par_file of optional parameter ',trim(name),' in line: ',trim(string_read)
+      stop 'Error incorrect syntax detected in Mesh_Par_file'
+    else
+      string_read = string_read((index_equal_sign + 1):len_trim(string_read))
+    endif
+
+    ! reads parameter value
+    read(string_read,*,iostat=ier) value_to_read
+
+  else
+    ! line contains another new parameter
+    ! reverts back file pointer to previous line for the next read statements
+    backspace(iunit)
+  endif
+
+  end subroutine read_value_integer_mesh_optional
+
+!--------------------
+
   subroutine read_value_dble_precision_mesh(iunit,ignore_junk,value_to_read, name, ier)
 
   use constants, only: MAX_STRING_LEN
 
   implicit none
 
-  logical :: ignore_junk
-  integer :: iunit
-  double precision :: value_to_read
-  integer :: ier
-  character(len=*) :: name
+  logical, intent(in) :: ignore_junk
+  integer, intent(in) :: iunit
+  double precision, intent(inout) :: value_to_read
+  integer, intent(inout) :: ier
+  character(len=*), intent(in) :: name
+  ! local parameters
   character(len=MAX_STRING_LEN) :: string_read
 
   call unused_string(name)
@@ -83,11 +132,12 @@
 
   implicit none
 
-  logical :: ignore_junk
-  logical :: value_to_read
-  integer :: iunit
-  integer :: ier
-  character(len=*) :: name
+  logical, intent(in) :: ignore_junk
+  logical, intent(inout) :: value_to_read
+  integer, intent(in) :: iunit
+  integer, intent(inout) :: ier
+  character(len=*), intent(in) :: name
+  ! local parameters
   character(len=MAX_STRING_LEN) :: string_read
 
   call unused_string(name)
@@ -102,17 +152,65 @@
 
 !--------------------
 
+  subroutine read_value_logical_mesh_optional(iunit, value_to_read, name, ier)
+
+! reads an optional parameter value if found by name
+
+  use constants, only: MAX_STRING_LEN
+
+  implicit none
+
+  logical, intent(inout) :: value_to_read
+  integer, intent(in) :: iunit
+  integer, intent(inout) :: ier
+  character(len=*), intent(in) :: name
+  ! local parameters
+  character(len=MAX_STRING_LEN) :: string_read
+  integer :: index_equal_sign
+
+  ! reads full line (with parameter name)
+  call read_next_line(iunit,.false.,string_read,ier)
+  if (ier /= 0) return
+
+  ! debug
+  !print *,'optional line: ***',trim(string_read),'*** logical name index: ',index(string_read,trim(name))
+
+  ! reads parameter value if current line contains name string
+  if (index(string_read,trim(name)) > 0) then
+    ! suppress leading parameter name (up to the first equal sign, included)
+    index_equal_sign = index(string_read,'=')
+    if (index_equal_sign <= 1 .or. index_equal_sign == len_trim(string_read)) then
+      print *,'Error reading Mesh_Par_file of optional parameter ',trim(name),' in line: ',trim(string_read)
+      stop 'Error incorrect syntax detected in Mesh_Par_file'
+    else
+      string_read = string_read((index_equal_sign + 1):len_trim(string_read))
+    endif
+
+    ! reads parameter value
+    read(string_read,*,iostat=ier) value_to_read
+
+  else
+    ! line contains another new parameter
+    ! reverts back file pointer to previous line for the next read statements
+    backspace(iunit)
+  endif
+
+  end subroutine read_value_logical_mesh_optional
+
+!--------------------
+
   subroutine read_value_string_mesh(iunit,ignore_junk,value_to_read, name, ier)
 
   use constants, only: MAX_STRING_LEN
 
   implicit none
 
-  logical :: ignore_junk
-  integer :: iunit
-  character(len=*) :: value_to_read
-  integer :: ier
-  character(len=*) :: name
+  logical, intent(in) :: ignore_junk
+  integer, intent(in) :: iunit
+  character(len=*), intent(inout) :: value_to_read
+  integer, intent(inout) :: ier
+  character(len=*), intent(in) :: name
+  ! local parameters
   character(len=MAX_STRING_LEN) :: string_read
 
   call unused_string(name)
@@ -134,11 +232,11 @@
 
   implicit none
 
-  logical :: ignore_junk
-  integer :: iunit
-  integer :: value_to_read
-  integer :: ier
-  character(len=*) :: name
+  logical, intent(in) :: ignore_junk
+  integer, intent(in) :: iunit
+  integer, intent(inout) :: value_to_read
+  integer, intent(inout) :: ier
+  character(len=*), intent(in) :: name
   ! local parameters
   character(len=MAX_STRING_LEN) :: string_read
   character(len=MAX_STRING_LEN) :: value_read
@@ -186,7 +284,7 @@
   logical :: ignore_junk
   integer :: iunit
   integer :: ier
-  character(len=*) :: name
+  character(len=*), intent(in) :: name
   ! local parameters
   character(len=MAX_STRING_LEN) :: string_read
 
@@ -233,6 +331,7 @@
   double precision :: orig_x_interface,orig_y_interface
   double precision :: spacing_x_interface,spacing_y_interface
   character(len=MAX_STRING_LEN) :: interface_file
+  ! local parameters
   character(len=MAX_STRING_LEN) :: string_read
 
   ier = 0
@@ -490,8 +589,9 @@
     is_numeric = .true.
   endif
 
-  end function
+  end function is_numeric
 
+!--------------------
 
   logical function is_digit_alpha(char)
 
@@ -507,7 +607,7 @@
     is_digit_alpha = .true.
   endif
 
-  end function
+  end function is_digit_alpha
 
 
 !--------------------
@@ -547,9 +647,11 @@
 
   implicit none
 
-  integer :: iunit,ier
-  logical :: suppress_junk
-  character(len=MAX_STRING_LEN) :: string_read
+  integer,intent(in) :: iunit
+  logical,intent(in) :: suppress_junk
+  character(len=MAX_STRING_LEN),intent(inout) :: string_read
+  integer,intent(out) :: ier
+  ! local parameters
   integer :: index_equal_sign
 
   ier = 0
@@ -560,25 +662,25 @@
       stop 'Error while reading parameter file Mesh_Par_file'
     endif
 
-! suppress leading white spaces, if any
-    string_read = adjustl(string_read)
+    ! suppress leading white spaces, if any
+    string_read = trim(adjustl(string_read))
 
-! suppress trailing carriage return (ASCII code 13) if any (e.g. if input text file coming from Windows/DOS)
+    ! suppress trailing carriage return (ASCII code 13) if any (e.g. if input text file coming from Windows/DOS)
     if (index(string_read,achar(13)) > 0) string_read = string_read(1:index(string_read,achar(13))-1)
 
-! exit loop when we find the first line that is not a comment or a white line
+    ! exit loop when we find the first line that is not a comment or a white line
     if (len_trim(string_read) == 0) cycle
     if (string_read(1:1) /= '#') exit
   enddo
 
-! suppress trailing white spaces, if any
+  ! suppress trailing white spaces, if any
   string_read = string_read(1:len_trim(string_read))
 
-! suppress trailing comments, if any
+  ! suppress trailing comments, if any
   if (index(string_read,'#') > 0) string_read = string_read(1:index(string_read,'#')-1)
 
   if (suppress_junk) then
-! suppress leading junk (up to the first equal sign, included)
+    ! suppress leading junk (up to the first equal sign, included)
     index_equal_sign = index(string_read,'=')
     if (index_equal_sign <= 1 .or. index_equal_sign == len_trim(string_read)) then
       print *,'Error reading Mesh_Par_file line: ',trim(string_read)
@@ -588,7 +690,7 @@
     endif
   endif
 
-! suppress leading and trailing white spaces again, if any, after having suppressed the leading junk
+  ! suppress leading and trailing white spaces again, if any, after having suppressed the leading junk
   string_read = adjustl(string_read)
   string_read = string_read(1:len_trim(string_read))
 
@@ -632,7 +734,7 @@
 ! dummy subroutine to avoid warnings about variable not used in other subroutines
   subroutine unused_string(s)
 
-  character(len=*) s
+  character(len=*), intent(in) :: s
 
   if (len(s) == 1) continue
 

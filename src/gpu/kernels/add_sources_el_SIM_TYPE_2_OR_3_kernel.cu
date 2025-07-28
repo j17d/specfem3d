@@ -29,9 +29,7 @@
 
 
 __global__ void add_sources_el_SIM_TYPE_2_OR_3_kernel(realw* accel,
-                                                      int nrec,
                                                       int it,
-                                                      int NSTEP_BETWEEN_ADJSRC,
                                                       field* source_adjoint,
                                                       realw* xir_store,
                                                       realw* etar_store,
@@ -51,6 +49,7 @@ __global__ void add_sources_el_SIM_TYPE_2_OR_3_kernel(realw* accel,
       int i = threadIdx.x;
       int j = threadIdx.y;
       int k = threadIdx.z;
+
       int iglob = d_ibool[INDEX4_PADDED(NGLLX,NGLLX,NGLLX,i,j,k,ispec)]-1;
 
       realw hxir    = xir_store[INDEX2(NGLLX,i,irec_local)];
@@ -59,13 +58,20 @@ __global__ void add_sources_el_SIM_TYPE_2_OR_3_kernel(realw* accel,
 
       realw lagrange =   hxir * hetar * hgammar ;
 
+      realw source_adj_x = (realw) source_adjoint[INDEX3(NDIM,nadj_rec_local,0,irec_local,it)];
+      realw source_adj_y = (realw) source_adjoint[INDEX3(NDIM,nadj_rec_local,1,irec_local,it)];
+      realw source_adj_z = (realw) source_adjoint[INDEX3(NDIM,nadj_rec_local,2,irec_local,it)];
+
+      realw stf_x = source_adj_x * lagrange;
+      realw stf_y = source_adj_y * lagrange;
+      realw stf_z = source_adj_z * lagrange;
+
       // atomic operations are absolutely necessary for correctness!
-      atomicAdd(&accel[0+3*iglob],source_adjoint[INDEX3(NDIM,nadj_rec_local,0,irec_local,it)]*lagrange);
-      atomicAdd(&accel[1+3*iglob],source_adjoint[INDEX3(NDIM,nadj_rec_local,1,irec_local,it)]*lagrange);
-      atomicAdd(&accel[2+3*iglob],source_adjoint[INDEX3(NDIM,nadj_rec_local,2,irec_local,it)]*lagrange);
+      atomicAdd(&accel[iglob*3],stf_x);
+      atomicAdd(&accel[iglob*3+1],stf_y);
+      atomicAdd(&accel[iglob*3+2],stf_z);
     } // ispec_is_elastic
   }
-
 }
 
 

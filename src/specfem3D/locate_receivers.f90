@@ -39,14 +39,15 @@
                          xi_receiver,eta_receiver,gamma_receiver,nu_rec, &
                          station_name,network_name, &
                          stlat,stlon,stbur, &
-                         x_target_station,y_target_station,z_target_station
+                         x_target_station,y_target_station,z_target_station, &
+                         NPROC
   ! PML
   use pml_par, only: is_CPML
 
   implicit none
 
   ! input receiver file name
-  character(len=*) :: rec_filename
+  character(len=*), intent(in) :: rec_filename
 
   ! receivers
   double precision,intent(in) :: utm_x_source,utm_y_source
@@ -55,7 +56,7 @@
   double precision, allocatable, dimension(:) :: x_target,y_target,z_target
   double precision, allocatable, dimension(:) :: x_found,y_found,z_found
 
-  integer :: irec,ier,ispec
+  integer :: irec,ier,ispec,islice
 
   ! timer MPI
   double precision, external :: wtime
@@ -283,6 +284,53 @@
   call bcast_all_dp(nu_rec,NDIM*NDIM*nrec)
   call bcast_all_dp(final_distance,nrec)
 
+  ! checks if we got valid receiver elements
+  ! locate point might return a zero ispec if point outside/above mesh
+  do irec = 1,nrec
+    ! slice the receiver is in
+    islice = islice_selected_rec(irec)
+
+    ! checks slice
+    if (islice < 0 .or. islice > NPROC-1) then
+      print *,'Error locating station # ',irec,'    ',trim(network_name(irec)),'    ',trim(station_name(irec))
+      print *,'  found in an invalid slice: ',islice
+      call exit_MPI(myrank,'Error something is wrong with the slice number of receiver')
+    endif
+
+    ! checks found element
+    if (myrank == islice_selected_rec(irec)) then
+      ! element index
+      ispec = ispec_selected_rec(irec)
+      ! checks if valid
+      if (ispec < 1 .or. ispec > NSPEC_AB) then
+        ! invalid element
+        print *,'Error locating station # ',irec,'    ',trim(network_name(irec)),'    ',trim(station_name(irec))
+        if (SUPPRESS_UTM_PROJECTION) then
+          print *,'  original x: ',sngl(stutm_x(irec))
+          print *,'  original y: ',sngl(stutm_y(irec))
+        else
+          print *,'  original UTM x: ',sngl(stutm_x(irec))
+          print *,'  original UTM y: ',sngl(stutm_y(irec))
+        endif
+        if (USE_SOURCES_RECEIVERS_Z) then
+          print *,'  original z: ',sngl(stbur(irec))
+        else
+          print *,'  original depth: ',sngl(stbur(irec)),' m'
+        endif
+        print *,'  found in an invalid element: slice         :',islice_selected_rec(irec)
+        print *,'                               ispec         :',ispec_selected_rec(irec),'out of ',NSPEC_AB
+        print *,'                               domain        :',idomain(irec)
+        print *,'                               xi/eta/gamma  :',xi_receiver(irec),eta_receiver(irec),gamma_receiver(irec)
+        print *,'                               final_distance:',final_distance(irec)
+        print *
+        print *,'Please check your receiver position in file DATA/STATIONS, and move it closer the mesh geometry - exiting...'
+        print *
+        call exit_MPI(myrank,'Error locating receiver')
+      endif
+    endif
+  enddo
+  call synchronize_all()
+
   ! warning if receiver in C-PML region
   allocate(is_CPML_rec(nrec),stat=ier)
   if (ier /= 0) call exit_MPI(myrank,'Error allocating is_CPML_rec array')
@@ -298,6 +346,7 @@
   do irec = 1,nrec
     if (islice_selected_rec(irec) == myrank) then
       ispec = ispec_selected_rec(irec)
+      ! check if PML element
       if (is_CPML(ispec)) then
         is_CPML_rec(irec) = .true.
         ! debug
@@ -315,8 +364,8 @@
 
       ! checks stations location
       if (final_distance(irec) == HUGEVAL) then
-        write(IMAIN,*) 'error locating station # ',irec,'    ',trim(network_name(irec)),'    ',trim(station_name(irec))
-        call exit_MPI(myrank,'error locating receiver')
+        write(IMAIN,*) 'Error locating station # ',irec,'    ',trim(network_name(irec)),'    ',trim(station_name(irec))
+        call exit_MPI(myrank,'Error locating receiver')
       endif
 
       ! limits user output if too many receivers

@@ -418,7 +418,7 @@ contains
   real(kind=CUSTOM_REAL) :: S1,S2,S3,Sigma(6)
   integer :: n1,n2,n3,ier,recordlength
   integer :: nspec_all,nglob_all
-  logical :: LOAD_STRESSDROP = .false.
+  logical, parameter :: LOAD_STRESSDROP = .false.
 
   NAMELIST / INIT_STRESS / S1,S2,S3,n1,n2,n3
   NAMELIST /STRESS_TENSOR / Sigma
@@ -862,8 +862,8 @@ contains
 
   real(kind=CUSTOM_REAL), allocatable, intent(inout) :: xyzv(:,:) ! data read from the input file
   character(len=MAX_STRING_LEN), intent(in)          :: filename
-  integer   :: num_lines, i, ier
-  integer   :: IIN_2D = 300
+  integer :: num_lines, i, ier
+  integer, parameter :: IIN_2D = 300
 
 
   open(unit=IIN_2D,file=IN_DATA_FILES(1:len_trim(IN_DATA_FILES))//trim(filename),status='old',iostat=ier)
@@ -2151,11 +2151,14 @@ contains
   integer :: nFload
 !  real(kind=CUSTOM_REAL), dimension(:,:), allocatable :: init_vel
   integer :: nglob,ier
-  integer :: InputStateLaw = 1 ! By default using aging law: 1 = ageing law, 2 = slip law
+  integer :: InputStateLaw
 
   NAMELIST / RSF / V0,f0,a,b,L,V_init,theta_init,nV0,nf0,na,nb,nL,nV_init,ntheta_init, &
                    C,T,nC,nForcedRup,Vw,fw,nVw,nfw,InputStateLaw
   NAMELIST / ASP / Fload,nFload
+
+  ! By default using aging law: 1 = ageing law, 2 = slip law
+  InputStateLaw = 1
 
   nglob = size(coord,2)
 
@@ -3308,7 +3311,7 @@ contains
     bc => faults(ifault)
 
     ! copies data back to CPU
-    call transfer_fault_data_to_host(Fault_pointer, ifault-1, bc%nspec, bc%nglob, bc%D, bc%V, bc%T)
+    call transfer_fault_data_to_host(Fault_pointer, ifault-1, bc%nglob, bc%D, bc%V, bc%T)
 
     ! copies dataT back to CPU
     call transfer_dataT_to_host(Fault_pointer, ifault-1, bc%dataT%dat, it)

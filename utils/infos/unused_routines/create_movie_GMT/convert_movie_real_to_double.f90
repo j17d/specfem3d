@@ -43,7 +43,7 @@ program convert_movie_real_to_double
 
   ! movie files stored by solver
   real(kind=CUSTOM_REAL), dimension(:,:), allocatable :: store_val
-  real*8, dimension(:,:), allocatable :: store_val_double
+  double precision, dimension(:,:), allocatable :: store_val_double
 
 ! parameters read from parameter file
   integer :: NER_SEDIM,NER_BASEMENT_SEDIM,NER_16_BASEMENT, &

@@ -138,7 +138,7 @@ BOTTOM_FREE_SURFACE             = .false.
 # but requires disk space for temporary storage, and uses a significant amount of memory used as buffers for temporary storage.
 # When that option is on the second parameter indicates how often the code dumps restart files to disk (if in doubt, use something between 100 and 1000).
 UNDO_ATTENUATION_AND_OR_PML     = .false.
-NT_DUMP_ATTENUATION             = 500
+NT_DUMP_ATTENUATION             = 100
 
 #-----------------------------------------------------------
 #

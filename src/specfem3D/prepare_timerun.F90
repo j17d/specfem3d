@@ -34,6 +34,10 @@
   use specfem_par_poroelastic
   use specfem_par_movie
 
+  !! solving wavefield discontinuity problem with non-split-node scheme
+  use wavefield_discontinuity_solver, only: &
+               prepare_timerun_wavefield_discontinuity
+
   implicit none
 
   ! local parameters
@@ -80,6 +84,9 @@
 
   ! Stacey boundaries
   call prepare_timerun_stacey()
+
+  ! wavefield discontinuity
+  call prepare_timerun_wavefield_discontinuity()
 
   ! prepares ADJOINT simulations
   call prepare_timerun_adjoint()
@@ -409,9 +416,9 @@
   endif
 
   ! distinguish between single and double precision for reals
-  deltat = real(DT,kind=CUSTOM_REAL)
-  deltatover2 = deltat/2._CUSTOM_REAL
-  deltatsqover2 = deltat*deltat/2._CUSTOM_REAL
+  deltat = real(DT, kind=CUSTOM_REAL)
+  deltatover2 = real(0.5d0*DT, kind=CUSTOM_REAL)
+  deltatsqover2 = real(0.5d0*DT*DT, kind=CUSTOM_REAL)
 
   ! adjoint runs: timing
   if (SIMULATION_TYPE == 3) then
@@ -424,9 +431,9 @@
       ! reconstructed wavefield moves backward in time from last snapshot
       ! backward/reconstructed wavefields: time stepping is in time-reversed sense
       ! (negative time increments)
-      b_deltat = - real(DT,kind=CUSTOM_REAL)
-      b_deltatover2 = b_deltat/2._CUSTOM_REAL
-      b_deltatsqover2 = b_deltat*b_deltat/2._CUSTOM_REAL
+      b_deltat = - real(DT, kind=CUSTOM_REAL)
+      b_deltatover2 = - real(0.5d0*DT, kind=CUSTOM_REAL)
+      b_deltatsqover2 = real(0.5d0*DT*DT, kind=CUSTOM_REAL)
     endif
   else
     ! will not be used, but initialized
@@ -593,7 +600,7 @@
 
   use constants, only: IMAIN,NGLLX,NGLLY,NGLLZ,NDIM
 
-  use specfem_par, only: myrank,deltat,NSPEC_AB,SIMULATION_TYPE, &
+  use specfem_par, only: myrank,DT,NSPEC_AB,SIMULATION_TYPE, &
     ELASTIC_SIMULATION,ACOUSTIC_SIMULATION, &
     UNDO_ATTENUATION_AND_OR_PML,PML_CONDITIONS,SAVE_MESH_FILES
 
@@ -757,10 +764,10 @@
   enddo
 
   ! useful constants
-  deltatpow2 = deltat**2
-  deltatpow3 = deltat**3
-  deltatpow4 = deltat**4
-  deltat_half = deltat * 0.5_CUSTOM_REAL
+  deltatpow2 = real(DT*DT, kind=CUSTOM_REAL)
+  deltatpow3 = real(DT*DT*DT, kind=CUSTOM_REAL)
+  deltatpow4 = real(DT*DT*DT*DT, kind=CUSTOM_REAL)
+  deltat_half = real(0.5d0*DT, kind=CUSTOM_REAL)
 
   ! arrays for coefficients
   allocate(pml_convolution_coef_alpha(9,NGLLX,NGLLY,NGLLZ,NSPEC_CPML), &
@@ -925,9 +932,9 @@
 
     subroutine compute_convolution_coef(bb,coef0,coef1,coef2)
 
-    use constants, only: CUSTOM_REAL
+    use constants, only: CUSTOM_REAL,CPML_FIRST_ORDER_CONVOLUTION
     use specfem_par, only: deltat
-    use pml_par, only: FIRST_ORDER_CONVOLUTION,min_distance_between_CPML_parameter
+    use pml_par, only: min_distance_between_CPML_parameter
 
     implicit none
 
@@ -940,13 +947,13 @@
     ! permanent factors (avoids divisions which are computationally expensive)
     ! note: compilers precompute these constant factors (thus division in these statemenets are still fine)
     real(kind=CUSTOM_REAL),parameter :: ONE_OVER_8 = 0.125_CUSTOM_REAL
-    real(kind=CUSTOM_REAL),parameter :: ONE_OVER_48 = 1._CUSTOM_REAL / 48._CUSTOM_REAL
+    real(kind=CUSTOM_REAL),parameter :: ONE_OVER_48 = real(1.d0/48.d0, kind=CUSTOM_REAL)
     !real(kind=CUSTOM_REAL),parameter :: ONE_OVER_128 = 0.0078125_CUSTOM_REAL
-    real(kind=CUSTOM_REAL),parameter :: ONE_OVER_384 = 1._CUSTOM_REAL / 384._CUSTOM_REAL
+    real(kind=CUSTOM_REAL),parameter :: ONE_OVER_384 = real(1.d0/384.d0, kind=CUSTOM_REAL)
 
-    real(kind=CUSTOM_REAL),parameter :: FACTOR_A = 3._CUSTOM_REAL / 8._CUSTOM_REAL
-    real(kind=CUSTOM_REAL),parameter :: FACTOR_B = 7._CUSTOM_REAL / 48._CUSTOM_REAL
-    real(kind=CUSTOM_REAL),parameter :: FACTOR_C = 5._CUSTOM_REAL / 128._CUSTOM_REAL
+    real(kind=CUSTOM_REAL),parameter :: FACTOR_A = real(3.d0/8.d0, kind=CUSTOM_REAL)
+    real(kind=CUSTOM_REAL),parameter :: FACTOR_B = real(7.d0/48.d0, kind=CUSTOM_REAL)
+    real(kind=CUSTOM_REAL),parameter :: FACTOR_C = real(5.d0/128.d0, kind=CUSTOM_REAL)
 
     ! unused
     !real(kind=CUSTOM_REAL),parameter :: ONE_OVER_12 = 1._CUSTOM_REAL / 12._CUSTOM_REAL
@@ -994,7 +1001,7 @@
     coef0 = temp*temp
 
     if (abs(bb) >= min_distance_between_CPML_parameter) then
-      if (FIRST_ORDER_CONVOLUTION) then
+      if (CPML_FIRST_ORDER_CONVOLUTION) then
         ! first-order scheme
         coef1 = (1._CUSTOM_REAL - coef0) / bb
         coef2 = 0._CUSTOM_REAL
@@ -1011,7 +1018,7 @@
       endif
     else
       ! approximation for small beta values
-      if (FIRST_ORDER_CONVOLUTION) then
+      if (CPML_FIRST_ORDER_CONVOLUTION) then
         coef1 = deltat
         coef2 = 0._CUSTOM_REAL
       else
@@ -1098,10 +1105,10 @@
       endif
 
       if (APPROXIMATE_HESS_KL) then
-        hess_kl(:,:,:,:)   = 0._CUSTOM_REAL
+        hess_kl(:,:,:,:)       = 0._CUSTOM_REAL
         hess_rho_kl(:,:,:,:)   = 0._CUSTOM_REAL
-        hess_mu_kl(:,:,:,:)   = 0._CUSTOM_REAL
-        hess_kappa_kl(:,:,:,:)   = 0._CUSTOM_REAL
+        hess_mu_kl(:,:,:,:)    = 0._CUSTOM_REAL
+        hess_kappa_kl(:,:,:,:) = 0._CUSTOM_REAL
       endif
 
       ! reconstructed/backward elastic wavefields
@@ -1120,9 +1127,9 @@
       kappa_ac_kl(:,:,:,:) = 0._CUSTOM_REAL
 
       if (APPROXIMATE_HESS_KL) then
-         hess_ac_kl(:,:,:,:)   = 0._CUSTOM_REAL
+         hess_ac_kl(:,:,:,:)       = 0._CUSTOM_REAL
          hess_rho_ac_kl(:,:,:,:)   = 0._CUSTOM_REAL
-         hess_kappa_ac_kl(:,:,:,:)   = 0._CUSTOM_REAL
+         hess_kappa_ac_kl(:,:,:,:) = 0._CUSTOM_REAL
       endif
 
       ! reconstructed/backward acoustic potentials
@@ -1134,11 +1141,11 @@
 
     ! poroelastic domain
     if (POROELASTIC_SIMULATION) then
-      rhot_kl(:,:,:,:)   = 0._CUSTOM_REAL
-      rhof_kl(:,:,:,:)   = 0._CUSTOM_REAL
+      rhot_kl(:,:,:,:) = 0._CUSTOM_REAL
+      rhof_kl(:,:,:,:) = 0._CUSTOM_REAL
       sm_kl(:,:,:,:)   = 0._CUSTOM_REAL
-      eta_kl(:,:,:,:)   = 0._CUSTOM_REAL
-      mufr_kl(:,:,:,:)    = 0._CUSTOM_REAL
+      eta_kl(:,:,:,:)  = 0._CUSTOM_REAL
+      mufr_kl(:,:,:,:) = 0._CUSTOM_REAL
       B_kl(:,:,:,:) = 0._CUSTOM_REAL
       C_kl(:,:,:,:) = 0._CUSTOM_REAL
       M_kl(:,:,:,:) = 0._CUSTOM_REAL

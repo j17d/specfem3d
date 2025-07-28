@@ -127,7 +127,7 @@
       if (ATTENUATION) then
         ! only memory variables needed
         call transfer_rmemory_from_device(Mesh_pointer,R_xx,R_yy,R_xy,R_xz,R_yz, &
-                                          R_trace,size(R_xx))
+                                          R_trace,size(R_xx,kind=4))
       endif
     endif
   endif

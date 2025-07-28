@@ -55,15 +55,9 @@ from math import radians,atan2,sin,cos
 ## USER parameters
 
 ## renderer
-# render image size
+# full image size
 blender_img_resolution_X = 2400
 blender_img_resolution_Y = 1600
-
-# cycles rendering (for better glass effect of buildings)
-use_cycles_renderer = False
-
-## transparent sea-level plane
-use_transparent_sea_level_plane = False
 
 ###############################################################################################
 
@@ -75,11 +69,34 @@ DEGREE_TO_RAD = PI / 180.0
 mesh_scale_factor = 1.0
 mesh_origin = [0.0,0.0,0.0]
 
+# vertical exaggeration factor
+vertical_exaggeration = None
+
+## sea-level plane
+use_sea_level_plane = True
+
+## transparent sea-level plane
+use_transparent_sea_level_plane = False
+
+# shallow coast lines can lead to z-buffering issues with the sea-level plane.
+# as a work-around, one can try to add a boolean modifier to cut the plane with the main mesh object.
+# this might however lead to other issues... left here to give a try.
+add_sea_level_plane_modifier = False
+
+# shifts point above/below sea-level slightly up/down to get a sharper and steeper coastline for sea-level plane
+sea_level_separation = None
+
 # baseline shift for buildings (to move above SPECFEM mesh)
 shift_building_baseline = 0.0  # 0.0==no-shift default, or e.g. --shift-building-baseline=0.0005
 
+# location labels (white or black)
+location_labels_color = (0.05,0.05,0.05,1)  # white (0.9,0.9,0.9,1), black (0.05,0.05,0.05,1)
+
 # rendering output
 suppress_renderer_output = False
+
+# cycles rendering (for better glass effect of buildings)
+use_cycles_renderer = False
 
 # animation
 use_animation_dive_in = True
@@ -89,6 +106,10 @@ use_animation_rotation = True
 camera_elevation_offset = 0.15
 camera_y_offset = -0.7
 camera_angle_depth_degree = 75.0
+
+# camera perspective
+close_up_view = False
+centered_view = False
 
 # center point to focus camera view on
 x_center = 0.0
@@ -100,6 +121,16 @@ z_elevation = 0.0
 
 # background color
 world_background_color = (1,1,1,1)  # white
+
+# utm projections for locations
+transformer_to_utm = None
+utm_zone = None
+
+# timing info
+time_string = None
+
+# material appearance
+use_matte_material = False
 
 # class to avoid long stdout output by renderer
 # see: https://stackoverflow.com/questions/24277488/in-python-how-to-capture-the-stdout-from-a-c-shared-library-to-a-variable/29834357
@@ -125,8 +156,439 @@ class SuppressStream(object):
             self.devnull.close()
 
 
+def convert_latlon_to_UTM(lat, lon):
+    global transformer_to_utm
+
+    # transform lat/lon to UTM
+    if transformer_to_utm == None:
+        # Coordinate projections
+        try:
+            import pyproj
+        except:
+            print("Failed importing pyproj.")
+            sys.exit(1)
+        from pyproj import Transformer
+
+        print("  converting coordinates to UTM...")
+        print("")
+        # pyproj coordinate system info:
+        #   WGS84                                          ==       EPSG:4326
+        #   spherical mercator, google maps, openstreetmap ==       EPSG:3857
+        #
+        # we first need to determine the correct UTM zone to get the EPSG code.
+        # for this, we take the lat/lon position and query the corresponding UTM zone for this position.
+        ref_epsg = "EPSG:4326"
+
+        # user specified UTM zone
+        if not utm_zone == None:
+            # Determine the hemisphere based on the zone number based on zone number 1 - 120
+            #hemisphere = 'N' if utm_zone <= 60 else 'S'
+            #utm_zone = utm_zone % 60  # Normalize zone number to 1-60
+
+            # here, we will use 1-60 as input for UTM zones, positive for Northern and negative numbers for Southern hemisphere
+            hemisphere = 'N' if utm_zone > 0 else 'S'
+
+            # Construct the EPSG code
+            utm_code = 32600 + abs(utm_zone) if hemisphere == 'N' else 32700 + abs(utm_zone)
+            utm_epsg = "EPSG:{}".format(utm_code)
+
+            print("  user specified UTM zone: ",utm_zone)
+            print("                 UTM code: ",utm_code," epsg: ", utm_epsg)
+            print("")
+        else:
+            # gets list of UTM codes
+            utm_crs_list = pyproj.database.query_utm_crs_info(
+                              datum_name="WGS 84",
+                              area_of_interest=pyproj.aoi.AreaOfInterest(west_lon_degree=lon,
+                                                                         south_lat_degree=lat,
+                                                                         east_lon_degree=lon,
+                                                                         north_lat_degree=lat))
+            utm_code = utm_crs_list[0].code
+            utm_epsg = "EPSG:{}".format(utm_code)
+
+            # convert code to integer number and determine UTM zone number for info
+            utm_code = int(utm_code)
+            hemisphere_auto = 'N' if utm_code < 32700 else 'S'
+            utm_zone_auto = utm_code - 32600 if hemisphere_auto == 'N' else utm_code - 32700
+
+            print("  detected UTM code: ",utm_code," epsg: ", utm_epsg)
+            print("           UTM zone: {}{}".format(utm_zone_auto,hemisphere_auto))
+            print("")
+
+        # transformer
+        # transformation from WGS84 to UTM zone
+        # WGS84: Transformer.from_crs("EPSG:4326", utm_epsg)
+        #transformer_to_utm = Transformer.from_crs(ref_epsg, utm_epsg)                 # input: lat/lon -> utm_x,utm_y
+        transformer_to_utm = Transformer.from_crs(ref_epsg, utm_epsg, always_xy=True) # input: lon/lat -> utm_x/utm_y
+
+        #debug
+        #print(transformer_to_utm)
+        #print("debug: lon/lat ",transformer_to_utm.transform(orig_lon,orig_lat))
+        #print("debug: lat/lon ",transformer_to_utm.transform(orig_lat,orig_lon))
+
+        # user info
+        utm_x,utm_y = transformer_to_utm.transform(lon,lat)
+        print("       -> UTM x/y  = ",utm_x,utm_y)
+        print("          backward check: orig x/y = ",transformer_to_utm.transform(utm_x,utm_y,direction='INVERSE'))
+        print("")
+
+    # converts point coordinates
+    x = lon
+    y = lat
+
+    # converts to UTM location (x and y)
+    x_utm,y_utm = transformer_to_utm.transform(x,y)
+
+    return x_utm,y_utm
+
+def setup_color_table(colormap, data_min, data_max):
+    # creates a color table
+    lut = vtk.vtkLookupTable()
+
+    lut.SetTableRange(data_min, data_max)
+    lut.SetNumberOfTableValues(256) # Set the number of table values
+
+    #lut.SetRampToLinear()
+    #lut.SetRampToSQRT()
+
+    # VTK by default maps the value range to colors from red to blue
+    # determine custom type
+    if colormap == 0:
+        print("  color map: default VTK")
+        # nothing to special to add, let's just vtk internally do it
+        # colormap is going from red to white to blue
+    elif colormap == 1:
+        # topo
+        print("  color map: topo")
+        colors_rgb = [
+            [0.3,  0.3,   0.3], # gray
+            [0.1,  0.1,   0.4], # blue
+            [0.2,  0.5,   0.2],
+            [0.25, 0.625, 0.5],
+            [0.0,  0.5,   0.25],
+            [0.5,  0.365, 0.0],
+            [0.75, 0.625, 0.25],
+            [1.0,  0.75,  0.625],
+            [1.0,  0.75,  0.5],
+            [1,    1,     1],   # white
+        ]
+
+    elif colormap == 2:
+        # Scientific Colour Map Categorical Palette
+        # https://www.fabiocrameri.ch/colourmaps/
+        # Crameri, F. (2018). Scientific colour maps. Zenodo. http://doi.org/10.5281/zenodo.1243862
+        print("  color map: lisbon")
+        # lisbon 10 Swatches
+        colors_rgb255 = [
+            [230, 229, 255],  #  lisbon-1 #E6E5FF
+            # or start with a less white color
+            #[200, 208, 237], #  lisbon-12 #C8D0ED
+            [155, 175, 211],  #  lisbon-29 #9BAFD3
+            [ 81, 119, 164],  #  lisbon-58 #5177A4
+            [ 30,  67, 104],  #  lisbon-86 #1E4368
+            [ 17,  30,  44],  #  lisbon-114 #111E2C
+            [ 39,  37,  26],  #  lisbon-143 #27251A
+            [ 87,  81,  52],  #  lisbon-171 #575134
+            [141, 133,  86],  #  lisbon-199 #8D8556
+            [201, 195, 144],  #  lisbon-228 #C9C390
+            [255, 255, 217],  #  lisbon-256 #FFFFD9
+        ]
+        # converts the colors from 0-255 range to 0-1 range
+        colors_rgb = [[comp / 255.0 for comp in color] for color in colors_rgb255]
+
+    elif colormap == 3:
+        # Scientific Colour Map Categorical Palette
+        # https://www.fabiocrameri.ch/colourmaps/
+        # Crameri, F. (2018). Scientific colour maps. Zenodo. http://doi.org/10.5281/zenodo.1243862
+        print("  color map: lajolla")
+        # lajolla 10 Swatches
+        colors_rgb255 = [
+            [ 25,  25,   0], #  lajolla-1 #191900
+            [ 51,  34,  15], # lajolla-29 #33220F
+            [ 91,  48,  35], #  lajolla-58 #5B3023
+            [143,  64,  61], #  lajolla-86 #8F403D
+            [199,  80,  75], #  lajolla-114 #C7504B
+            [224, 114,  79], #  lajolla-143 #E0724F
+            [231, 148,  82], #  lajolla-171 #E79452
+            [238, 181,  85], #  lajolla-199 #EEB555
+            [248, 223, 124], #  lajolla-228 #F8DF7C
+            [255, 254, 203], #  lajolla-256 #FFFECB
+        ]
+        # converts the colors from 0-255 range to 0-1 range
+        colors_rgb = [[comp / 255.0 for comp in color] for color in colors_rgb255]
+
+    elif colormap == 4:
+        # Scientific Colour Map Categorical Palette
+        # https://www.fabiocrameri.ch/colourmaps/
+        # Crameri, F. (2018). Scientific colour maps. Zenodo. http://doi.org/10.5281/zenodo.1243862
+        print("  color map: lipari")
+        # lipari 10 Swatches
+        colors_rgb255 = [
+            [  3,  19,  38], #  lipari-1 #031326
+            [ 19,  56,  90], #  lipari-29 #13385A
+            [ 71,  88, 122], #  lipari-58 #47587A
+            [107,  95, 118], #  lipari-86 #6B5F76
+            [142,  97, 108], #  lipari-114 #8E616C
+            [188, 100,  97], #  lipari-143 #BC6461
+            [229, 123,  98], #  lipari-171 #E57B62
+            [231, 162, 121], #  lipari-199 #E7A279
+            [233, 201, 159], #  lipari-228 #E9C99F
+            [253, 245, 218], #  lipari-256 #FDF5DA
+        ]
+        # converts the colors from 0-255 range to 0-1 range
+        colors_rgb = [[comp / 255.0 for comp in color] for color in colors_rgb255]
+
+    elif colormap == 5:
+        # Scientific Colour Map Categorical Palette
+        # https://www.fabiocrameri.ch/colourmaps/
+        # Crameri, F. (2018). Scientific colour maps. Zenodo. http://doi.org/10.5281/zenodo.1243862
+        print("  color map: davos")
+        # davos 10 Swatches
+        colors_rgb255 = [
+            [  0,   5,  74], #  davos-1 #00054A
+            [ 17,  44, 113], #  davos-29 #112C71
+            [ 41,  82, 145], #  davos-58 #295291
+            [ 67, 112, 157], #  davos-86 #43709D
+            [ 94, 133, 152], #  davos-114 #5E8598
+            [121, 150, 141], #  davos-143 #79968D
+            [153, 173, 136], #  davos-171 #99AD88
+            [201, 210, 158], #  davos-199 #C9D29E
+            [243, 243, 210], #  davos-228 #F3F3D2
+            [254, 254, 254], #  davos-256 #FEFEFE
+        ]
+        # converts the colors from 0-255 range to 0-1 range
+        colors_rgb = [[comp / 255.0 for comp in color] for color in colors_rgb255]
+
+    elif colormap == 6:
+        # Scientific Colour Map Categorical Palette
+        # https://www.fabiocrameri.ch/colourmaps/
+        # Crameri, F. (2018). Scientific colour maps. Zenodo. http://doi.org/10.5281/zenodo.1243862
+        print("  color map: turku")
+        # turku 10 Swatches
+        colors_rgb255 = [
+            [  0,   0,   0], #  turku-1 #000000
+            [ 36,  36,  32], #  turku-29 #242420
+            [ 66,  66,  53], #  turku-58 #424235
+            [ 95,  95,  68], #  turku-86 #5F5F44
+            [126, 124,  82], #  turku-114 #7E7C52
+            [169, 153, 101], #  turku-143 #A99965
+            [207, 166, 124], #  turku-171 #CFA67C
+            [234, 173, 152], #  turku-199 #EAAD98
+            [252, 199, 195], #  turku-228 #FCC7C3
+            [255, 230, 230], #  turku-256 #FFE6E6
+        ]
+        # converts the colors from 0-255 range to 0-1 range
+        colors_rgb = [[comp / 255.0 for comp in color] for color in colors_rgb255]
+
+    elif colormap == 7:
+        # Scientific Colour Map Categorical Palette
+        # https://www.fabiocrameri.ch/colourmaps/
+        # Crameri, F. (2018). Scientific colour maps. Zenodo. http://doi.org/10.5281/zenodo.1243862
+        print("  color map: berlin")
+        # berlin 10 Swatches
+        colors_rgb255 = [
+            [158, 176, 255], #  berlin-1 #9EB0FF
+            [ 91, 164, 219], #  berlin-29 #5BA4DB
+            [ 45, 117, 151], #  berlin-58 #2D7597
+            [ 26,  66,  86], #  berlin-86 #1A4256
+            [ 17,  25,  30], #  berlin-114 #11191E
+            [ 40,  13,   1], #  berlin-143 #280D01
+            [ 80,  24,   3], #  berlin-171 #501803
+            [138,  63,  42], #  berlin-199 #8A3F2A
+            [196, 117, 106], #  berlin-228 #C4756A
+            [255, 173, 173], #  berlin-256 #FFADAD
+        ]
+        # converts the colors from 0-255 range to 0-1 range
+        colors_rgb = [[comp / 255.0 for comp in color] for color in colors_rgb255]
+
+    elif colormap == 8:
+        # Scientific Colour Map Categorical Palette
+        # https://www.fabiocrameri.ch/colourmaps/
+        # Crameri, F. (2018). Scientific colour maps. Zenodo. http://doi.org/10.5281/zenodo.1243862
+        print("  color map: grayC")
+        colors_rgb255 = [
+            [0,   0,   0],  #  grayC-1 #000000
+            [35,  35,  35], #  grayC-29 #232323
+            [61,  61,  61], #  grayC-58 #3D3D3D
+            [86,  86,  86], #  grayC-86 #565656
+            [108, 108, 108],#  grayC-114 #6C6C6C
+            [130, 130, 130],#  grayC-143 #828282
+            [154, 154, 154],#  grayC-171 #9A9A9A
+            [182, 182, 182],#  grayC-199 #B6B6B6
+            [216, 216, 216],#  grayC-228 #D8D8D8
+            [255, 255, 255],#  grayC-256 #FFFFFF
+        ]
+        # converts the colors from 0-255 range to 0-1 range
+        colors_rgb = [[comp / 255.0 for comp in color] for color in colors_rgb255]
+
+    elif colormap == 9:
+        # custom snow
+        print("  color map: snow")
+        colors_rgb255 = [
+            [204, 204, 204], # gray
+            [153, 178, 204],
+            [ 71,  88, 122], #  lipari-58 #47587A
+            [107,  95, 118], #  lipari-86 #6B5F76
+            [142,  97, 108], #  lipari-114 #8E616C
+            [188, 100,  97], #  lipari-143 #BC6461
+            [229, 123,  98], #  lipari-171 #E57B62
+            [231, 162, 121], #  lipari-199 #E7A279
+            [255, 229, 204],
+            [255, 255, 255], # white
+        ]
+        # converts the colors from 0-255 range to 0-1 range
+        colors_rgb = [[comp / 255.0 for comp in color] for color in colors_rgb255]
+
+    elif colormap == 10:
+        # custom shakeGreen
+        print("  color map: shakeGreen")
+        colors_rgb = [
+            [0.8,  0.8,   0.8], # gray
+            [0.5,  0.5,   0.4],
+            [0.5,  0.4,   0.2],
+            [0.6,  0.6,   0.0], # green
+            [0.72, 0.25,  0.0 ], # orange
+            [0.81, 0.5,   0.0 ],
+            [0.9,  0.74,  0.0 ], # yellow
+            [1.0,  0.99,  0.0 ],
+            [1.0,  0.99,  0.25],
+            [1.0,  1.0,   1.0 ],  # white
+        ]
+
+    elif colormap == 11:
+        # custom shakeRed
+        print("  color map: shakeRed")
+        colors_rgb = [
+            [0.85, 0.85,  0.85], # gray
+            [0.7,  0.7,   0.7 ],
+            [0.5,  0.5,   0.5 ],
+            [0.63, 0.0,   0.0 ], # red
+            [0.72, 0.25,  0.0 ], # orange
+            [0.81, 0.5,   0.0 ],
+            [0.9,  0.74,  0.0 ], # yellow
+            [1.0,  0.99,  0.0 ],
+            [1.0,  0.99,  0.25],
+            [1.0,  1.0,   1.0 ],  # white
+        ]
+
+    elif colormap == 12:
+        # custom shakeUSGS
+        # taken from a shakemap plot of the USGS
+        # https://earthquake.usgs.gov/earthquakes/eventpage/us6000lqf9/shakemap/intensity
+        print("  color map: shakeUSGS")
+        colors_rgb = [
+            [1.0,  1.0,  1.0 ], # I: white
+            [0.8,  0.8,  0.8 ],
+            [0.77, 0.81, 1.0 ], # II-III : light purple
+            [0.5,  1.0,  0.98], # IV: turquoise
+            [0.5,  1.0,  0.54], # V : green
+            [1.0,  0.98, 0.0 ], # VI : yellow
+            [1.0,  0.77, 0.0 ], # VII : orange
+            [0.99, 0.52, 0.0 ], # VIII: darkorange
+            [0.98, 0.0,  0.0 ], # IX : red
+            [0.78, 0.0,  0.0 ], # X+ : darkred
+        ]
+
+    elif colormap == 13:
+        # custom shakeUSGSgray
+        # starts with darker gray than the default USGS
+        print("  color map: shakeUSGSgray")
+        colors_rgb = [
+            [0.8,  0.8,  0.8 ], # gray
+            [0.5,  0.5,  0.5 ],
+            [0.77, 0.81, 1.0 ], # II-III : light purple
+            [0.5,  1.0,  0.98], # IV: turquoise
+            [0.5,  1.0,  0.54], # V : green
+            [1.0,  0.98, 0.0 ], # VI : yellow
+            [1.0,  0.77, 0.0 ], # VII : orange
+            [0.99, 0.52, 0.0 ], # VIII: darkorange
+            [0.98, 0.0,  0.0 ],  # IX : red
+            [0.5, 0.0,  0.0 ],  # X+ : darkred
+        ]
+
+    elif colormap == 14:
+        # custom shakeUSGSblack
+        # starts with darker gray than the default USGS
+        print("  color map: shakeUSGSblack")
+        colors_rgb = [
+            [0.15, 0.15, 0.15], # black
+            [0.3,  0.3,  0.35],
+            [0.77, 0.81, 1.0 ], # II-III : light purple
+            [0.5,  1.0,  0.98], # IV: turquoise
+            [0.5,  1.0,  0.54], # V : green
+            [1.0,  0.98, 0.0 ], # VI : yellow
+            [1.0,  0.77, 0.0 ], # VII : orange
+            [0.99, 0.52, 0.0 ], # VIII: darkorange
+            [0.98, 0.0,  0.0 ],  # IX : red
+            [0.5, 0.0,  0.0 ],  # X+ : darkred
+        ]
+
+    elif colormap == 15:
+        # custom shake
+        # starts with dark colors than more light
+        print("  color map: shakeDark")
+        colors_rgb = [
+            [0.15, 0.15, 0.15], # black
+            [0.3,  0.3,  0.35], #
+            [0.5,  0.5,  0.7],  # II-III
+            [0.75, 0.75, 0.75], # IV
+            [1.0,  1.0,  1.0],  # V       white
+            [1.0,  0.98, 0.0 ], # VI      yellow
+            [1.0,  0.77, 0.0 ], # VII     orange
+            [0.99, 0.52, 0.0 ], # VIII    darkorange
+            [0.98, 0.0,  0.0 ], # IX      red
+            [0.7, 0.0,  0.0 ],  # X+      darkred
+        ]
+
+    elif colormap == 16:
+        # custom shake
+        # starts with dark colors than more light - similar to gist_earth, perceptually uniform
+        print("  color map: gist_earth")
+        colors_rgb = [
+            [0.0,  0.06,  0.08],  # dark
+            #[ 0.00, 0.13, 0.45 ],
+            [ 0.00, 0.18, 0.40 ],
+            [ 0.00, 0.25, 0.32 ],
+            [ 0.00, 0.33, 0.25 ],
+            [ 0.00, 0.41, 0.18 ],
+            [ 0.02, 0.49, 0.15 ],
+            [ 0.40, 0.56, 0.18 ],
+            [ 0.63, 0.62, 0.28 ],
+            [ 0.81, 0.68, 0.42 ],
+            [ 0.96, 0.75, 0.59 ],
+            [ 1.00, 0.84, 0.77 ],
+            #[ 1.00, 0.95, 0.95 ],
+            [ 1.00, 1.0, 1.0 ], # white
+        ]
+
+    else:
+        print("Warning: colormap with type {} is not supported, exiting...".format(colormap))
+        sys.exit(1)
+
+    # sets lookup table entries
+    if colormap != 0:
+        # Create a vtkColorTransferFunction
+        color_transfer_func = vtk.vtkColorTransferFunction()
+        # add specific scalar values in the color transfer function
+        for i, color in enumerate(colors_rgb):
+            val = i / (len(colors_rgb) - 1.0)
+            color_transfer_func.AddRGBPoint(val, color[0], color[1], color[2])
+        # Calculate the color values for the lookup table by interpolating from the color transfer function
+        for i in range(256):
+            scalar = i / 255.0  # Normalized scalar value from 0 to 1
+            color = color_transfer_func.GetColor(scalar)
+            lut.SetTableValue(i, color[0], color[1], color[2], 1.0)
+        print("")
+
+    # build lookup table
+    lut.Build()
+
+    return lut
+
+
 def convert_vtk_to_obj(vtk_file: str="", colormap: int=0, color_max=None) -> str:
     global mesh_scale_factor,mesh_origin
+    global vertical_exaggeration,sea_level_separation
 
     # Path to your .vtu file
     print("converting vtk file: ",vtk_file)
@@ -225,6 +687,14 @@ def convert_vtk_to_obj(vtk_file: str="", colormap: int=0, color_max=None) -> str
     print("  scale factor :",mesh_scale_factor)
     print("")
 
+    if vertical_exaggeration != None:
+        print("  using vertical exaggeration factor: ",vertical_exaggeration)
+        print("")
+
+    if sea_level_separation != None:
+        print("  using sea-level separation shift: ",sea_level_separation)
+        print("")
+
     # creates an array to store scaled points
     scaled_points = vtk.vtkPoints()
 
@@ -232,8 +702,20 @@ def convert_vtk_to_obj(vtk_file: str="", colormap: int=0, color_max=None) -> str
     for i in range(num_points):
         # translation by origin
         point = np.array(points.GetPoint(i)) - mesh_origin
+
         # uniform scaling
         scaled_point = point * mesh_scale_factor
+
+        # vertical exaggeration
+        if vertical_exaggeration != None:
+            scaled_point[2] = scaled_point[2] * vertical_exaggeration
+
+        # shift points above/below sea-level
+        if sea_level_separation != None:
+            # shift points above
+            if scaled_point[2] > 0.0: scaled_point[2] += sea_level_separation
+            if scaled_point[2] < 0.0: scaled_point[2] -= sea_level_separation
+
         # stores updated points
         scaled_points.InsertNextPoint(scaled_point)
 
@@ -408,288 +890,8 @@ def convert_vtk_to_obj(vtk_file: str="", colormap: int=0, color_max=None) -> str
     #
     # set lookup table for depth values to colors
     if colors_array:
-        lut = vtk.vtkLookupTable()
-        lut.SetTableRange(data_min, data_max)
-        lut.SetNumberOfTableValues(256) # Set the number of table values
-        #lut.SetRampToLinear()
-        #lut.SetRampToSQRT()
-
-        # VTK by default maps the value range to colors from red to blue
-        # determine custom type
-        if colormap == 0:
-            print("  color map: default VTK")
-            # nothing to special to add, let's just vtk internally do it
-            # colormap is going from red to white to blue
-        elif colormap == 1:
-            # topo
-            print("  color map: topo")
-            colors_rgb = [
-                [0.3,  0.3,   0.3], # gray
-                [0.1,  0.1,   0.4], # blue
-                [0.2,  0.5,   0.2],
-                [0.25, 0.625, 0.5],
-                [0.0,  0.5,   0.25],
-                [0.5,  0.365, 0.0],
-                [0.75, 0.625, 0.25],
-                [1.0,  0.75,  0.625],
-                [1.0,  0.75,  0.5],
-                [1,    1,     1],   # white
-            ]
-
-        elif colormap == 2:
-            # Scientific Colour Map Categorical Palette
-            # https://www.fabiocrameri.ch/colourmaps/
-            # Crameri, F. (2018). Scientific colour maps. Zenodo. http://doi.org/10.5281/zenodo.1243862
-            print("  color map: lisbon")
-            # lisbon 10 Swatches
-            colors_rgb255 = [
-                [230, 229, 255],  #  lisbon-1 #E6E5FF
-                # or start with a less white color
-                #[200, 208, 237], #  lisbon-12 #C8D0ED
-                [155, 175, 211],  #  lisbon-29 #9BAFD3
-                [ 81, 119, 164],  #  lisbon-58 #5177A4
-                [ 30,  67, 104],  #  lisbon-86 #1E4368
-                [ 17,  30,  44],  #  lisbon-114 #111E2C
-                [ 39,  37,  26],  #  lisbon-143 #27251A
-                [ 87,  81,  52],  #  lisbon-171 #575134
-                [141, 133,  86],  #  lisbon-199 #8D8556
-                [201, 195, 144],  #  lisbon-228 #C9C390
-                [255, 255, 217],  #  lisbon-256 #FFFFD9
-            ]
-            # converts the colors from 0-255 range to 0-1 range
-            colors_rgb = [[comp / 255.0 for comp in color] for color in colors_rgb255]
-
-        elif colormap == 3:
-            # Scientific Colour Map Categorical Palette
-            # https://www.fabiocrameri.ch/colourmaps/
-            # Crameri, F. (2018). Scientific colour maps. Zenodo. http://doi.org/10.5281/zenodo.1243862
-            print("  color map: lajolla")
-            # lajolla 10 Swatches
-            colors_rgb255 = [
-                [ 25,  25,   0], #  lajolla-1 #191900
-                [ 51,  34,  15], # lajolla-29 #33220F
-                [ 91,  48,  35], #  lajolla-58 #5B3023
-                [143,  64,  61], #  lajolla-86 #8F403D
-                [199,  80,  75], #  lajolla-114 #C7504B
-                [224, 114,  79], #  lajolla-143 #E0724F
-                [231, 148,  82], #  lajolla-171 #E79452
-                [238, 181,  85], #  lajolla-199 #EEB555
-                [248, 223, 124], #  lajolla-228 #F8DF7C
-                [255, 254, 203], #  lajolla-256 #FFFECB
-            ]
-            # converts the colors from 0-255 range to 0-1 range
-            colors_rgb = [[comp / 255.0 for comp in color] for color in colors_rgb255]
-
-        elif colormap == 4:
-            # Scientific Colour Map Categorical Palette
-            # https://www.fabiocrameri.ch/colourmaps/
-            # Crameri, F. (2018). Scientific colour maps. Zenodo. http://doi.org/10.5281/zenodo.1243862
-            print("  color map: lipari")
-            # lipari 10 Swatches
-            colors_rgb255 = [
-                [  3,  19,  38], #  lipari-1 #031326
-                [ 19,  56,  90], #  lipari-29 #13385A
-                [ 71,  88, 122], #  lipari-58 #47587A
-                [107,  95, 118], #  lipari-86 #6B5F76
-                [142,  97, 108], #  lipari-114 #8E616C
-                [188, 100,  97], #  lipari-143 #BC6461
-                [229, 123,  98], #  lipari-171 #E57B62
-                [231, 162, 121], #  lipari-199 #E7A279
-                [233, 201, 159], #  lipari-228 #E9C99F
-                [253, 245, 218], #  lipari-256 #FDF5DA
-            ]
-            # converts the colors from 0-255 range to 0-1 range
-            colors_rgb = [[comp / 255.0 for comp in color] for color in colors_rgb255]
-
-        elif colormap == 5:
-            # Scientific Colour Map Categorical Palette
-            # https://www.fabiocrameri.ch/colourmaps/
-            # Crameri, F. (2018). Scientific colour maps. Zenodo. http://doi.org/10.5281/zenodo.1243862
-            print("  color map: davos")
-            # davos 10 Swatches
-            colors_rgb255 = [
-                [  0,   5,  74], #  davos-1 #00054A
-                [ 17,  44, 113], #  davos-29 #112C71
-                [ 41,  82, 145], #  davos-58 #295291
-                [ 67, 112, 157], #  davos-86 #43709D
-                [ 94, 133, 152], #  davos-114 #5E8598
-                [121, 150, 141], #  davos-143 #79968D
-                [153, 173, 136], #  davos-171 #99AD88
-                [201, 210, 158], #  davos-199 #C9D29E
-                [243, 243, 210], #  davos-228 #F3F3D2
-                [254, 254, 254], #  davos-256 #FEFEFE
-            ]
-            # converts the colors from 0-255 range to 0-1 range
-            colors_rgb = [[comp / 255.0 for comp in color] for color in colors_rgb255]
-
-        elif colormap == 6:
-            # Scientific Colour Map Categorical Palette
-            # https://www.fabiocrameri.ch/colourmaps/
-            # Crameri, F. (2018). Scientific colour maps. Zenodo. http://doi.org/10.5281/zenodo.1243862
-            print("  color map: turku")
-            # turku 10 Swatches
-            colors_rgb255 = [
-                [  0,   0,   0], #  turku-1 #000000
-                [ 36,  36,  32], #  turku-29 #242420
-                [ 66,  66,  53], #  turku-58 #424235
-                [ 95,  95,  68], #  turku-86 #5F5F44
-                [126, 124,  82], #  turku-114 #7E7C52
-                [169, 153, 101], #  turku-143 #A99965
-                [207, 166, 124], #  turku-171 #CFA67C
-                [234, 173, 152], #  turku-199 #EAAD98
-                [252, 199, 195], #  turku-228 #FCC7C3
-                [255, 230, 230], #  turku-256 #FFE6E6
-            ]
-            # converts the colors from 0-255 range to 0-1 range
-            colors_rgb = [[comp / 255.0 for comp in color] for color in colors_rgb255]
-
-        elif colormap == 7:
-            # Scientific Colour Map Categorical Palette
-            # https://www.fabiocrameri.ch/colourmaps/
-            # Crameri, F. (2018). Scientific colour maps. Zenodo. http://doi.org/10.5281/zenodo.1243862
-            print("  color map: berlin")
-            # berlin 10 Swatches
-            colors_rgb255 = [
-                [158, 176, 255], #  berlin-1 #9EB0FF
-                [ 91, 164, 219], #  berlin-29 #5BA4DB
-                [ 45, 117, 151], #  berlin-58 #2D7597
-                [ 26,  66,  86], #  berlin-86 #1A4256
-                [ 17,  25,  30], #  berlin-114 #11191E
-                [ 40,  13,   1], #  berlin-143 #280D01
-                [ 80,  24,   3], #  berlin-171 #501803
-                [138,  63,  42], #  berlin-199 #8A3F2A
-                [196, 117, 106], #  berlin-228 #C4756A
-                [255, 173, 173], #  berlin-256 #FFADAD
-            ]
-            # converts the colors from 0-255 range to 0-1 range
-            colors_rgb = [[comp / 255.0 for comp in color] for color in colors_rgb255]
-
-        elif colormap == 8:
-            # Scientific Colour Map Categorical Palette
-            # https://www.fabiocrameri.ch/colourmaps/
-            # Crameri, F. (2018). Scientific colour maps. Zenodo. http://doi.org/10.5281/zenodo.1243862
-            print("  color map: grayC")
-            colors_rgb255 = [
-                [0,   0,   0],  #  grayC-1 #000000
-                [35,  35,  35], #  grayC-29 #232323
-                [61,  61,  61], #  grayC-58 #3D3D3D
-                [86,  86,  86], #  grayC-86 #565656
-                [108, 108, 108],#  grayC-114 #6C6C6C
-                [130, 130, 130],#  grayC-143 #828282
-                [154, 154, 154],#  grayC-171 #9A9A9A
-                [182, 182, 182],#  grayC-199 #B6B6B6
-                [216, 216, 216],#  grayC-228 #D8D8D8
-                [255, 255, 255],#  grayC-256 #FFFFFF
-            ]
-            # converts the colors from 0-255 range to 0-1 range
-            colors_rgb = [[comp / 255.0 for comp in color] for color in colors_rgb255]
-
-        elif colormap == 9:
-            # custom snow
-            print("  color map: snow")
-            colors_rgb255 = [
-                [204, 204, 204], # gray
-                [153, 178, 204],
-                [ 71,  88, 122], #  lipari-58 #47587A
-                [107,  95, 118], #  lipari-86 #6B5F76
-                [142,  97, 108], #  lipari-114 #8E616C
-                [188, 100,  97], #  lipari-143 #BC6461
-                [229, 123,  98], #  lipari-171 #E57B62
-                [231, 162, 121], #  lipari-199 #E7A279
-                [255, 229, 204],
-                [255, 255, 255], # white
-            ]
-            # converts the colors from 0-255 range to 0-1 range
-            colors_rgb = [[comp / 255.0 for comp in color] for color in colors_rgb255]
-
-        elif colormap == 10:
-            # custom shakeGreen
-            print("  color map: shakeGreen")
-            colors_rgb = [
-                [0.8,  0.8,   0.8], # gray
-                [0.5,  0.5,   0.4],
-                [0.5,  0.4,   0.2],
-                [0.6,  0.6,   0.0], # green
-                [0.72, 0.25,  0.0 ], # orange
-                [0.81, 0.5,   0.0 ],
-                [0.9,  0.74,  0.0 ], # yellow
-                [1.0,  0.99,  0.0 ],
-                [1.0,  0.99,  0.25],
-                [1.0,  1.0,   1.0 ],  # white
-            ]
-
-        elif colormap == 11:
-            # custom shakeRed
-            print("  color map: shakeRed")
-            colors_rgb = [
-                [0.85, 0.85,  0.85], # gray
-                [0.7,  0.7,   0.7 ],
-                [0.5,  0.5,   0.5 ],
-                [0.63, 0.0,   0.0 ], # red
-                [0.72, 0.25,  0.0 ], # orange
-                [0.81, 0.5,   0.0 ],
-                [0.9,  0.74,  0.0 ], # yellow
-                [1.0,  0.99,  0.0 ],
-                [1.0,  0.99,  0.25],
-                [1.0,  1.0,   1.0 ],  # white
-            ]
-
-        elif colormap == 12:
-            # custom shakeUSGS
-            # taken from a shakemap plot of the USGS
-            # https://earthquake.usgs.gov/earthquakes/eventpage/us6000lqf9/shakemap/intensity
-            print("  color map: shakeUSGS")
-            colors_rgb = [
-                [1.0,  1.0,  1.0 ], # I: white
-                [0.8,  0.8,  0.8 ],
-                [0.77, 0.81, 1.0 ], # II-III : light purple
-                [0.5,  1.0,  0.98], # IV: turquoise
-                [0.5,  1.0,  0.54], # V : green
-                [1.0,  0.98, 0.0 ], # VI : yellow
-                [1.0,  0.77, 0.0 ], # VII : orange
-                [0.99, 0.52, 0.0 ], # VIII: darkorange
-                [0.98, 0.0,  0.0 ], # IX : red
-                [0.78, 0.0,  0.0 ], # X+ : darkred
-            ]
-
-        elif colormap == 13:
-            # custom shakeUSGSgray
-            # starts with darker gray than the default USGS
-            print("  color map: shakeUSGSgray")
-            colors_rgb = [
-                [0.8,  0.8,  0.8 ], # gray
-                [0.5,  0.5,  0.5 ],
-                [0.77, 0.81, 1.0 ], # II-III : light purple
-                [0.5,  1.0,  0.98], # IV: turquoise
-                [0.5,  1.0,  0.54], # V : green
-                [1.0,  0.98, 0.0 ], # VI : yellow
-                [1.0,  0.77, 0.0 ], # VII : orange
-                [0.99, 0.52, 0.0 ], # VIII: darkorange
-                [0.98, 0.0,  0.0 ],  # IX : red
-                [0.5, 0.0,  0.0 ],  # X+ : darkred
-            ]
-
-        else:
-            print("Warning: colormap with type {} is not supported, exiting...".format(colormap))
-            sys.exit(1)
-
-        # sets lookup table entries
-        if colormap != 0:
-            # Create a vtkColorTransferFunction
-            color_transfer_func = vtk.vtkColorTransferFunction()
-            # add specific scalar values in the color transfer function
-            for i, color in enumerate(colors_rgb):
-                val = i / (len(colors_rgb) - 1.0)
-                color_transfer_func.AddRGBPoint(val, color[0], color[1], color[2])
-            # Calculate the color values for the lookup table by interpolating from the color transfer function
-            for i in range(256):
-                scalar = i / 255.0  # Normalized scalar value from 0 to 1
-                color = color_transfer_func.GetColor(scalar)
-                lut.SetTableValue(i, color[0], color[1], color[2], 1.0)
-            print("")
-
-        # build lookup table
-        lut.Build()
+        # assign color table
+        lut = setup_color_table(colormap, data_min, data_max)
         colors_array.SetLookupTable(lut)
 
     # Write the data to PLY format
@@ -770,6 +972,8 @@ def convert_vtk_to_obj(vtk_file: str="", colormap: int=0, color_max=None) -> str
     return obj_file
 
 def create_blender_setup(obj_file: str="") -> None:
+    global use_matte_material
+
     ## Blender setup
     print("blender setup:")
     print("")
@@ -913,9 +1117,17 @@ def create_blender_setup(obj_file: str="") -> None:
     if bsdf == None:
         bsdf = nodes.new(type='ShaderNodeBsdfPrincipled')
 
-    bsdf.inputs['Metallic'].default_value = 0.4 # 0.1
-    bsdf.inputs['Roughness'].default_value = 0.5 # 0.8
-    bsdf.inputs['Specular'].default_value = 0.2 # 0.3
+    if use_matte_material:
+        # more matte material appearance
+        print("  using matte material appearance")
+        bsdf.inputs['Metallic'].default_value = 0.1
+        bsdf.inputs['Roughness'].default_value = 0.8
+        bsdf.inputs['Specular'].default_value = 0.3
+    else:
+        # default material w/ more glossy appearance
+        bsdf.inputs['Metallic'].default_value = 0.4
+        bsdf.inputs['Roughness'].default_value = 0.5
+        bsdf.inputs['Specular'].default_value = 0.2
 
     # (default) color map from vtk file
     links.new(bsdf.inputs['Base Color'],color_attribute.outputs['Color'])
@@ -1154,6 +1366,178 @@ def add_blender_buildings(buildings_file: str="") -> None:
     print("  blender buildings mesh done")
     print("")
 
+def add_borders(borders_file: str="") -> None:
+    """
+    adds AVS boundary borders given by input .inp file
+    """
+    global mesh_origin,mesh_scale_factor
+
+    # checks if anything to do
+    if len(borders_file) == 0: return
+
+    print("borders file: ",borders_file)
+    print("")
+
+    # check file
+    if not os.path.exists(borders_file):
+        print("Error: borders file specified not found...")
+        sys.exit(1)
+
+    # borders need to be given as .inp (AVS UCD) format file
+    print("  reading in .inp mesh...")
+
+    # gets file extension
+    extension = os.path.splitext(vtk_file)[1]
+    # reads the vtk file
+    if extension == '.inp':
+        # AVS .inp
+        #reader = vtk.vtkSimplePointsReader()
+        reader = vtk.vtkAVSucdReader()
+        reader.SetFileName(borders_file)
+        reader.Update()
+    else:
+        print("unknown borders file extension ",extension," - exiting...")
+        sys.exit(1)
+
+    #debug
+    #print(reader)
+
+    # convert to .ply data file
+    # Get the unstructured grid data
+    unstructured_grid = reader.GetOutput()
+
+    # convert the data to polydata
+    geometry_filter = vtk.vtkGeometryFilter()
+    geometry_filter.SetInputData(unstructured_grid)
+    geometry_filter.Update()
+    # creates a new polydata object
+    polydata = geometry_filter.GetOutput()
+
+    # checks if we have points
+    if polydata.GetNumberOfPoints() == 0:
+        print("  unstructured grid: number of points",unstructured_grid.GetNumberOfPoints())
+        if unstructured_grid.GetNumberOfPoints() > 0:
+            points = unstructured_grid.GetPoints()
+            polydata.SetPoints(points)
+        else:
+            print("no points found.")
+            return
+
+    print("  polydata: number of points",polydata.GetNumberOfPoints())
+    print("  polydata: number of lines",polydata.GetNumberOfLines())
+    # not interested in cells, point data, etc.
+    #print("  polydata: number of verts",polydata.GetNumberOfVerts())
+    #print("  polydata: number of cells",polydata.GetNumberOfCells())
+    #print("  polydata: number of strips",polydata.GetNumberOfStrips())
+    #print("  polydata: number of data arrays",polydata.GetPointData().GetNumberOfArrays())
+    print("")
+
+    if polydata.GetNumberOfPoints() == 0:
+        print("no points found in the AVS UCD file after extracting edges.")
+        return
+
+    if polydata.GetNumberOfLines() == 0:
+        print("no lines found in the AVS UCD file after extracting edges.")
+        return
+
+    # moves and scales UTM point locations
+    # need to translate and scale the UTM point location to place it within the vtk mesh
+    print("  UTM points: moving & scaling mesh...")
+    print("              mesh origin       = ",mesh_origin)
+    print("              mesh scale factor = ",mesh_scale_factor)
+    print("")
+
+    # Loop through each point, scale its coordinates, and add it to the new points array
+    points_vtk = polydata.GetPoints()
+    num_points = polydata.GetNumberOfPoints()
+    for i in range(num_points):
+        # Get the current coordinates of the point
+        # translation by origin
+        point = np.array(points_vtk.GetPoint(i)) - mesh_origin
+        # uniform scaling
+        point *= mesh_scale_factor
+        # Define the point of interest (X, Y, Z coordinates)
+        vpoint = Vector((point[0], point[1], point[2]))
+        # get elevation
+        elevation = get_mesh_elevation(vpoint)
+        # checks if valid
+        if elevation is None: elevation = 0.1 # sets a default height
+        # debug
+        #print(f"    mesh elevation at point {point} = {elevation}")
+        # set to vertical elevation
+        point[2] = elevation
+        # set modified coordinates back
+        points_vtk.SetPoint(i,point)
+
+    # Create a new curve datablock
+    print("  creating Blender curve objects...")
+    curve_data = bpy.data.curves.new(name='Borders', type='CURVE')
+    curve_data.dimensions = '3D'
+    curve_data.resolution_u = 2  # Resolution of the curve in viewport/render
+
+    # Create a new object with the curve datablock
+    curve_obj = bpy.data.objects.new('Borders', curve_data)
+
+    # Link the object to the scene collection
+    bpy.context.collection.objects.link(curve_obj)
+
+    # Organize into a specific collection
+    target_collection = bpy.data.collections.new('AVS_Borders_Lines')
+    bpy.context.scene.collection.children.link(target_collection)
+    print("    created new collection: 'AVS_Borders_Lines'")
+
+    # Link the object to the target collection
+    target_collection.objects.link(curve_obj)
+
+    # Unlink from the default scene collection if it's there
+    # This prevents the object from appearing in multiple collections simultaneously if it was already linked
+    if curve_obj.name in bpy.context.collection.objects and bpy.context.collection != target_collection:
+        bpy.context.collection.objects.unlink(curve_obj)
+        #print(f"  unlinked '{curve_obj.name}' from default scene collection.")
+
+    # Iterate through each polyline/line in the VTK data
+    # VTK lines are stored as a connectivity list.
+    # Each entry starts with the number of points in the polyline,
+    # followed by the point indices.
+    lines_vtk = polydata.GetLines()
+
+    # Reset cursor for lines iteration
+    lines_vtk.InitTraversal()
+
+    id_list = vtk.vtkIdList()
+    num_splines_created = 0
+
+    while lines_vtk.GetNextCell(id_list):
+        num_points_in_line = id_list.GetNumberOfIds()
+        # A line needs at least 2 points
+        if num_points_in_line < 2:
+            continue
+
+        # Create a new spline for each line/polyline
+        spline = curve_data.splines.new('POLY') # Use 'POLY' for straight line segments
+        spline.points.add(num_points_in_line - 1) # Add points (one is already there)
+
+        for i in range(num_points_in_line):
+            point_index = id_list.GetId(i)
+            # VTK points are float[3]
+            x, y, z = points_vtk.GetPoint(point_index)
+            # Set the coordinates for the spline point
+            # Blender spline points are (x, y, z, w) where w is weight for NURBS, not needed for POLY
+            spline.points[i].co = (x, y, z, 1.0) # Set weight to 1.0 for POLY
+
+        num_splines_created += 1
+
+    # Make lines renderable (e.g., as tubes)
+    borders_line_thickness = 0.002
+
+    curve_data.bevel_depth = borders_line_thickness  # Thickness of the tube
+    curve_data.bevel_resolution = 2 # Smoothness of the tube
+    curve_data.fill_mode = 'FULL' # Make it a solid tube
+
+    print(f"    created Blender curve 'Borders' with {num_splines_created} splines.")
+    print("")
+    return
+
 
 def get_mesh_elevation(point_of_interest: Vector) -> float:
     """
@@ -1213,13 +1597,14 @@ def get_mesh_elevation_at_origin() -> float:
 
     return elevation
 
-def add_camera(title: str="", close_up_view: bool=False) -> None:
+def add_camera(title: str="") -> None:
     """
     adds camera object
     """
     global x_center,y_center,z_center
     global camera_y_offset,camera_elevation_offset,camera_angle_depth_degree
     global z_elevation
+    global close_up_view,centered_view
 
     print("  adding camera")
 
@@ -1307,7 +1692,25 @@ def add_camera(title: str="", close_up_view: bool=False) -> None:
                 mat_node.inputs['Roughness'].default_value = 0.25  # shinier, more metallic
                 print("      using metallic buildings")
 
-    if close_up_view:
+    if centered_view:
+        ## centered view
+        # camera location
+        camera_elevation_offset = 4.0
+        x_cam = x_center
+        y_cam = y_center
+        z_cam = z_center + camera_elevation_offset
+        print("    centered scene")
+        print("    center point   : x/y/z = {:.6f} / {:.6f} / {:.6f}".format(x_center,y_center,z_center))
+        print("    camera location: x/y/z = {:.6f} / {:.6f} / {:.6f}".format(x_cam,y_cam,z_cam))
+        print("    camera location relative to mesh elevation: ",z_elevation)
+        # Set camera translation
+        scene.camera.location = (x_cam,y_cam,z_cam)
+        # Set camera rotation in euler angles
+        scene.camera.rotation_mode = 'XYZ'
+        scene.camera.rotation_euler = (0, 0, 0)  # top-down
+        # Set camera fov in degrees
+        scene.camera.data.angle = float(42.0 * DEGREE_TO_RAD)
+    elif close_up_view:
         ## close-up view
         # adjust clip range
         scene.camera.data.clip_start = 0.01
@@ -1372,11 +1775,15 @@ def add_light() -> None:
     light.data.use_contact_shadow = True  # Enable contact shadows
 
 
-def add_plane(close_up_view: bool=False) -> None:
+def add_plane() -> None:
     """
     adds a plane at sea-level
     """
-    global use_transparent_sea_level_plane
+    global use_sea_level_plane,use_transparent_sea_level_plane,add_sea_level_plane_modifier
+    global close_up_view
+
+    # checks if anything to do
+    if not use_sea_level_plane: return
 
     print("  adding sea-level plane")
     # Create a mesh plane (to capture shadows and indicate sea level)
@@ -1410,6 +1817,31 @@ def add_plane(close_up_view: bool=False) -> None:
         else:
             mat.diffuse_color = (0.135, 0.135, 0.135, 1)  # gray for better contrast
 
+    # adds the Boolean modifier
+    if add_sea_level_plane_modifier:
+        print("    adding sea-level plane - modifier using difference")
+        boolean_modifier = plane_object.modifiers.new(name="Boolean", type='BOOLEAN')
+
+        # Set the operation type
+        boolean_modifier.operation = 'DIFFERENCE'
+
+        # Set the operand object if provided
+        mesh_object = bpy.data.objects['output']
+        if mesh_object:
+            boolean_modifier.object = mesh_object
+        else:
+            print("    Warning: mesh object 'output' not found.")
+
+        # Set the solver type
+        boolean_modifier.solver = 'FAST'   # 'FAST' or 'EXACT'
+
+        # some further optimizations for the exact solver
+        if boolean_modifier.solver == 'EXACT':
+            #boolean_modifier.use_self = True           # self-intersection
+            #boolean_modifier.use_hole_tolerant = True  # better results when more tolerant, but slower
+            pass
+        print("    modifier added")
+
     plane_object.data.materials.append(mat)
 
 
@@ -1417,18 +1849,20 @@ def add_title(title: str="") -> None:
     """
     adds a title text
     """
+    global centered_view
+
     if len(title) > 0:
-        print("  adding text object:")
+        print("  adding title text object")
         print("    title = ",title)
 
         # Create a new text object
-        bpy.ops.object.text_add(location=(-0.3, -1.2, 0.01))  # Adjust the location as needed
+        bpy.ops.object.text_add()
         text_object = bpy.context.object
         text_object.data.body = title  # Set the text content
 
         # Set text properties (font, size, etc.)
         text_object.data.size = 0.2  # Adjust the font size
-
+        text_object.name = "Title_Text"
         #debug
         #print("  blender fonts available: ",bpy.data.fonts.keys())
 
@@ -1441,12 +1875,283 @@ def add_title(title: str="") -> None:
 
         #text_object.data.font = bpy.data.fonts.load("/path/to/your/font.ttf")  # Replace with your font path
 
+        # Adjust the location as needed
+        x_title = 0.0
+        y_title = -1.2
+        z_title = 0.01
+
+        if centered_view:
+            print("    centered text")
+            # get dimensions of text
+            #bbox_center = text_obj.bound_box_center
+            #bbox_size = text_object.dimensions
+            #print("    text dimensions = ",bbox_size[0],"/",bbox_size[1],"/",bbox_size[2])
+            x_title = 0.0
+            y_title = -0.95
+
+        print("    location = ",x_title,"/",y_title,"/",z_title)
+
+        # align to center
+        text_object.data.align_x = 'CENTER'
+        text_object.data.align_y = 'BOTTOM_BASELINE'
+
+        text_object.location = (x_title, y_title, z_title)
+
         # Set text material
         text_material = bpy.data.materials.new(name="TextMaterial")
         text_material.use_nodes = True
         text_material.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (0.5, 0.5, 0.5, 1)
 
         text_object.data.materials.append(text_material)
+
+
+def add_location_labels(locations_file: str="") -> None:
+    """
+    adds locations defined in file 
+    """
+    global centered_view,use_white_location_labels
+    global location_labels_color
+
+    # checks if anything to do
+    if len(locations_file) == 0: return
+
+    print("adding location labels")
+    print("  locations file: ",locations_file)
+    print("")
+
+    # check file
+    if not os.path.exists(locations_file):
+        print("Error: locations file specified not found...")
+        sys.exit(1)
+
+    lines = []
+    with open(locations_file, 'r') as file:
+        lines = file.readlines()
+
+    if len(lines) == 0:
+        print("  no lines")
+        return
+
+    # moves and scales UTM positions to normalized range
+    # need to translate and scale the UTM mesh position to place it within the vtk mesh
+    print("  UTM mesh: moving & scaling mesh...")
+    print("            mesh origin       = ",mesh_origin)
+    print("            mesh scale factor = ",mesh_scale_factor)
+
+    # Process each line in the file
+    for line in lines:
+        # Skip comments and empty lines
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+
+        # Parse city name, latitude, and longitude
+        # format: #city name #latitude #longitude
+        parts = line.split()
+        if len(parts) == 3:
+            # example: Tingri 28.5762  86.6197
+            loc_name = parts[0]
+            lat = float(parts[1])
+            lon = float(parts[2])
+        elif len(parts) == 4:
+            # example: Mount Everest  27.9881  86.9250
+            loc_name = parts[0] + " " + parts[1]
+            lat = float(parts[2])
+            lon = float(parts[3])
+        else:
+            print(f"  Skipping malformed line: {line}")
+            continue
+
+        # Convert latitude and longitude to UTM / 3D coordinates
+        x_utm, y_utm = convert_latlon_to_UTM(lat, lon)
+
+        # sets marker type (or label type)
+        if loc_name == "-":
+            # marker only
+            is_marker_only = True
+        else:
+            # label type
+            is_marker_only = False
+
+        # info
+        if is_marker_only:
+            # marker only
+            print(f"  location label: marker at lat/lon {lat}/{lon}")
+        else:
+            # label text
+            print(f"  location label: {loc_name} - lat/lon {lat}/{lon}")
+
+        # Translate the vertices (example: translating by (1, 0, 0))
+        x = x_utm - mesh_origin[0]
+        y = y_utm - mesh_origin[1]
+
+        # Scale the vertices (example: scaling by 1.5 in all axes)
+        scale_factor = mesh_scale_factor
+        x *= scale_factor
+        y *= scale_factor
+
+        # get elevation at x/y position
+        point = Vector((x, y, 0.0))
+        elevation = get_mesh_elevation(point)
+        if not elevation is None:
+            z = elevation
+        else:
+            z = 0.001
+
+        # use text "-" for markers only (no text)
+        if is_marker_only:
+            # marker, smaller radius
+            r = 0.005
+        else:
+            # default sphere lable radius
+            r = 0.02
+
+        # Create a small sphere (circle) to represent the location
+        bpy.ops.mesh.primitive_uv_sphere_add(radius=r, location=(x, y, z))
+        sphere = bpy.context.object
+        sphere.name = f"{loc_name}_Marker"
+
+        # Set marker material
+        sphere_material = bpy.data.materials.new(name="TextMaterial")
+        sphere_material.use_nodes = True
+        if is_marker_only:
+            color = (1.0, 1.0, 1.0, 1)
+        else:
+            color = (0.1, 0.05, 0.05, 1)
+        sphere_material.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = color
+        sphere_material.node_tree.nodes["Principled BSDF"].inputs["Alpha"].default_value = 0.5   # transparency
+        sphere_material.node_tree.nodes["Principled BSDF"].inputs["Specular"].default_value = 0  # Reduce shine
+        sphere_material.shadow_method = 'NONE'  # Blender 3.x
+        sphere_material.blend_method = 'BLEND'  # 'Alpha Blend'
+        sphere.data.materials.append(sphere_material)
+
+        # Create a new text object
+        if not is_marker_only:
+            # location text
+            bpy.ops.object.text_add()
+            text_object = bpy.context.object
+            text_object.data.body = loc_name  # Set the text content
+            text_object.name = f"{loc_name}_Label"
+            #text_object.data.use_shadow = False  # Disable text's own shadow
+
+            # Set text properties (font, size, etc.)
+            text_object.data.size = 0.05  # Adjust the font size
+            #text_object.rotation_euler = (0, 0, np.radians(90))
+
+            if 'Bfont' in bpy.data.fonts:
+                text_object.data.font = bpy.data.fonts['Bfont']  # Use a specific default font
+            elif 'Bfont Regular' in bpy.data.fonts:
+                text_object.data.font = bpy.data.fonts['Bfont Regular']  # Use a specific default font
+            elif 'Arial Regular' in bpy.data.fonts:
+                text_object.data.font = bpy.data.fonts['Arial Regular']
+
+            # Adjust the location as needed
+            # align to center
+            text_object.data.align_x = 'CENTER'
+            text_object.data.align_y = 'BOTTOM_BASELINE'
+
+            # get dimensions of text
+            #bbox_size = text_object.dimensions
+            #print("    text dimensions = ",bbox_size[0],"/",bbox_size[1],"/",bbox_size[2])
+
+            x_text = x
+            y_text = y + 0.03
+            z_text = z + 0.01   # shift above mesh by tiny bit
+
+            #debug
+            #print("    mesh location = ",x_text,"/",y_text,"/",z_text)
+
+            text_object.location = (x_text, y_text, z_text)
+
+            # Set text material
+            text_material = bpy.data.materials.new(name="TextMaterial")
+            text_material.use_nodes = True
+            text_material.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = location_labels_color
+            text_material.node_tree.nodes["Principled BSDF"].inputs["Alpha"].default_value = 1   # transparency
+            text_material.node_tree.nodes["Principled BSDF"].inputs["Specular"].default_value = 0  # Reduce shine
+            text_material.shadow_method = 'NONE'  # Blender 3.x
+            text_material.blend_method = 'BLEND'  # 'Alpha Blend'
+            text_object.data.materials.append(text_material)
+
+    print("")
+
+def add_time_text():
+    """
+    adds a time string
+    """
+    global time_string
+
+    # check if anything to do
+    if time_string is None: return
+
+    print("  adding time info")
+    print("    time string: ",time_string)
+
+    if len(time_string) == 0: return
+
+    # time text
+    bpy.ops.object.text_add()
+    text_object = bpy.context.object
+
+    text_object.data.body = time_string  # text
+    #text_object.data.extrude = 0.01         # Small extrusion for visibility
+    text_object.name = "Time_Label"
+
+    # Set text properties (font, size, etc.)
+    text_object.data.size = 0.05  # Adjust the font size
+    #text_object.rotation_euler = (0, 0, np.radians(90))
+
+    # load fonts
+    font_dir = bpy.context.preferences.filepaths.font_directory
+    for file in os.listdir(font_dir):
+        if file.endswith(".ttf"):
+            bpy.data.fonts.load(font_dir + file)
+    # show fonts info
+    #for font in bpy.data.fonts:
+    #    print("    available font: ",font)
+    #print("")
+
+    # Use a specific default font
+    if 'DIN-Regular Regular' in bpy.data.fonts:
+        print("    using font: ",'DIN-Regular Regular')
+        text_object.data.font = bpy.data.fonts['DIN-Regular Regular']
+    elif 'Orbitron Regular' in bpy.data.fonts:
+        print("    using font: ",'Orbitron Regular')
+        text_object.data.font = bpy.data.fonts['Orbitron Regular']
+    elif 'Arial Regular' in bpy.data.fonts:
+        print("    using font: ",'Arial Regular')
+        text_object.data.font = bpy.data.fonts['Arial Regular']
+    elif 'Bfont' in bpy.data.fonts:
+        print("    using font: ",'Bfont')
+        text_object.data.font = bpy.data.fonts['Bfont']
+    elif 'Bfont Regular' in bpy.data.fonts:
+        print("    using font: ",'Bfont Regular')
+        text_object.data.font = bpy.data.fonts['Bfont Regular']
+
+    # Adjust the location as needed
+    text_object.data.align_x = 'LEFT'
+    text_object.data.align_y = 'BOTTOM_BASELINE'
+
+    # get dimensions of text
+    #bbox_size = text_object.dimensions
+    #print("    text dimensions = ",bbox_size[0],"/",bbox_size[1],"/",bbox_size[2])
+
+    location = (1.02, 0.0, 0.01)  # shift above sea-level by tiny bit
+    print("    time text location: ",location)
+    print("")
+    text_object.location = location
+
+    # Set text material
+    text_material = bpy.data.materials.new(name="TimeTextMaterial")
+    text_material.use_nodes = True
+    text_material.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (0.8, 0.8, 0.8, 1)
+    text_material.node_tree.nodes["Principled BSDF"].inputs["Alpha"].default_value = 1   # transparency
+    text_material.node_tree.nodes["Principled BSDF"].inputs["Specular"].default_value = 0  # Reduce shine
+    text_material.shadow_method = 'NONE'  # Blender 3.x
+    text_material.blend_method = 'BLEND'  # 'Alpha Blend'
+    text_object.data.materials.append(text_material)
+    #text_object.hide_render = False # Ensure it's not hidden from render
+
 
 def set_scene() -> None:
     """
@@ -1467,7 +2172,7 @@ def set_scene() -> None:
         scene.render.engine = 'CYCLES'
 
         ## adjust settings for faster rendering w/ cycles
-        #scene.cycles.device = 'GPU'
+        #scene.cycles.device = 'GPU'          # GPU rendering
         # Set tile size
         scene.cycles.tile_size = 512 # 256
         # Lower the number of samples
@@ -1786,6 +2491,29 @@ def render_image() -> None:
     # gets scene
     scene = bpy.context.scene
 
+    # get render settings
+    render = scene.render
+
+    ## GPU rendering
+    # note: some of these settings either won't work or are only available for Cycle engine
+    #       either way, it seems they slow down the rendering and the default installation is fine for now...
+    #
+    #scene.render.device = 'GPU'            # doesn't work w/ Blender v3.6
+    #scene.render.engine = 'BLENDER_EEVEE'  # uses by default installation the OpenGL/GPU; no further GPU settings for Eevee
+    #
+    # for cycles - turning this on seems to slow down the rendering (?)
+    #scene.render.engine = 'CYCLES'
+    #scene.cycles.device = 'GPU'
+    # configure GPU devices (optional, adjust based on your setup)
+    #bpy.context.preferences.addons["cycles"].preferences.compute_device_type = 'METAL'  # 'CUDA' or 'METAL' for Apple Silicon
+    #bpy.context.scene.cycles.device_type = 'GPU'
+    # info - get_devices() to let Blender detects GPU device
+    #bpy.context.preferences.addons["cycles"].preferences.get_devices()
+    #print("Cycles compute device : ",bpy.context.preferences.addons["cycles"].preferences.compute_device_type)
+    #for device in bpy.context.preferences.addons["cycles"].preferences.devices:
+    #    device["use"] = 1 # Using all devices, include GPU and CPU
+    #    print("device: ",device["name"]," - use: ",device["use"])
+
     # output image
     scene.render.image_settings.file_format = 'JPEG'   # 'PNG'
     name = './out'
@@ -1819,20 +2547,23 @@ def render_image() -> None:
         print("elapsed time for image render is {} min {:0.4f} sec\n".format(min,sec))
 
 
-def render_blender_scene(title: str="", animation: bool=False, close_up_view: bool=False) -> None:
+def render_blender_scene(title: str="", animation: bool=False) -> None:
 
     ## blender scene setup
     print("Setting up blender scene...")
     print("")
 
     ## camera
-    add_camera(title,close_up_view)
+    add_camera(title)
 
     ## light
     add_light()
 
     ## background plane
-    add_plane(close_up_view)
+    add_plane()
+
+    # time
+    add_time_text()
 
     # text object
     add_title(title)
@@ -1862,7 +2593,7 @@ def render_blender_scene(title: str="", animation: bool=False, close_up_view: bo
 
 # main routine
 def plot_with_blender(vtk_file: str="", image_title: str="", colormap: int=0, color_max: float=None,
-                      buildings_file: str="", animation: bool=False, close_up_view: bool=False) -> None:
+                      buildings_file: str="", borders_file: str="", locations_file: str="", animation: bool=False) -> None:
     """
     renders image for (earth) sphere with textures
     """
@@ -1880,28 +2611,53 @@ def plot_with_blender(vtk_file: str="", image_title: str="", colormap: int=0, co
     # add buildings
     add_blender_buildings(buildings_file)
 
+    # add borders
+    add_borders(borders_file)
+
+    # add locations
+    add_location_labels(locations_file)
+
     # save blender scene
-    render_blender_scene(image_title,animation,close_up_view)
+    render_blender_scene(image_title,animation)
 
 
 def usage() -> None:
-    print("usage: ./plot_with_blender.py [--vtk_file=file] [--title=my_mesh_name] [--colormap=val] [--color-max=val] [--buildings=file]")
-    print("                              [--with-cycles/--no-cycles] [--closeup] [--small] [--anim] [--suppress] [--help]")
+    print("usage: ./plot_with_blender.py [--vtk_file=file] [--title=my_mesh_name] [--colormap=val] [--color-max=val] [--vertical-exaggeration=val]")
+    print("                              [--buildings=file] [--shift-buildings=val] [--borders=file]")
+    print("                              [--locations=file] [--utm-zone=ZoneNumber] [--time='val']")
+    print("                              [--no-sea-level] [--transparent-sea-level] [--sea-level-separation=val]")
+    print("                              [--centered] [--closeup] [--small] [--anim] [--matte]")
+    print("                              [--with-cycles/--no-cycles] [--suppress]")
+    print("                              [--help]")
     print("  with")
     print("     --vtk_file                - input mesh file (.vtk, .vtu, .inp)")
     print("     --title                   - title text (added to image rendering)")
     print("     --colormap                - color map type: 0==VTK        / 1==topo      / 2==lisbon    / 3==lajolla       / 4==lipari")
     print("                                                 5==davos      / 6==turku     / 7==berlin    / 8==grayC         / 9==snow")
-    print("                                                10==shakeGreen /11==shakeRed  /12==shakeUSGS /13==shakeUSGSgray")
+    print("                                                10==shakeGreen /11==shakeRed  /12==shakeUSGS /13==shakeUSGSgray /14==shakeUSGSblack")
+    print("                                                15==shakeBlack /16==gist_earth")
     print("                                                 (default is shakeUSGSgray for shakemaps)")
     print("     --color-max               - fixes maximum value of colormap for moviedata to val, e.g., 1.e-7)")
+    print("     --vertical-exaggeration   - factor to scales vertical dimension")
+    print("")
     print("     --buildings               - mesh file (.ply) with buildings to visualize for the area")
-    print("     --with-cycles/--no-cycles - turns on/off CYCLES renderer (default is off, using BLENDER_EEVEE)")
-    print("     --closeup                 - sets camera view closer to center of model")
-    print("     --transparent-sea-level   - turns on transparency for sea-level plane")
-    print("     --small                   - turns on small images size (400x600px) for preview")
     print("     --shift-buildings         - moves buildings up, e.g., a factor 0.0005 (default is no shift==0.0)")
+    print("     --borders                 - AVS borders file (.inp) with UTM border lines to visualize on mesh")
+    print("     --locations               - file with location labels (using a format: #name #lat #lon)")
+    print("     --time                    - a time string to add to the display (e.g. '13:24:00')")
+    print("     --white-labels            - use white text for location labels")
+    print("     --utm_zone                - use specified UTM zone number (1-60) with (+) for Northern (-) for Southern hemisphere (e.g., -58)")
+    print("     --no-sea-level            - turns off sea-level plane")
+    print("     --transparent-sea-level   - turns on transparency for sea-level plane")
+    print("     --sea-level-separation    - shift factor to move up/down points at sea-level for better sea-level separation")
+    print("")
+    print("     --centered                - centered camera view (looking from top straight down)")
+    print("     --closeup                 - sets camera view closer to center of model")
+    print("     --small                   - turns on small images size (400x600px) for preview")
     print("     --anim                    - turns on movie animation (dive-in and rotation by default, use --no-rotation or --no-dive-in to turn off)")
+    print("     --matte                   - uses matte material appearance for mesh")
+    print("")
+    print("     --with-cycles/--no-cycles - turns on/off CYCLES renderer (default is off, using BLENDER_EEVEE)")
     print("     --suppress                - suppress renderer output (default is off)")
     print("     --help                    - this help for usage...")
     sys.exit(1)
@@ -1913,9 +2669,12 @@ if __name__ == '__main__':
     image_title = ""
     color_max = None
     colormap = -1
+    vertical_exaggeration = None
+    sea_level_separation_shift = None
     buildings_file = ""
+    locations_file = ""
+    borders_file = ""
     animation = False
-    close_up_view = False
 
     # reads arguments
     #print("\nnumber of arguments: " + str(len(sys.argv)))
@@ -1928,41 +2687,64 @@ if __name__ == '__main__':
             usage()
         elif "--anim" in arg:
             animation = True
-        elif "--buildings=" in arg:
-            buildings_file = arg.split('=')[1]
-        elif "--closeup" in arg:
-            close_up_view = True
-        elif "--color-max" in arg:
-            color_max = float(arg.split('=')[1])
-        elif "--colormap" in arg:
-            colormap = int(arg.split('=')[1])
-        elif "--with-cycles" in arg:
-            use_cycles_renderer = True
-        elif "--no-cycles" in arg:
-            use_cycles_renderer = False
-        elif "--no-dive-in" in arg:
-            use_animation_dive_in = False
-        elif "--no-rotation" in arg:
-            use_animation_rotation = False
-        elif "--small" in arg:
-            blender_img_resolution_X = 600
-            blender_img_resolution_Y = 400
-        elif "--shift-buildings" in arg:
-            shift_building_baseline = float(arg.split('=')[1])
-        elif "--suppress" in arg:
-            suppress_renderer_output = True
-        elif "--title=" in arg:
-            image_title = arg.split('=')[1]
-        elif "--transparent-sea-level" in arg:
-            use_transparent_sea_level_plane = True
-        elif "--vtk_file=" in arg:
-            vtk_file = arg.split('=')[1]
         elif "--background-dark" in arg:
             world_background_color = (0.05,0.05,0.05,1)  # dark world background
         elif "--background-blue" in arg:
             world_background_color = (0.05,0.05,0.1,1)   # dark-blue world background
         elif "--background-black" in arg:
             world_background_color = (0,0,0,1)           # black world background
+        elif "--borders=" in arg:
+            borders_file = arg.split('=')[1]
+        elif "--buildings=" in arg:
+            buildings_file = arg.split('=')[1]
+        elif "--centered" in arg:
+            centered_view = True
+        elif "--closeup" in arg:
+            close_up_view = True
+        elif "--color-max" in arg:
+            color_max = float(arg.split('=')[1])
+        elif "--colormap" in arg:
+            colormap = int(arg.split('=')[1])
+        elif "--locations=" in arg:
+            locations_file = arg.split('=')[1]
+        elif "--matte" in arg:
+            use_matte_material = True
+        elif "--no-cycles" in arg:
+            use_cycles_renderer = False
+        elif "--no-dive-in" in arg:
+            use_animation_dive_in = False
+        elif "--no-rotation" in arg:
+            use_animation_rotation = False
+        elif "--no-sea-level" in arg:
+            use_sea_level_plane = False
+        elif "--sea-level-separation=" in arg:
+            sea_level_separation = float(arg.split('=')[1])
+        elif "--shift-buildings" in arg:
+            shift_building_baseline = float(arg.split('=')[1])
+        elif "--small" in arg:
+            blender_img_resolution_X = 600
+            blender_img_resolution_Y = 400
+        elif "--suppress" in arg:
+            suppress_renderer_output = True
+        elif "--time=" in arg:
+            time_string = arg.split('=')[1]
+        elif "--title=" in arg:
+            image_title = arg.split('=')[1]
+        elif "--transparent-sea-level" in arg:
+            use_transparent_sea_level_plane = True
+        elif "--utm_zone=" in arg:
+            utm_zone = int(arg.split('=')[1])
+            if abs(utm_zone) < 1 or utm_zone > 60:
+                print(f"Invalid UTM zone entered: {utm_zone} - Please use zones from +/- [1,60]")
+                sys.exit(1)
+        elif "--vertical-exaggeration=" in arg:
+            vertical_exaggeration = float(arg.split('=')[1])
+        elif "--vtk_file=" in arg:
+            vtk_file = arg.split('=')[1]
+        elif "--white-labels" in arg:
+            location_labels_color = (0.9,0.9,0.9,1)      # white location labels
+        elif "--with-cycles" in arg:
+            use_cycles_renderer = True
         elif i >= 8:
             print("argument not recognized: ",arg)
 
@@ -1983,4 +2765,4 @@ if __name__ == '__main__':
       print("command logged to file: " + filename)
 
     # main routine
-    plot_with_blender(vtk_file,image_title,colormap,color_max,buildings_file,animation,close_up_view)
+    plot_with_blender(vtk_file,image_title,colormap,color_max,buildings_file,borders_file,locations_file,animation)

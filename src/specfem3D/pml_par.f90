@@ -30,7 +30,7 @@ module pml_par
 
   ! main parameter module for C-PML simulations
 
-  use constants, only: CUSTOM_REAL
+  use constants, only: CUSTOM_REAL,CPML_THETA
 
   implicit none
 
@@ -69,12 +69,14 @@ module pml_par
   ! minimum distance between parameters of CPML to avoid the singularities
   real(kind=CUSTOM_REAL) :: min_distance_between_CPML_parameter
 
+  ! PML time scheme factors
+  real(kind=CUSTOM_REAL), parameter :: ONE_MINUS_THETA = real(1.d0 - CPML_THETA,kind=CUSTOM_REAL)
+  real(kind=CUSTOM_REAL), parameter :: ONE_MINUS_TWO_THETA = real(1.d0 - 2.d0 * CPML_THETA,kind=CUSTOM_REAL)
+
   ! store the field of displ + (1-2 * \theta)/2*deltat * veloc + (1-\theta)/2*deltat**2 * accel
   ! for second order convolution scheme
   ! where displ, veloc, accel are defined at n-1 time step
   real(kind=CUSTOM_REAL), dimension(:,:,:,:,:), allocatable :: PML_displ_old
-
-  real(kind=CUSTOM_REAL), parameter :: THETA = 1.0_CUSTOM_REAL/8.0_CUSTOM_REAL
 
   ! store the field of displ + (1-2 * \theta)/2*deltat * veloc for second order convolution scheme
   ! where displ is defined at n time step, while veloc is predicted veloc at "n" time step
@@ -133,8 +135,5 @@ module pml_par
 
   integer :: b_reclen_PML_field,b_reclen_PML_potential
   real(kind=CUSTOM_REAL), dimension(:,:), allocatable :: b_PML_field,b_PML_potential
-
-  ! convolution coefficients
-  logical,parameter :: FIRST_ORDER_CONVOLUTION = .false.
 
 end module pml_par

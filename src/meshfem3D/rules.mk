@@ -64,6 +64,7 @@ meshfem3D_OBJECTS = \
 	$O/read_value_mesh_parameters.mesh.o \
 	$O/save_databases.mesh.o \
 	$O/save_databases_hdf5.mesh_hdf5.o \
+	$O/save_mesh_as_cubit.mesh.o \
 	$O/store_boundaries.mesh.o \
 	$O/store_coords.mesh.o \
 	$(EMPTY_MACRO)
@@ -166,6 +167,7 @@ $O/meshfem3D.mesh.o: ${SETUP}/version.fh
 
 $O/meshfem3D.mesh.o: $O/chunk_earth_mesh_mod.mesh.o
 $O/determine_cavity.mesh.o: $O/create_meshfem_mesh.mesh.o
+$O/create_CPML_regions.mesh.o: $O/create_meshfem_mesh.mesh.o
 
 ## adios
 $O/save_databases_adios.mesh_adios.o: $O/safe_alloc_mod.shared.o $O/adios_manager.shared_adios_module.o

@@ -507,9 +507,8 @@
 
 
             call calc_gll_points(xelm,yelm,zelm,xstore,ystore,zstore,shape3D,NGNOD,NGLLX,NGLLY,NGLLZ)
-            call write_all_chunk_surface_GLL_in_spherical_and_Cartesian_coords(xstore,ystore,zstore, &
-                                                          deg2rad,ilayer,iboun,ispec,nspec,longitud, &
-                                                          latitud,radius,rotation_matrix,updown)
+            call write_all_chunk_surface_GLL(xstore,ystore,zstore,deg2rad,ilayer,iboun,ispec,nspec,longitud, &
+                                             latitud,radius,rotation_matrix,updown)
 
           endif
 
@@ -1317,9 +1316,8 @@
 
 
             call calc_gll_points(xelm,yelm,zelm,xstore,ystore,zstore,shape3D,NGNOD,NGLLX,NGLLY,NGLLZ)
-            call write_all_chunk_surface_GLL_in_spherical_and_Cartesian_coords(xstore,ystore,zstore, &
-                                                          deg2rad,ilayer,iboun,ispec,nspec,longitud, &
-                                                          latitud,radius,rotation_matrix,updown)
+            call write_all_chunk_surface_GLL(xstore,ystore,zstore,deg2rad,ilayer,iboun,ispec,nspec,longitud, &
+                                             latitud,radius,rotation_matrix,updown)
 
           endif
 
@@ -1935,9 +1933,8 @@
 !
 !! Used (among other) for VM coupling with AxiSEM
 
-  subroutine write_all_chunk_surface_GLL_in_spherical_and_Cartesian_coords(xstore,ystore,zstore, &
-                                                      deg2rad,ilayer,iboun,ispec,nspec,longitud, &
-                                                      latitud,radius,rotation_matrix,updown)
+  subroutine write_all_chunk_surface_GLL(xstore,ystore,zstore,deg2rad,ilayer,iboun,ispec,nspec,longitud, &
+                                         latitud,radius,rotation_matrix,updown)
 
   use constants, only: NGLLX, NGLLY, NGLLZ, &
     INJECTION_TECHNIQUE_IS_DSM, INJECTION_TECHNIQUE_IS_AXISEM
@@ -2133,7 +2130,7 @@
 
   endif
 
-  end subroutine write_all_chunk_surface_GLL_in_spherical_and_Cartesian_coords
+  end subroutine write_all_chunk_surface_GLL
 
 !
 !=======================================================================================================
@@ -2689,8 +2686,9 @@
 
   implicit none
 
-  integer k
-  double precision z(*),zc
+  integer, intent(inout) :: k
+  double precision, intent(inout) :: z(*)
+  double precision, intent(in) :: zc
 
   if (k == 0) then
      k = k + 1
@@ -2712,8 +2710,9 @@
 
   implicit none
 
-  integer :: k
-  double precision :: z(*),zc
+  integer, intent(inout) :: k
+  double precision, intent(inout) :: z(*)
+  double precision, intent(in) :: zc
   logical :: NoInter
 
   if (k == 0) then

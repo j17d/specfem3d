@@ -318,8 +318,8 @@
   use specfem_par, only: SIMULATION_TYPE,SAVE_FORWARD
 
   ! wavefield injection
-  use specfem_par, only: NGLOB_AB
-  use specfem_par_acoustic, only: potential_dot_dot_acoustic
+  !use specfem_par, only: NGLOB_AB
+  !use specfem_par_acoustic, only: potential_dot_dot_acoustic
   ! boundary injection wavefield parts for saving together with b_absorb_field
   use specfem_par_coupling, only: b_boundary_injection_potential
 
@@ -357,13 +357,14 @@
     !       this is slowing down the simulation a bit.
     !
     ! transfers potential to the CPU
-    call transfer_dot_dot_from_device(NGLOB_AB, potential_dot_dot_acoustic, Mesh_pointer)
+    ! call transfer_dot_dot_from_device(NGLOB_AB, potential_dot_dot_acoustic, Mesh_pointer)
 
-    ! adds boundary contribution from injected wavefield
-    call compute_coupled_injection_contribution_ac(NGLOB_AB,potential_dot_dot_acoustic,iphase,it)
+    ! ! adds boundary contribution from injected wavefield
+    ! call compute_coupled_injection_contribution_ac(NGLOB_AB,potential_dot_dot_acoustic,iphase,it)
 
-    ! transfers updated potential field back to the GPU
-    call transfer_dot_dot_to_device(NGLOB_AB, potential_dot_dot_acoustic, Mesh_pointer)
+    ! ! transfers updated potential field back to the GPU
+    ! call transfer_dot_dot_to_device(NGLOB_AB, potential_dot_dot_acoustic, Mesh_pointer)
+    call compute_coupled_injection_contribution_ac_GPU(iphase,Mesh_pointer)
   endif
 
   if (UNDO_ATTENUATION_AND_OR_PML) then
@@ -443,8 +444,10 @@
   ! FK surface
   integer :: ipt, ii, kk, iim1, iip1, iip2
   real(kind=CUSTOM_REAL) :: cs1,cs2,cs3,cs4,w
-  real(kind=CUSTOM_REAL) :: vx_FK,vy_FK,vz_FK,tx_FK,ty_FK,tz_FK
-  real(kind=CUSTOM_REAL) :: vx,vy,vz,tx,ty,tz,vn,tn
+  ! real(kind=CUSTOM_REAL) :: vx_FK,vy_FK,vz_FK,tx_FK,ty_FK,tz_FK
+  ! real(kind=CUSTOM_REAL) :: vx,vy,vz,tx,ty,tz,vn,tn
+  real(kind=CUSTOM_REAL) :: ux_FK,uy_FK,uz_FK,chi_dot_FK
+  real(kind=CUSTOM_REAL) :: ux,uy,uz,chi_dot,un
   real(kind=CUSTOM_REAL) :: rhol,kappal,cpl,absorbl
 
   ! safety checks
@@ -507,6 +510,11 @@
     ! safety stop
     stop 'AxiSEM coupling for acoustic domains is not implemented yet'
 
+  case (INJECTION_TECHNIQUE_IS_SPECFEM)
+    ! AxiSEM coupling
+    ! safety stop
+    stop 'SPECFEM coupling for acoustic domains is not implemented yet'
+
   case (INJECTION_TECHNIQUE_IS_FK)
     ! FK coupling
     ! safety check only P-wave incident
@@ -548,8 +556,8 @@
         ! velocity and stresses would be subtracted from total, therefore we add a minus sign when getting the values
         select case(INJECTION_TECHNIQUE_TYPE)
         case (INJECTION_TECHNIQUE_IS_DSM)                 !! To verify for NOBU version
-          ! not implemented yet
-          return
+          ! ! not implemented yet
+          ! return
         case (INJECTION_TECHNIQUE_IS_AXISEM)              !! VM VM add AxiSEM
           ! not implemented yet
           return
@@ -559,22 +567,39 @@
           ipt = ipt_table(igll,iface)
 
           ! interpolates velocity/stress
-          vx_FK = cs1 * Veloc_FK(1,ipt,iim1) + cs2 * Veloc_FK(1,ipt,ii) + cs3 * Veloc_FK(1,ipt,iip1) + cs4 * Veloc_FK(1,ipt,iip2)
-          vy_FK = cs1 * Veloc_FK(2,ipt,iim1) + cs2 * Veloc_FK(2,ipt,ii) + cs3 * Veloc_FK(2,ipt,iip1) + cs4 * Veloc_FK(2,ipt,iip2)
-          vz_FK = cs1 * Veloc_FK(3,ipt,iim1) + cs2 * Veloc_FK(3,ipt,ii) + cs3 * Veloc_FK(3,ipt,iip1) + cs4 * Veloc_FK(3,ipt,iip2)
+          ! nqdu NOT CORRECT!!!
+          ! vx_FK = cs1 * Veloc_FK(1,ipt,iim1) + cs2 * Veloc_FK(1,ipt,ii) + cs3 * Veloc_FK(1,ipt,iip1) + cs4 * Veloc_FK(1,ipt,iip2)
+          ! vy_FK = cs1 * Veloc_FK(2,ipt,iim1) + cs2 * Veloc_FK(2,ipt,ii) + cs3 * Veloc_FK(2,ipt,iip1) + cs4 * Veloc_FK(2,ipt,iip2)
+          ! vz_FK = cs1 * Veloc_FK(3,ipt,iim1) + cs2 * Veloc_FK(3,ipt,ii) + cs3 * Veloc_FK(3,ipt,iip1) + cs4 * Veloc_FK(3,ipt,iip2)
 
-          tx_FK = cs1 * Tract_FK(1,ipt,iim1) + cs2 * Tract_FK(1,ipt,ii) + cs3 * Tract_FK(1,ipt,iip1) + cs4 * Tract_FK(1,ipt,iip2)
-          ty_FK = cs1 * Tract_FK(2,ipt,iim1) + cs2 * Tract_FK(2,ipt,ii) + cs3 * Tract_FK(2,ipt,iip1) + cs4 * Tract_FK(2,ipt,iip2)
-          tz_FK = cs1 * Tract_FK(3,ipt,iim1) + cs2 * Tract_FK(3,ipt,ii) + cs3 * Tract_FK(3,ipt,iip1) + cs4 * Tract_FK(3,ipt,iip2)
+          ! tx_FK = cs1 * Tract_FK(1,ipt,iim1) + cs2 * Tract_FK(1,ipt,ii) + cs3 * Tract_FK(1,ipt,iip1) + cs4 * Tract_FK(1,ipt,iip2)
+          ! ty_FK = cs1 * Tract_FK(2,ipt,iim1) + cs2 * Tract_FK(2,ipt,ii) + cs3 * Tract_FK(2,ipt,iip1) + cs4 * Tract_FK(2,ipt,iip2)
+          ! tz_FK = cs1 * Tract_FK(3,ipt,iim1) + cs2 * Tract_FK(3,ipt,ii) + cs3 * Tract_FK(3,ipt,iip1) + cs4 * Tract_FK(3,ipt,iip2)
+
+          ! now displ/chi_dot are saved in veloc_fk/tract_fk
+          ux_FK = cs1 * Veloc_FK(1,ipt,iim1) + cs2 * Veloc_FK(1,ipt,ii) + &
+                  cs3 * Veloc_FK(1,ipt,iip1) + cs4 * Veloc_FK(1,ipt,iip2)
+          uy_FK = cs1 * Veloc_FK(2,ipt,iim1) + cs2 * Veloc_FK(2,ipt,ii) + &
+                  cs3 * Veloc_FK(2,ipt,iip1) + cs4 * Veloc_FK(2,ipt,iip2)
+          uz_FK = cs1 * Veloc_FK(3,ipt,iim1) + cs2 * Veloc_FK(3,ipt,ii) + &
+                  cs3 * Veloc_FK(3,ipt,iip1) + cs4 * Veloc_FK(3,ipt,iip2)
+          chi_dot_FK = cs1 * Tract_FK(1,ipt,iim1) + cs2 * Tract_FK(1,ipt,ii) + &
+                       cs3 * Tract_FK(1,ipt,iip1) + cs4 * Tract_FK(1,ipt,iip2)
 
           ! velocity
-          vx = - vx_FK
-          vy = - vy_FK
-          vz = - vz_FK
-          ! stress
-          tx = - tx_FK
-          ty = - ty_FK
-          tz = - tz_FK
+          ! vx = - vx_FK
+          ! vy = - vy_FK
+          ! vz = - vz_FK
+          ! ! stress
+          ! tx = - tx_FK
+          ! ty = - ty_FK
+          ! tz = - tz_FK
+
+          ! displ/dchi
+          ux = - ux_FK
+          uy = - uy_FK
+          uz = - uz_FK
+          chi_dot = -chi_dot_FK
         end select
 
         ! gets local indices for GLL point
@@ -599,17 +624,17 @@
         ny = abs_boundary_normal(2,igll,iface)
         nz = abs_boundary_normal(3,igll,iface)
 
-        ! velocity component in normal direction (normal points out of element)
-        vn = vx*nx + vy*ny + vz*nz
+        ! ! velocity component in normal direction (normal points out of element)
+        ! vn = vx*nx + vy*ny + vz*nz
 
         ! adds stacey term to injected stresses:
         ! velocity vector component * vp * rho in normal direction (+ vs * rho component tangential to it for elastic case)
-        tx = tx + rhol * cpl * vn * nx
-        ty = ty + rhol * cpl * vn * ny
-        tz = tz + rhol * cpl * vn * nz
+        ! tx = tx + rhol * cpl * vn * nx
+        ! ty = ty + rhol * cpl * vn * ny
+        ! tz = tz + rhol * cpl * vn * nz
 
         ! stress component in normal direction (normal points out of element)
-        tn = tx*nx + ty*ny + tz*nz
+        ! tn = tx*nx + ty*ny + tz*nz
 
         ! total contribution (traction and Stacey/Sommerfeld absorbing)
         !
@@ -617,16 +642,74 @@
         !       here, it is added to first undo the factor (rhol*cpl) used to add the velocity contribution to the traction together
         !       with another (rhol*cpl) used in the expressions of the Sommerfeld condition, where
         !          absorbl = potential_dot_acoustic(iglob) * jacobianw / cpl / rhol
-        absorbl = tn * jacobianw / (cpl**2 * rhol**2)
+
+        un = ux*nx + uy*ny + uz*nz
+        un = un + chi_dot / (rhol * cpl)
+
+        ! absorbl = tn * jacobianw / (cpl**2 * rhol**2)
+        absorbl = un * jacobianw
         potential_dot_dot_acoustic(iglob) = potential_dot_dot_acoustic(iglob) - absorbl
 
         ! for kernel simulations: stores contribution to buffer array and add it to stacey buffer before saving to disk
         if (SAVE_STACEY .and. SIMULATION_TYPE == 1) then
-          b_boundary_injection_potential(igll,iface) = - absorbl
+          !b_boundary_injection_potential(igll,iface) = - absorbl
+          b_boundary_injection_potential(igll,iface) = absorbl
         endif
       enddo
     endif
   enddo
 
   end subroutine compute_coupled_injection_contribution_ac
+
+
+
+!=============================================================================
+!
+! NQDU added
+! For coupling with external code, GPU version
+!
+!=============================================================================
+
+  subroutine compute_coupled_injection_contribution_ac_GPU(iphase,Mesh_pointer)
+
+    use constants
+
+    use specfem_par, only: SAVE_STACEY,SIMULATION_TYPE
+
+    use specfem_par, only: num_abs_boundary_faces
+
+    ! boundary coupling
+    use shared_parameters, only: COUPLE_WITH_INJECTION_TECHNIQUE
+    ! boundary injection wavefield parts for saving together with b_absorb_field
+    use specfem_par_coupling, only: b_boundary_injection_potential
+
+    implicit none
+
+    ! communication overlap
+    integer,intent(in) :: iphase
+
+    ! GPU_MODE variables
+    integer(kind=8),intent(in) :: Mesh_pointer
+
+
+  ! safety checks
+  if (.not. COUPLE_WITH_INJECTION_TECHNIQUE) return
+
+  ! only add these contributions in first pass
+  if (iphase /= 1) return
+
+  ! checks if anything to do
+  if (num_abs_boundary_faces == 0) return
+
+  ! only for forward wavefield
+  if (SIMULATION_TYPE /= 1) return
+
+
+    ! compute contribution in device
+    call compute_coupled_injection_contribution_ac_device(Mesh_pointer, &
+                                                          b_boundary_injection_potential, &
+                                                          SAVE_STACEY)
+
+
+    end subroutine compute_coupled_injection_contribution_ac_GPU
 

@@ -491,7 +491,7 @@
   ! ASDF format
   if (ASDF_FORMAT) then
     ! writes out seismograms
-    call write_output_ASDF(all_seismograms,nrec_store,istore)
+    call write_output_asdf(all_seismograms,nrec_store,istore)
     ! nothing left to do (outputs only ASDF seismogram files)
     deallocate(one_seismogram,all_seismograms)
     ! all done

@@ -70,9 +70,9 @@ __global__ void UpdateDispVeloc_PML_kernel(realw* displ,
                                            const int NSPEC_CPML,
                                            const int* d_CPML_to_spec,
                                            const int* d_ibool,
-                                           const realw deltat,
                                            const realw deltatsqover2,
-                                           const realw deltatover2) {
+                                           const realw deltatover2,
+                                           const realw pml_theta) {
 
   int ispec_cpml = blockIdx.x + blockIdx.y*gridDim.x;
   int ijk = threadIdx.x;
@@ -90,19 +90,17 @@ __global__ void UpdateDispVeloc_PML_kernel(realw* displ,
 
     int iglob = d_ibool[ijk + NGLL3_PADDED*ispec] - 1;
 
-    const realw theta = 0.125f; // theta = 1.0 / 8.0;
-
     // updates PML displacement
     PML_displ[INDEX5(NDIM,NGLLX,NGLLX,NGLLX,0,I,J,K,ispec_cpml)] = displ[3*iglob]
-                                                                   + deltatover2 * (1.0f - 2.0f * theta) * veloc[3*iglob]
-                                                                   + deltatsqover2 * (1.0f - theta) * accel[3*iglob];
+                                                                   + deltatover2 * (1.0f - 2.0f * pml_theta) * veloc[3*iglob]
+                                                                   + deltatsqover2 * (1.0f - pml_theta) * accel[3*iglob];
 
     PML_displ[INDEX5(NDIM,NGLLX,NGLLX,NGLLX,1,I,J,K,ispec_cpml)] = displ[3*iglob+1]
-                                                                   + deltatover2 * (1.0f - 2.0f * theta) * veloc[3*iglob+1]
-                                                                   + deltatsqover2 * (1.0f - theta) * accel[3*iglob+1];
+                                                                   + deltatover2 * (1.0f - 2.0f * pml_theta) * veloc[3*iglob+1]
+                                                                   + deltatsqover2 * (1.0f - pml_theta) * accel[3*iglob+1];
 
     PML_displ[INDEX5(NDIM,NGLLX,NGLLX,NGLLX,2,I,J,K,ispec_cpml)] = displ[3*iglob+2]
-                                                                   + deltatover2 * (1.0f - 2.0f * theta) * veloc[3*iglob+2]
-                                                                   + deltatsqover2 * (1.0f - theta) * accel[3*iglob+2];
+                                                                   + deltatover2 * (1.0f - 2.0f * pml_theta) * veloc[3*iglob+2]
+                                                                   + deltatsqover2 * (1.0f - pml_theta) * accel[3*iglob+2];
   }
 }

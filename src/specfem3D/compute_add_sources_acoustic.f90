@@ -31,7 +31,9 @@
 
   use constants
   use specfem_par, only: station_name,network_name, &
-                         nsources_local,tshift_src,DT,t0,SU_FORMAT,USE_LDDRK,istage, &
+                         nsources_local,tshift_src,DT,t0, &
+                         SU_FORMAT,READ_ADJSRC_ASDF, &
+                         USE_LDDRK,istage, &
                          hxir_adjstore,hetar_adjstore,hgammar_adjstore,source_adjoint,number_adjsources_global,nadj_rec_local, &
                          USE_BINARY_FOR_SEISMOGRAMS, &
                          ibool,NSOURCES,myrank,it,ispec_selected_source,islice_selected_source, &
@@ -62,26 +64,27 @@
 
   character(len=MAX_STRING_LEN) :: adj_source_file
 
-  ! sets current initial time
-  if (USE_LDDRK) then
-    ! LDDRK
-    ! note: the LDDRK scheme updates displacement after the stiffness computations and
-    !       after adding boundary/coupling/source terms.
-    !       thus, at each time loop step it, displ(:) is still at (n) and not (n+1) like for the Newmark scheme
-    !       when entering this routine. we therefore at an additional -DT to have the corresponding timing for the source.
-    time_t = dble(it-1-1)*DT + dble(C_LDDRK(istage))*DT - t0
-  else
-    time_t = dble(it-1)*DT - t0
-  endif
-
-! forward simulations
+  ! forward simulations
   if (SIMULATION_TYPE == 1 .and. nsources_local > 0) then
+
     ! ignore pressure sources for fault rupture simulations
     if (FAULT_SIMULATION) return
 
     ! no source inside the mesh if we are coupling with DSM
     ! because the source is precisely the wavefield coming from the DSM traction file
     if (COUPLE_WITH_INJECTION_TECHNIQUE) return
+
+    ! sets current initial time
+    if (USE_LDDRK) then
+      ! LDDRK
+      ! note: the LDDRK scheme updates displacement after the stiffness computations and
+      !       after adding boundary/coupling/source terms.
+      !       thus, at each time loop step it, displ(:) is still at (n) and not (n+1) like for the Newmark scheme
+      !       when entering this routine. we therefore at an additional -DT to have the corresponding timing for the source.
+      time_t = dble(it-1-1)*DT + dble(C_LDDRK(istage))*DT - t0
+    else
+      time_t = dble(it-1)*DT - t0
+    endif
 
 ! openmp solver
 !$OMP PARALLEL if (NSOURCES > 100) &
@@ -179,26 +182,38 @@
       ! with other partitions while we calculate for the inner part
       ! this must be done carefully, otherwise the adjoint sources may be added twice
       if (ibool_read_adj_arrays .and. .not. INVERSE_FWI_FULL_PROBLEM) then
-
-        if (.not. SU_FORMAT) then
-          ! ASCII format
-          if (USE_BINARY_FOR_SEISMOGRAMS) stop 'Adjoint simulations not supported with .bin format, please use SU format instead'
-
-          !!! read ascii adjoint sources
+        ! reads adjoint source files
+        if (SU_FORMAT) then
+          ! SU format
+          call compute_arrays_adjoint_source_SU(IDOMAIN_ACOUSTIC)
+        else if (READ_ADJSRC_ASDF) then
+          ! ASDF format
           do irec_local = 1, nadj_rec_local
-            irec = number_adjsources_global(irec_local)
             ! reads in **net**.**sta**.**BH**.adj files
-            adj_source_file = trim(network_name(irec))//'.'//trim(station_name(irec))
-            call compute_arrays_adjoint_source(adj_source_file,irec)
+            irec = number_adjsources_global(irec_local)
+            adj_source_file = trim(network_name(irec))//'_'//trim(station_name(irec))   ! format: "net_sta"
+            ! compute source arrays
+            call compute_arrays_adjoint_source(adj_source_file,irec_local)
           enddo
         else
-          ! SU format
-          call compute_arrays_adjoint_source_SU()
-        endif !if (.not. SU_FORMAT)
-
+          ! default ASCII format
+          if (USE_BINARY_FOR_SEISMOGRAMS) stop 'Adjoint simulations not supported with .bin format, please use SU format instead'
+          !!! read ascii adjoint sources
+          do irec_local = 1, nadj_rec_local
+            ! reads in **net**.**sta**.**BH**.adj files
+            irec = number_adjsources_global(irec_local)
+            adj_source_file = trim(network_name(irec))//'.'//trim(station_name(irec))   ! format: "net.sta"
+            ! compute source arrays
+            call compute_arrays_adjoint_source(adj_source_file,irec_local)
+          enddo
+        endif
       endif ! if (ibool_read_adj_arrays)
 
+      ! adds source term
       if (it < NSTEP) then
+        ! time step index for adjoint source (time-reversed)
+        it_index = NTSTEP_BETWEEN_READ_ADJSRC - mod(it-1,NTSTEP_BETWEEN_READ_ADJSRC)
+
         ! receivers act as sources
         do irec_local = 1, nadj_rec_local
           irec = number_adjsources_global(irec_local)
@@ -212,9 +227,6 @@
                   iglob = ibool(i,j,k,ispec)
 
                   hlagrange = hxir_adjstore(i,irec_local) * hetar_adjstore(j,irec_local) * hgammar_adjstore(k,irec_local)
-
-                  ! time step index
-                  it_index = NTSTEP_BETWEEN_READ_ADJSRC - mod(it-1,NTSTEP_BETWEEN_READ_ADJSRC)
 
                   ! beware, for acoustic medium, a pressure source would be taking the negative
                   ! and divide by Kappa of the fluid;
@@ -251,7 +263,8 @@
   subroutine compute_add_sources_acoustic_backward(b_potential_dot_dot_acoustic)
 
   use constants
-  use specfem_par, only: nsources_local,tshift_src,DT,t0,USE_LDDRK,istage, &
+  use specfem_par, only: nsources_local,tshift_src,DT,t0, &
+                         USE_LDDRK,istage, &
                          ibool,NSOURCES,myrank,it,islice_selected_source,ispec_selected_source, &
                          sourcearrays,kappastore,SIMULATION_TYPE,NSTEP,NGLOB_AB
 
@@ -408,13 +421,14 @@
 
   use constants
   use specfem_par, only: station_name,network_name, &
-                         nsources_local,tshift_src,DT,t0,SU_FORMAT,USE_LDDRK,istage, &
+                         nsources_local,tshift_src,DT,t0, &
+                         SU_FORMAT,READ_ADJSRC_ASDF, &
+                         USE_LDDRK,istage, &
                          source_adjoint,nadj_rec_local,number_adjsources_global, &
                          USE_BINARY_FOR_SEISMOGRAMS, &
-                         NSOURCES,it,SIMULATION_TYPE,NSTEP,nrec, &
+                         NSOURCES,it,SIMULATION_TYPE,NSTEP, &
                          NTSTEP_BETWEEN_READ_ADJSRC,Mesh_pointer, &
-                         INVERSE_FWI_FULL_PROBLEM,run_number_of_the_source, &
-                         GPU_MODE
+                         INVERSE_FWI_FULL_PROBLEM,run_number_of_the_source
 
   ! coupling
   use shared_parameters, only: COUPLE_WITH_INJECTION_TECHNIQUE
@@ -438,11 +452,9 @@
 
   character(len=MAX_STRING_LEN) :: adj_source_file
 
-  ! checks if anything to do
-  if (.not. GPU_MODE) return
-
   ! forward simulations
   if (SIMULATION_TYPE == 1 .and. nsources_local > 0) then
+
     ! ignore pressure sources for fault rupture simulations
     if (FAULT_SIMULATION) return
 
@@ -525,28 +537,38 @@
       ! with other partitions while we calculate for the inner part
       ! this must be done carefully, otherwise the adjoint sources may be added twice
       if (ibool_read_adj_arrays .and. .not. INVERSE_FWI_FULL_PROBLEM) then
-
-        if (.not. SU_FORMAT) then
-          ! ASCII format
+        ! reads adjoint source files
+        if (SU_FORMAT) then
+          ! SU format
+          call compute_arrays_adjoint_source_SU(IDOMAIN_ACOUSTIC)
+        else if (READ_ADJSRC_ASDF) then
+          ! ASDF format
+          do irec_local = 1, nadj_rec_local
+            ! reads in **net**.**sta**.**BH**.adj files
+            irec = number_adjsources_global(irec_local)
+            adj_source_file = trim(network_name(irec))//'_'//trim(station_name(irec))   ! format: "net_sta"
+            ! compute source arrays
+            call compute_arrays_adjoint_source(adj_source_file,irec_local)
+          enddo
+        else
+          ! default ASCII format
           if (USE_BINARY_FOR_SEISMOGRAMS) stop 'Adjoint simulations not supported with .bin format, please use SU format instead'
           !!! read ascii adjoint sources
           do irec_local = 1, nadj_rec_local
-            irec = number_adjsources_global(irec_local)
             ! reads in **net**.**sta**.**BH**.adj files
-            adj_source_file = trim(network_name(irec))//'.'//trim(station_name(irec))
-            call compute_arrays_adjoint_source(adj_source_file,irec)
+            irec = number_adjsources_global(irec_local)
+            adj_source_file = trim(network_name(irec))//'.'//trim(station_name(irec))   ! format: "net.sta"
+            ! compute source arrays
+            call compute_arrays_adjoint_source(adj_source_file,irec_local)
           enddo
-        else
-          ! SU format
-          call compute_arrays_adjoint_source_SU()
-        endif !if (.not. SU_FORMAT)
-
+        endif
       endif ! if (ibool_read_adj_arrays)
 
+      ! adds source term
       if (it < NSTEP) then
         ! receivers act as sources
         ! on GPU
-        call add_sources_ac_sim_2_or_3_cuda(Mesh_pointer,source_adjoint,nrec,nadj_rec_local,NTSTEP_BETWEEN_READ_ADJSRC,it)
+        call add_sources_ac_sim_2_or_3_cuda(Mesh_pointer,source_adjoint,nadj_rec_local,NTSTEP_BETWEEN_READ_ADJSRC,it)
       endif ! it
     endif ! nadj_rec_local > 0
   endif
@@ -560,10 +582,11 @@
   subroutine compute_add_sources_acoustic_backward_GPU()
 
   use constants
-  use specfem_par, only: nsources_local,tshift_src,DT,t0,USE_LDDRK,istage, &
+  use specfem_par, only: nsources_local,tshift_src,DT,t0, &
+                         USE_LDDRK,istage, &
                          NSOURCES,myrank,it, &
                          SIMULATION_TYPE,NSTEP, &
-                         GPU_MODE,Mesh_pointer,run_number_of_the_source
+                         Mesh_pointer,run_number_of_the_source
   ! undo_att
   use specfem_par, only: UNDO_ATTENUATION_AND_OR_PML,NSUBSET_ITERATIONS,NT_DUMP_ATTENUATION, &
                          iteration_on_subset,it_of_this_subset
@@ -586,8 +609,6 @@
 
   ! checks if anything to do
   if (SIMULATION_TYPE /= 3) return
-
-  if (.not. GPU_MODE) return
 
   ! checks if this slice has sources to add
   if (nsources_local == 0) return

@@ -40,6 +40,8 @@ module fwi_iteration
   use precond_mod
   use input_output
 
+  implicit none
+
   ! arrays
   real(kind=CUSTOM_REAL), private, dimension(:,:,:,:,:), allocatable :: initial_model, current_model
   real(kind=CUSTOM_REAL), private, dimension(:,:,:,:,:), allocatable :: prior_model, ref_model

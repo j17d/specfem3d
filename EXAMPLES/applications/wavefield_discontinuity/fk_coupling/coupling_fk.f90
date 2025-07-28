@@ -1,4 +1,4 @@
-  
+
 
 module fk_injection
   integer, parameter :: CUSTOM_REAL = 4, IMAIN = 6, NGLLSQUARE = 25
@@ -12,7 +12,7 @@ module fk_injection
   integer :: nlayer
   integer :: NF_FOR_STORING, NF_FOR_FFT, NPOW_FOR_FFT, NP_RESAMP, NPOW_FOR_INTERP
   integer :: NPTS_STORED, NPTS_INTERP
-  
+
   !real(kind=CUSTOM_REAL),dimension(:,:),allocatable :: &
   !                  vxbd,vybd,vzbd,txxbd,txybd,txzbd,tyybd,tyzbd,tzzbd
   real(kind=CUSTOM_REAL) :: Z_REF_for_FK
@@ -42,7 +42,7 @@ end module fk_injection
                 kpsv, NF_FOR_STORING, NPOW_FOR_FFT, NP_RESAMP, DF_FK, &
                 compute_traction)
 
-  use fk_injection, only: myrank,CUSTOM_REAL,IMAIN,PI,TINYVAL,&
+  use fk_injection, only: myrank,CUSTOM_REAL,IMAIN,PI,TINYVAL, &
                                   NGLLSQUARE, &
                                   displ, accel, traction, &
                                   xx, yy, zz, xi1, xim, bdlambdamu, &
@@ -228,7 +228,7 @@ end module fk_injection
     do ii = 1, nf2
       om = 2.0 * PI * fvec(ii)
       ! propagation matrix
-      call compute_N_Rayleigh(al,be,mu,H,nlayer,om,ray_p,sum(H(1:nlayer-1)),N_mat) !total-thickness=sum(H)
+      call compute_N_Rayleigh(al,be,mu,H,nlayer,om,ray_p,sum(H(1:nlayer-1)),N_mat) !total-thickness = sum(H)
 
       a = N_mat(3,2); b = N_mat(3,4); c = N_mat(4,2); d = N_mat(4,4)
       delta_mat = a*d - b*c
@@ -425,7 +425,7 @@ end module fk_injection
     do ii = 1, nf2
       om = 2.0 * PI * fvec(ii)
       ! propagation matrix
-      call compute_N_Rayleigh(al,be,mu,H,nlayer,om,ray_p,sum(H(1:nlayer-1)),N_mat) !total-thickness=sum(h)
+      call compute_N_Rayleigh(al,be,mu,H,nlayer,om,ray_p,sum(H(1:nlayer-1)),N_mat) !total-thickness = sum(h)
 
       a = N_mat(3,2); b = N_mat(3,4); c = N_mat(4,2); d = N_mat(4,4)
       delta_mat = a*d - b*c
@@ -1391,7 +1391,7 @@ end module fk_injection
 
      case('NSTEP')
          read(line,*) keyword_tmp, NSTEP
-    
+
      case('deltat')
          read(line,*) keyword_tmp, deltat
 

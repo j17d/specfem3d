@@ -259,7 +259,7 @@ contains
 
     integer(kind=si), intent(in) :: nt, nit
     integer(kind=si)             :: i, ii
-    integer(kind=si), parameter  :: part=0
+    integer(kind=si), parameter  :: part = 0
 
     real(kind=cp), intent(in) :: dt
     real(kind=cp)             :: amp_corr
@@ -435,7 +435,7 @@ contains
 ! Find lag
    subroutine determine_lag(sig1,sig2,n1,n2,lag)
 
-     integer(kind=si) :: part=0
+     integer(kind=si), parameter :: part = 0
 
      integer(kind=si), intent(in) :: n1, n2
 

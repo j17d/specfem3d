@@ -27,9 +27,7 @@
 
   subroutine read_parameter_file(BROADCAST_AFTER_READ)
 
-  use constants, only: myrank, &
-    INJECTION_TECHNIQUE_IS_AXISEM,INJECTION_TECHNIQUE_IS_DSM,INJECTION_TECHNIQUE_IS_FK
-
+  use constants, only: myrank
   use shared_parameters
 
   implicit none
@@ -683,30 +681,9 @@
       write(*,*)
     endif
 
-    ! check the type of external code to couple with, if any
-    !if (MESH_A_CHUNK_OF_THE_EARTH .and. .not. COUPLE_WITH_INJECTION_TECHNIQUE) &
-    !  stop 'MESH_A_CHUNK_OF_THE_EARTH only available with COUPLE_WITH_INJECTION_TECHNIQUE for now, easy to change but not done yet'
-
     if (COUPLE_WITH_INJECTION_TECHNIQUE) then
-      if (INJECTION_TECHNIQUE_TYPE /= INJECTION_TECHNIQUE_IS_DSM .and. &
-         INJECTION_TECHNIQUE_TYPE /= INJECTION_TECHNIQUE_IS_AXISEM .and. &
-         INJECTION_TECHNIQUE_TYPE /= INJECTION_TECHNIQUE_IS_FK) stop 'Error incorrect value of INJECTION_TECHNIQUE_TYPE read'
-
-      if ( (INJECTION_TECHNIQUE_TYPE == INJECTION_TECHNIQUE_IS_DSM ) .and. (.not. MESH_A_CHUNK_OF_THE_EARTH) ) &
-        stop 'Error, coupling with DSM only works with a Earth chunk mesh'
-
-      if (INJECTION_TECHNIQUE_TYPE == INJECTION_TECHNIQUE_IS_FK .and. MESH_A_CHUNK_OF_THE_EARTH) &
-        stop 'Error: coupling with F-K is for models with a flat surface (Earth flattening), &
-                       &thus turn MESH_A_CHUNK_OF_THE_EARTH off'
-
-      if ((INJECTION_TECHNIQUE_TYPE /= INJECTION_TECHNIQUE_IS_AXISEM) .and. RECIPROCITY_AND_KH_INTEGRAL) &
-        stop 'Error: the use of RECIPROCITY_AND_KH_INTEGRAL is only available for coupling with AxiSEM for now'
-
-      if (STACEY_ABSORBING_CONDITIONS .eqv. .false.) &
-        stop 'Error: COUPLE_WITH_INJECTION_TECHNIQUE requires to set STACEY_ABSORBING_CONDITIONS to have an effect'
-
-      if (UNDO_ATTENUATION_AND_OR_PML .and. SIMULATION_TYPE == 3) &
-          stop 'Error: COUPLE_WITH_INJECTION_TECHNIQUE together with UNDO_ATT or PML simulations not implemented yet'
+      ! (optional) start time (used mainly for SPECFEM coupling)
+      call read_value_double_precision(INJECTION_START_TIME, 'INJECTION_START_TIME', ier); ier = 0
     endif
 
     !-------------------------------------------------------
@@ -905,7 +882,9 @@
 ! safety checks
 ! some features might not be implemented depending on setup
 
-!  use constants
+  use constants, only: &
+    INJECTION_TECHNIQUE_IS_AXISEM,INJECTION_TECHNIQUE_IS_DSM,INJECTION_TECHNIQUE_IS_FK,INJECTION_TECHNIQUE_IS_SPECFEM
+
   use shared_parameters
 
   implicit none
@@ -1016,6 +995,10 @@
     ! only one absorbing condition is possible
     if (STACEY_ABSORBING_CONDITIONS) &
       stop 'Error for PML, please set STACEY_ABSORBING_CONDITIONS and STACEY_INSTEAD_OF_FREE_SURFACE to .false. in Par_file'
+
+    ! valid reference f0 frequency
+    if (f0_FOR_PML == 0.d0) &
+      stop 'Error for PML, please set f0_FOR_PML to a non-zero value in Par_file'
   endif
 
   ! UNDO_ATT
@@ -1032,8 +1015,6 @@
       stop 'USE_LDDRK in LTS_MODE not supported yet'
     if (PML_CONDITIONS) &
       stop 'PML_CONDITIONS in LTS_MODE not supported yet'
-    if (GPU_MODE) &
-      stop 'GPU_MODE and LTS_MODE together not supported yet'
   endif
 
   ! PARTITIONING_TYPE
@@ -1065,9 +1046,38 @@
     MOVIE_VOLUME_STRESS = .false.
   endif
 
+  ! check the type of external code to couple with, if any
+  !if (MESH_A_CHUNK_OF_THE_EARTH .and. .not. COUPLE_WITH_INJECTION_TECHNIQUE) &
+  !  stop 'MESH_A_CHUNK_OF_THE_EARTH only available with COUPLE_WITH_INJECTION_TECHNIQUE for now, easy to change but not done yet'
+
+  if (COUPLE_WITH_INJECTION_TECHNIQUE) then
+    if (INJECTION_TECHNIQUE_TYPE /= INJECTION_TECHNIQUE_IS_DSM .and. &
+       INJECTION_TECHNIQUE_TYPE /= INJECTION_TECHNIQUE_IS_AXISEM .and. &
+       INJECTION_TECHNIQUE_TYPE /= INJECTION_TECHNIQUE_IS_FK .and. &
+       INJECTION_TECHNIQUE_TYPE /= INJECTION_TECHNIQUE_IS_SPECFEM) &
+      stop 'Error incorrect value of INJECTION_TECHNIQUE_TYPE read'
+
+    if ( (INJECTION_TECHNIQUE_TYPE == INJECTION_TECHNIQUE_IS_DSM ) .and. (.not. MESH_A_CHUNK_OF_THE_EARTH) ) &
+      stop 'Error, coupling with DSM only works with a Earth chunk mesh'
+
+    if (INJECTION_TECHNIQUE_TYPE == INJECTION_TECHNIQUE_IS_FK .and. MESH_A_CHUNK_OF_THE_EARTH) &
+      stop 'Error: coupling with F-K is for models with a flat surface (Earth flattening), &
+                     &thus turn MESH_A_CHUNK_OF_THE_EARTH off'
+
+    if ((INJECTION_TECHNIQUE_TYPE /= INJECTION_TECHNIQUE_IS_AXISEM) .and. RECIPROCITY_AND_KH_INTEGRAL) &
+      stop 'Error: the use of RECIPROCITY_AND_KH_INTEGRAL is only available for coupling with AxiSEM for now'
+
+    if ((INJECTION_TECHNIQUE_TYPE == INJECTION_TECHNIQUE_IS_SPECFEM) .and. MESH_A_CHUNK_OF_THE_EARTH) &
+      stop 'Error: coupling w/ specfem type only implemented for MESH_A_CHUNK_OF_THE_EARTH == .false.'
+
+    if (STACEY_ABSORBING_CONDITIONS .eqv. .false.) &
+      stop 'Error: COUPLE_WITH_INJECTION_TECHNIQUE requires to set STACEY_ABSORBING_CONDITIONS to have an effect'
+
+    if (UNDO_ATTENUATION_AND_OR_PML .and. SIMULATION_TYPE == 3) &
+        stop 'Error: COUPLE_WITH_INJECTION_TECHNIQUE together with UNDO_ATT or PML simulations not implemented yet'
+  endif
+
   if (IS_WAVEFIELD_DISCONTINUITY) then
-    if (GPU_MODE) &
-      stop 'wavefield discontinuity problem cannot be solved on GPU yet'
     if (ATTENUATION) &
       stop 'wavefield discontinuity problem cannot be solved with attenuation'
   endif
@@ -1093,7 +1103,7 @@
   integer :: i,irange
   character(len=MAX_STRING_LEN) :: sources_filename
   character(len=MAX_STRING_LEN) :: path_to_add
-  character(len=MAX_STRING_LEN) :: tmp_TOMOGRAPHY_PATH,tmp_LOCAL_PATH
+  character(len=MAX_STRING_LEN) :: tmp_PATH
 
   ! updates values for simulation settings
   ! LDDRK scheme
@@ -1109,19 +1119,19 @@
   if (NUMBER_OF_SIMULTANEOUS_RUNS > 1 .and. mygroup >= 0) then
 
     ! removes leading ./ if any, Paul Cristini said it could lead to problems when NUMBER_OF_SIMULTANEOUS_RUNS > 1
-    tmp_LOCAL_PATH = adjustl(LOCAL_PATH)
-    if (index (tmp_LOCAL_PATH, './') == 1) then
-      LOCAL_PATH = tmp_LOCAL_PATH(3:)
+    tmp_PATH = adjustl(LOCAL_PATH)
+    if (index (tmp_PATH, './') == 1) then
+      LOCAL_PATH = tmp_PATH(3:)
     endif
 
-    tmp_TOMOGRAPHY_PATH = adjustl(TOMOGRAPHY_PATH)
-    if (index (tmp_TOMOGRAPHY_PATH, './') == 1) then
-      TOMOGRAPHY_PATH = tmp_TOMOGRAPHY_PATH(3:)
+    tmp_PATH = adjustl(TOMOGRAPHY_PATH)
+    if (index (tmp_PATH, './') == 1) then
+      TOMOGRAPHY_PATH = tmp_PATH(3:)
     endif
 
-    TRACTION_PATH_new = adjustl(TRACTION_PATH)
-    if (index (TRACTION_PATH_new, './') == 1) then
-      TRACTION_PATH = TRACTION_PATH_new(3:)
+    tmp_PATH = adjustl(TRACTION_PATH)
+    if (index (tmp_PATH, './') == 1) then
+      TRACTION_PATH = tmp_PATH(3:)
     endif
 
     write(path_to_add,"('run',i4.4,'/')") mygroup + 1
@@ -1433,6 +1443,7 @@
   call bcast_all_string(TRACTION_PATH)
   call bcast_all_string(FKMODEL_FILE)
   call bcast_all_singlel(RECIPROCITY_AND_KH_INTEGRAL)
+  call bcast_all_singledp(INJECTION_START_TIME)
 
   ! wavefield discontinuity
   call bcast_all_singlel(IS_WAVEFIELD_DISCONTINUITY)

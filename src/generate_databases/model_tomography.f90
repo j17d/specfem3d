@@ -121,7 +121,7 @@
   ! allocate( vp_tomography(1:nrecord) ,stat=ier)
   ! if (ier /= 0) stop 'error allocating array vp_tomography'
   !endif
-  !call bcast_all_cr(vp_tomography,size(vp_tomography))
+  !call bcast_all_cr(vp_tomography,size(vp_tomography,kind=4))
 
   ! synchronizes processes
   call synchronize_all()
@@ -564,7 +564,7 @@ end subroutine init_tomography_files
     ! user output
     if (myrank_tomo == 0) then
       if (use_format_with_lonlatdepth) then
-        write(IMAIN,*) '     EMC model  : uses lon / lat / depth as coordinates'
+        write(IMAIN,*) '     tomo model : uses lon / lat / depth as coordinates'
       endif
       call flush_IMAIN()
     endif
@@ -762,7 +762,7 @@ end subroutine init_tomography_files
      if (ier /= 0) stop 'error while reading tomography file'
 
      ! suppress leading white spaces, if any
-     string_read = adjustl(string_read)
+     string_read = trim(adjustl(string_read))
 
      ! suppress trailing carriage return (ASCII code 13) if any (e.g. if input text file coming from Windows/DOS)
      if (index(string_read,achar(13)) > 0) string_read = string_read(1:index(string_read,achar(13))-1)
@@ -774,8 +774,8 @@ end subroutine init_tomography_files
      ! check if format used lon/lat/depth (specified in header comment)
      if (string_read(1:1) == '#') then
        ! header can specify type for IRIS EMC models
-       ! # model type        : IRIS EMC model
-       ! # coordinate format : lon / lat / depth
+       ! # model type        : IRIS EMC model           - this line will be ignored so far
+       ! # coordinate format : lon / lat / depth        - this line determines whether to use depth or Z-coordinate
        if (index(string_read,'coordinate format') > 0 .and. index(string_read,'lon / lat / depth') > 0) then
          use_format_with_lonlatdepth = .true.
        endif
@@ -936,7 +936,7 @@ end subroutine init_tomography_files
 
   ! determine spacing and cell for linear interpolation
   if (use_format_with_lonlatdepth) then
-    ! for IRIS EMC models with lon / lat / depth coordinates
+    ! for (IRIS EMC) models with lon / lat / depth coordinates
     ! x/y position as custom real
     xloc = real(xmesh,kind=CUSTOM_REAL)
     yloc = real(ymesh,kind=CUSTOM_REAL)
@@ -980,6 +980,11 @@ end subroutine init_tomography_files
 
   gamma_interp_x = spac_x - dble(ix)
   gamma_interp_y = spac_y - dble(iy)
+
+  gamma_interp_z1 = 0.d0
+  gamma_interp_z2 = 0.d0
+  gamma_interp_z3 = 0.d0
+  gamma_interp_z4 = 0.d0
 
   ! suppress edge effects for points outside of the model SPOSTARE DOPO
   if (ix < 0) then

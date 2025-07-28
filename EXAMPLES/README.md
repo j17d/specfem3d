@@ -7,6 +7,8 @@ The sections include:
 
 - **benchmarks/**: examples for testing purposes and validation of the code
 
+- **real_world/**: examples dealing with local and regional simulation setups from real world locations
+
 - **reproducible_study/**: simulation setups to reproduce published results
 
 

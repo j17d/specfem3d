@@ -60,7 +60,7 @@
   double precision :: f0,t0_ricker
   ! CMTs
   double precision, dimension(:), allocatable :: lat,lon,depth
-  double precision, dimension(:,:), allocatable ::  moment_tensor
+  double precision, dimension(:,:), allocatable :: moment_tensor
   ! positioning
   double precision, dimension(:), allocatable :: x_found,y_found,z_found
   double precision, dimension(:), allocatable :: elevation
@@ -68,8 +68,12 @@
   double precision, dimension(:), allocatable :: x_target,y_target,z_target
   integer, dimension(:), allocatable :: idomain
 
+  double precision :: force_N,total_force_N
+  double precision :: M0,Mw,total_M0,total_Mw
+
   double precision, external :: get_cmt_scalar_moment
   double precision, external :: get_cmt_moment_magnitude
+  double precision, external :: get_cmt_moment_magnitude_from_M0
 
   ! location search
   integer :: ispec_found,idomain_found
@@ -284,6 +288,14 @@
 
   enddo ! end of loop on all the sources
 
+  ! coupling
+  if (COUPLE_WITH_INJECTION_TECHNIQUE) then
+    ! no sources needed as wavefield will be injected
+    ! set ficticious sources locations to first element in slice 0 (to avoid indexing issues later on)
+    islice_selected_source(:) = 0
+    ispec_selected_source(:) = 1
+  endif
+
   ! bcast from main process
   call bcast_all_i(islice_selected_source,NSOURCES)
   call bcast_all_i(idomain,NSOURCES)
@@ -312,6 +324,7 @@
   endif
   ! sets flag if source element in PML
   is_CPML_source(:) = .false.
+  is_CPML_source_all(:) = .false.
   do isource = 1,NSOURCES
     if (islice_selected_source(isource) == myrank) then
       ispec = ispec_selected_source(isource)
@@ -395,11 +408,11 @@
 
     ! skip source info for wavefield injection simulations
     if (COUPLE_WITH_INJECTION_TECHNIQUE) then
-      write(IMAIN,*)
-      write(IMAIN,*) 'note on using injection technique:'
-      write(IMAIN,*) '  source (inside the mesh) will be ignored if we are coupling with DSM/AxiSEM/FK,'
+      write(IMAIN,*) 'using injection technique:'
+      write(IMAIN,*) '  source (inside the mesh) will be ignored if we are coupling with DSM/AxiSEM/FK/SPECFEM,'
       write(IMAIN,*) '  because the source is precisely the wavefield coming from the injection boundary'
       write(IMAIN,*)
+      call flush_IMAIN()
       ! nothing to display anymore
       is_done_sources = .true.
     endif
@@ -410,7 +423,7 @@
     ! loops over all sources
     do isource = 1,NSOURCES
 
-      if (SHOW_DETAILS_LOCATE_SOURCE .or. NSOURCES < 10) then
+      if (SHOW_DETAILS_LOCATE_SOURCE .or. NSOURCES < 10 .or. isource == 1) then
         ! source info
         write(IMAIN,*)
         write(IMAIN,*) 'source # ',isource
@@ -580,13 +593,15 @@
         write(IMAIN,*) '  magnitude of the source:'
         if (USE_FORCE_POINT_SOURCE) then
           ! single point force
-          write(IMAIN,*) '    factor = ', factor_force_source(isource)
+          ! force in Newton
+          force_N = factor_force_source(isource)
+          write(IMAIN,*) '    factor = ', force_N
         else
           ! moment-tensor
-          write(IMAIN,*) '       scalar moment M0 = ', &
-            get_cmt_scalar_moment(Mxx(isource),Myy(isource),Mzz(isource),Mxy(isource),Mxz(isource),Myz(isource)),' dyne-cm'
-          write(IMAIN,*) '    moment magnitude Mw = ', &
-            get_cmt_moment_magnitude(Mxx(isource),Myy(isource),Mzz(isource),Mxy(isource),Mxz(isource),Myz(isource))
+          M0 = get_cmt_scalar_moment(Mxx(isource),Myy(isource),Mzz(isource),Mxy(isource),Mxz(isource),Myz(isource))
+          Mw =  get_cmt_moment_magnitude(Mxx(isource),Myy(isource),Mzz(isource),Mxy(isource),Mxz(isource),Myz(isource))
+          write(IMAIN,*) '       scalar moment M0 = ',M0,' dyne-cm'
+          write(IMAIN,*) '    moment magnitude Mw = ',Mw
         endif
 #endif
         write(IMAIN,*)
@@ -650,6 +665,7 @@
           write(IMAIN,*)
         endif
         write(IMAIN,*)
+        call flush_IMAIN()
       endif  ! end of detailed output to locate source
 
       ! checks CMTSOLUTION format for acoustic case
@@ -681,12 +697,75 @@
     ! end of loop on all the sources
     enddo
 
+    ! user info for many source points
+    if (.not. SHOW_DETAILS_LOCATE_SOURCE .and. NSOURCES >= 10) then
+      write(IMAIN,*) 'for all following sources we will suppress the detail infos to avoid getting to long here...'
+      write(IMAIN,*)
+      write(IMAIN,*) 'In case you wish to see detailed source informations for all source points, consider turning on the'
+      write(IMAIN,*) 'parameter SHOW_DETAILS_LOCATE_SOURCE in setup/constants.h'
+      write(IMAIN,*)
+      call flush_IMAIN()
+    endif
+
+    ! multiple (finite) sources
     if (.not. SHOW_DETAILS_LOCATE_SOURCE .and. NSOURCES > 1) then
+      write(IMAIN,*) ' using a total of ',NSOURCES,'sources'
       write(IMAIN,*)
-      write(IMAIN,*) '*************************************'
-      write(IMAIN,*) ' using sources ',NSOURCES
-      write(IMAIN,*) '*************************************'
+    endif
+
+    ! finite sources
+    if (NSOURCES > 1) then
+      ! magnitude
+      ! determines total magnitude (for finite sources)
+      total_M0 = 0.d0
+      total_Mw = 0.d0
+      total_force_N = 0.d0
+
+      do isource = 1,NSOURCES
+        if (USE_FORCE_POINT_SOURCE) then
+          ! single point force
+          ! factor_force_source in FORCESOLUTION file is by default in Newton
+          ! 1 Newton is 1 kg * 1 m / (1 second)^2
+          ! force in Newton
+          force_N = factor_force_source(isource)
+          ! adds to total force applied (sum over all force point sources)
+          total_force_N = total_force_N + force_N
+        else
+          ! moment-tensor
+          M0 = get_cmt_scalar_moment(Mxx(isource),Myy(isource),Mzz(isource),Mxy(isource),Mxz(isource),Myz(isource))
+          Mw =  get_cmt_moment_magnitude(Mxx(isource),Myy(isource),Mzz(isource),Mxy(isource),Mxz(isource),Myz(isource))
+          ! adds to total moment
+          total_M0 = total_M0 + M0
+          total_Mw = get_cmt_moment_magnitude_from_M0(total_M0)
+        endif
+      enddo
+
+      ! sets total magnitude (for finite sources)
+      M0 = total_M0
+      Mw = total_Mw
+      force_N = total_force_N
+
+      ! user output
       write(IMAIN,*)
+      write(IMAIN,*) '********************'
+      write(IMAIN,*)
+      write(IMAIN,*) 'finite source combined over all ',NSOURCES,' sources applied:'
+      if (USE_FORCE_POINT_SOURCE) then
+        ! total force in Newton
+        write(IMAIN,*) '  total force = ', sngl(force_N),'(Newton)' ! dimensionalized
+      else
+        ! moment-tensor
+        write(IMAIN,*) '     total scalar moment M0 = ', M0,' dyne-cm'
+        write(IMAIN,*) '  total moment magnitude Mw = ', Mw
+      endif
+      write(IMAIN,*)
+      ! statistics
+      write(IMAIN,*) '  source ranges:'
+      write(IMAIN,*) '    depth        : min/max = ',sngl(minval(depth(:))/1000.d0),'/',sngl(maxval(depth(:))/1000.d0),' km'
+      write(IMAIN,*) '    half duration: min/max = ',sngl(minval(hdur(:))),'/',sngl(maxval(hdur(:)))
+      write(IMAIN,*) '    time shift   : min/max = ',sngl(minval(tshift_src(:))),'/',sngl(maxval(tshift_src(:)))
+      write(IMAIN,*)
+      write(IMAIN,*) '********************'
       call flush_IMAIN()
     endif
 

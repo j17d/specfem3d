@@ -60,6 +60,9 @@ void FC_FUNC_(compute_add_sources_el_cuda,
   //          get_stf_for_gpu(stf_pre_compute,h_stf_pre_compute,run_number_of_the_source,NSOURCES);
   //       however, NB_RUNS_ACOUSTIC_GPU > 1 is not supported by elastic sources, thus field declaration is realw by default.
   //       to avoid compilation issues we use the copy function for (void*) and exact byte size.
+  // safety check
+  if (NB_RUNS_ACOUSTIC_GPU != 1) exit_on_error("compute_add_sources_el_cuda: must have NB_RUNS_ACOUSTIC_GPU = 1 for elastic sources\n");
+
   gpuMemcpy_todevice_void((void*)mp->d_stf_pre_compute,(void*)stf_pre_compute,NSOURCES*sizeof(realw));
 
   free(stf_pre_compute);
@@ -74,7 +77,8 @@ void FC_FUNC_(compute_add_sources_el_cuda,
 
 #ifdef USE_CUDA
   if (run_cuda){
-    compute_add_sources_kernel<<<grid,threads,0,mp->compute_stream>>>(mp->d_accel,mp->d_ibool,
+    compute_add_sources_kernel<<<grid,threads,0,mp->compute_stream>>>(mp->d_accel,
+                                                                      mp->d_ibool,
                                                                       mp->d_sourcearrays,
                                                                       mp->d_stf_pre_compute,
                                                                       mp->myrank,
@@ -86,7 +90,8 @@ void FC_FUNC_(compute_add_sources_el_cuda,
 #ifdef USE_HIP
   if (run_hip){
     hipLaunchKernelGGL(compute_add_sources_kernel, dim3(grid), dim3(threads), 0, mp->compute_stream,
-                                                   mp->d_accel,mp->d_ibool,
+                                                   mp->d_accel,
+                                                   mp->d_ibool,
                                                    mp->d_sourcearrays,
                                                    mp->d_stf_pre_compute,
                                                    mp->myrank,
@@ -124,6 +129,9 @@ void FC_FUNC_(compute_add_sources_el_s3_cuda,
   //          get_stf_for_gpu(stf_pre_compute,h_stf_pre_compute,run_number_of_the_source,NSOURCES);
   //       however, NB_RUNS_ACOUSTIC_GPU > 1 is not supported by elastic sources, thus field declaration is realw by default.
   //       to avoid compilation issues we use the copy function for (void*) and exact byte size.
+  // safety check
+  if (NB_RUNS_ACOUSTIC_GPU != 1) exit_on_error("compute_add_sources_el_s3_cuda: must have NB_RUNS_ACOUSTIC_GPU = 1 for elastic sources\n");
+
   gpuMemcpy_todevice_void((void*)mp->d_stf_pre_compute,(void*)stf_pre_compute,NSOURCES*sizeof(realw));
 
   free(stf_pre_compute);
@@ -138,7 +146,8 @@ void FC_FUNC_(compute_add_sources_el_s3_cuda,
 
 #ifdef USE_CUDA
   if (run_cuda){
-    compute_add_sources_kernel<<<grid,threads,0,mp->compute_stream>>>(mp->d_b_accel,mp->d_ibool,
+    compute_add_sources_kernel<<<grid,threads,0,mp->compute_stream>>>(mp->d_b_accel,
+                                                                      mp->d_ibool,
                                                                       mp->d_sourcearrays,
                                                                       mp->d_stf_pre_compute,
                                                                       mp->myrank,
@@ -150,7 +159,8 @@ void FC_FUNC_(compute_add_sources_el_s3_cuda,
 #ifdef USE_HIP
   if (run_hip){
     hipLaunchKernelGGL(compute_add_sources_kernel, dim3(grid), dim3(threads), 0, mp->compute_stream,
-                                                   mp->d_accel,mp->d_ibool,
+                                                   mp->d_b_accel,
+                                                   mp->d_ibool,
                                                    mp->d_sourcearrays,
                                                    mp->d_stf_pre_compute,
                                                    mp->myrank,
@@ -224,7 +234,6 @@ extern EXTERN_LANG
 void FC_FUNC_(add_sources_el_sim_type_2_or_3,
               ADD_SOURCES_EL_SIM_TYPE_2_OR_3)(long* Mesh_pointer,
                                               realw* h_source_adjoint,
-                                              int* nrec,
                                               int* nadj_rec_local,
                                               int* NTSTEP_BETWEEN_READ_ADJSRC,
                                               int* it) {
@@ -248,13 +257,16 @@ void FC_FUNC_(add_sources_el_sim_type_2_or_3,
   int it_index = *NTSTEP_BETWEEN_READ_ADJSRC - (*it-1) % *NTSTEP_BETWEEN_READ_ADJSRC - 1 ;
 
   // copies extracted array values onto GPU
-  if ( (*it-1) % *NTSTEP_BETWEEN_READ_ADJSRC==0){
+  if ( (*it-1) % *NTSTEP_BETWEEN_READ_ADJSRC == 0){
     // note: field declaration is only equal to realw if NB_RUNS_ACOUSTIC_GPU == 1.
     //       for any other setting of NB_RUNS_ACOUSTIC_GPU, the compilation would fail for
     //          gpuMemcpy_todevice_field(mp->d_source_adjoint,h_source_adjoint,mp->nadj_rec_local*NDIM*(*NTSTEP_BETWEEN_READ_ADJSRC));
     //       since the host array is still defined as realw. in that case, we will need to construct a field array first.
     //       however, the case with NB_RUNS_ACOUSTIC_GPU > 1 is not fully implemented yet for adjoint/kernels simulations and elastic cases,
     //       and on the todo for future ...
+    // safety check
+    if (NB_RUNS_ACOUSTIC_GPU != 1) exit_on_error("add_sources_el_sim_type_2_or_3: must have NB_RUNS_ACOUSTIC_GPU = 1 for elastic sources\n");
+
     // copies adjoint source array onto GPU using (void*) as variable and actual byte size to avoid compilation errors
     gpuMemcpy_todevice_void((void*)mp->d_source_adjoint,(void*)h_source_adjoint,
                              mp->nadj_rec_local*NDIM*(*NTSTEP_BETWEEN_READ_ADJSRC)*sizeof(realw));
@@ -263,7 +275,7 @@ void FC_FUNC_(add_sources_el_sim_type_2_or_3,
 #ifdef USE_CUDA
   if (run_cuda){
     add_sources_el_SIM_TYPE_2_OR_3_kernel<<<grid,threads,0,mp->compute_stream>>>(mp->d_accel,
-                                                                                 *nrec,it_index,*NTSTEP_BETWEEN_READ_ADJSRC,
+                                                                                 it_index,
                                                                                  mp->d_source_adjoint,
                                                                                  mp->d_hxir_adj,
                                                                                  mp->d_hetar_adj,
@@ -278,14 +290,14 @@ void FC_FUNC_(add_sources_el_sim_type_2_or_3,
   if (run_hip){
     hipLaunchKernelGGL(add_sources_el_SIM_TYPE_2_OR_3_kernel, dim3(grid), dim3(threads), 0, mp->compute_stream,
                                                               mp->d_accel,
-                                                              *nrec,it_index,*NTSTEP_BETWEEN_READ_ADJSRC,
+                                                              it_index,
                                                               mp->d_source_adjoint,
                                                               mp->d_hxir_adj,
                                                               mp->d_hetar_adj,
                                                               mp->d_hgammar_adj,
                                                               mp->d_ibool,
                                                               mp->d_ispec_is_elastic,
-                                                              mp->d_ispec_selected_rec_loc,
+                                                              mp->d_ispec_selected_adjrec_loc,
                                                               mp->nadj_rec_local);
   }
 #endif

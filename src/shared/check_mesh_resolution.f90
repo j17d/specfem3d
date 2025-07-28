@@ -98,7 +98,7 @@
   ! checks if IMAIN is opened for writing out
   inquire(unit=IMAIN,opened=IMAIN_opened)
 
-! note: this routine can take a long time for large meshes...
+  ! note: this routine can take a long time for large meshes...
   if (myrank == 0 .and. IMAIN_opened) then
     write(IMAIN,*) "Mesh resolution:"
     call flush_IMAIN()
@@ -170,7 +170,7 @@
   call max_all_i(NGLOB_AB,NGLOB_AB_global_max)
   call sum_all_i(NGLOB_AB,NGLOB_AB_global_sum)
 
-! outputs infos
+  ! outputs infos
   if (myrank == 0 .and. IMAIN_opened) then
     write(IMAIN,*)
     write(IMAIN,*) '********'
@@ -287,9 +287,6 @@
     if (DT_PRESENT) then
       cmax = vel_max * DT / distance_min
       cmax_glob = max(cmax_glob,cmax)
-
-      ! debug: for vtk output
-      if (SAVE_MESH_FILES) tmp1(ispec) = cmax
     endif
 
     ! suggested timestep
@@ -303,7 +300,18 @@
     dt_suggested_glob = min(dt_suggested_glob, dt_suggested)
 
     ! debug: for vtk output
-    if (SAVE_MESH_FILES) tmp2(ispec) = pmax
+    if (SAVE_MESH_FILES) then
+      ! Courant/suggested DT number
+      if (DT_PRESENT) then
+        ! Courant number
+        tmp1(ispec) = cmax
+      else
+        ! suggested dt
+        tmp1(ispec) = dt_suggested
+      endif
+      ! minimum period
+      tmp2(ispec) = pmax
+    endif
   enddo
 
   ! Vp velocity
@@ -520,9 +528,14 @@
         call flush_IMAIN()
       endif
 
-      ! Courant number
+      ! Courant/suggested DT number
       if (DT_PRESENT) then
+        ! Courant number
         filename = 'res_Courant_number'
+        call write_checkmesh_data_hdf5(filename,tmp1)
+      else
+        ! suggested DT
+        filename = 'res_dt_suggested'
         call write_checkmesh_data_hdf5(filename,tmp1)
       endif
 
@@ -541,9 +554,16 @@
         call flush_IMAIN()
       endif
 
-      ! Courant number
+      ! Courant/suggested DT number
       if (DT_PRESENT) then
+        ! Courant number
         filename = trim(prname)//'res_Courant_number'
+        call write_VTU_data_elem_cr_binary(NSPEC_AB,NGLOB_AB, &
+                                           xstore,ystore,zstore,ibool, &
+                                           tmp1,filename)
+      else
+        ! suggested DT
+        filename = trim(prname)//'res_dt_suggested'
         call write_VTU_data_elem_cr_binary(NSPEC_AB,NGLOB_AB, &
                                            xstore,ystore,zstore,ibool, &
                                            tmp1,filename)

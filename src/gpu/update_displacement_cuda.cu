@@ -38,10 +38,10 @@
 extern EXTERN_LANG
 void FC_FUNC_(update_displacement_cuda,
               UPDATE_DISPLACMENT_CUDA)(long* Mesh_pointer,
-                                          realw* deltat_F,
-                                          realw* deltatover2_F,
-                                          realw* deltatsqover2_F,
-                                          int* FORWARD_OR_ADJOINT) {
+                                       realw* deltat_F,
+                                       realw* deltatover2_F,
+                                       realw* deltatsqover2_F,
+                                       int* FORWARD_OR_ADJOINT) {
 
   TRACE("update_displacement_cuda");
 
@@ -108,7 +108,8 @@ void FC_FUNC_(update_displacement_cuda,
                                                                             mp->d_PML_displ_old,
                                                                             mp->NSPEC_CPML,mp->d_CPML_to_spec,
                                                                             mp->d_ibool,
-                                                                            deltat,deltatsqover2,deltatover2);
+                                                                            deltatsqover2,deltatover2,
+                                                                            mp->pml_theta);
       }
 #endif
 #ifdef USE_HIP
@@ -118,7 +119,8 @@ void FC_FUNC_(update_displacement_cuda,
                                                                           mp->d_PML_displ_old,
                                                                           mp->NSPEC_CPML,mp->d_CPML_to_spec,
                                                                           mp->d_ibool,
-                                                                          deltat,deltatsqover2,deltatover2);
+                                                                          deltatsqover2,deltatover2,
+                                                                          mp->pml_theta);
       }
 #endif
     }
@@ -149,7 +151,8 @@ void FC_FUNC_(update_displacement_cuda,
                                                                             mp->d_PML_displ_new,
                                                                             mp->NSPEC_CPML,mp->d_CPML_to_spec,
                                                                             mp->d_ibool,
-                                                                            deltat,deltatsqover2,deltatover2);
+                                                                            deltatsqover2,deltatover2,
+                                                                            mp->pml_theta);
       }
 #endif
 #ifdef USE_HIP
@@ -159,7 +162,8 @@ void FC_FUNC_(update_displacement_cuda,
                                                                           mp->d_PML_displ_new,
                                                                           mp->NSPEC_CPML,mp->d_CPML_to_spec,
                                                                           mp->d_ibool,
-                                                                          deltat,deltatsqover2,deltatover2);
+                                                                          deltatsqover2,deltatover2,
+                                                                          mp->pml_theta);
       }
 #endif
 
@@ -330,7 +334,7 @@ void FC_FUNC_(kernel_3_a_cuda,
    // updates both, accel and veloc
 #ifdef USE_CUDA
    if (run_cuda){
-     kernel_3_cuda_device<<< grid, threads,0,mp->compute_stream>>>(veloc,
+     kernel_3_cuda_device<<<grid,threads,0,mp->compute_stream>>>(veloc,
                                                                    accel,
                                                                    size,
                                                                    deltatover2,
@@ -352,7 +356,7 @@ void FC_FUNC_(kernel_3_a_cuda,
    // updates only accel
    #ifdef USE_CUDA
    if (run_cuda){
-     kernel_3_accel_cuda_device<<< grid, threads,0,mp->compute_stream>>>(accel,
+     kernel_3_accel_cuda_device<<<grid,threads,0,mp->compute_stream>>>(accel,
                                                                          size,
                                                                          mp->d_rmassx,
                                                                          mp->d_rmassy,
@@ -416,7 +420,7 @@ void FC_FUNC_(kernel_3_b_cuda,
   // updates only veloc at this point
 #ifdef USE_CUDA
   if (run_cuda){
-    kernel_3_veloc_cuda_device<<< grid, threads,0,mp->compute_stream>>>(veloc,
+    kernel_3_veloc_cuda_device<<<grid,threads,0,mp->compute_stream>>>(veloc,
                                                                         accel,
                                                                         size,deltatover2);
   }
@@ -455,6 +459,7 @@ void FC_FUNC_(kernel_3_acoustic_cuda,
 
   Mesh* mp = (Mesh*)(*Mesh_pointer); // get Mesh from fortran integer wrapper
   int FORWARD_OR_ADJOINT = *FORWARD_OR_ADJOINT_f;
+
   // safety check
   if (FORWARD_OR_ADJOINT != 0 && FORWARD_OR_ADJOINT != 1 && FORWARD_OR_ADJOINT != 3) {
     exit_on_error("Error invalid FORWARD_OR_ADJOINT in Kernel_2_acoustic() routine");
@@ -491,7 +496,7 @@ void FC_FUNC_(kernel_3_acoustic_cuda,
     // This kernel treats both forward and adjoint wavefield within the same call, to increase performance
 #ifdef USE_CUDA
     if (run_cuda){
-      kernel_3_acoustic_cuda_device<<< grid, threads>>>(mp->d_potential_dot_acoustic,
+      kernel_3_acoustic_cuda_device<<<grid,threads,0,mp->compute_stream>>>(mp->d_potential_dot_acoustic,
                                                         mp->d_potential_dot_dot_acoustic,
                                                         mp->d_b_potential_dot_acoustic,
                                                         mp->d_b_potential_dot_dot_acoustic,
@@ -504,7 +509,7 @@ void FC_FUNC_(kernel_3_acoustic_cuda,
 #endif
 #ifdef USE_HIP
     if (run_hip){
-      hipLaunchKernelGGL(kernel_3_acoustic_cuda_device, dim3(grid), dim3(threads), 0, 0,
+      hipLaunchKernelGGL(kernel_3_acoustic_cuda_device, dim3(grid), dim3(threads), 0, mp->compute_stream,
                                                         mp->d_potential_dot_acoustic,
                                                         mp->d_potential_dot_dot_acoustic,
                                                         mp->d_b_potential_dot_acoustic,
@@ -521,7 +526,7 @@ void FC_FUNC_(kernel_3_acoustic_cuda,
     // single field kernel
 #ifdef USE_CUDA
     if (run_cuda){
-      kernel_3_acoustic_single_cuda_device<<< grid, threads>>>(potential_dot,
+      kernel_3_acoustic_single_cuda_device<<<grid,threads,0,mp->compute_stream>>>(potential_dot,
                                                                potential_dot_dot,
                                                                size,
                                                                deltaover2,
@@ -530,7 +535,7 @@ void FC_FUNC_(kernel_3_acoustic_cuda,
 #endif
 #ifdef USE_HIP
     if (run_hip){
-      hipLaunchKernelGGL(kernel_3_acoustic_single_cuda_device, dim3(grid), dim3(threads), 0, 0,
+      hipLaunchKernelGGL(kernel_3_acoustic_single_cuda_device, dim3(grid), dim3(threads), 0, mp->compute_stream,
                                                                potential_dot,
                                                                potential_dot_dot,
                                                                size,

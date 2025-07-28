@@ -43,7 +43,9 @@
 
   !! solving wavefield discontinuity problem with non-split-node scheme
   use wavefield_discontinuity_solver, only: &
-                 add_traction_discontinuity, read_wavefield_discontinuity_file
+                 add_traction_discontinuity, read_wavefield_discontinuity_file, &
+                 transfer_wavefield_discontinuity_to_GPU, &
+                 add_traction_discontinuity_GPU
 
   implicit none
 
@@ -66,7 +68,7 @@
         .and. .not. UNDO_ATTENUATION_AND_OR_PML &
         .and. .not. (ELASTIC_SIMULATION .and. ACOUSTIC_SIMULATION)) then
       ! runs with the additionally optimized GPU routine
-      ! (combines forward/backward fields in main compute_kernel_acoustic)
+      ! (combines forward/backward fields in main compute kernels)
       call compute_forces_viscoelastic_GPU_calling()
       ! all done
       return
@@ -112,6 +114,9 @@
   !! note that this is not called in case of adjoint simulation
   if (IS_WAVEFIELD_DISCONTINUITY .and. (SIMULATION_TYPE == 1)) then
     call read_wavefield_discontinuity_file()
+    if (GPU_MODE) then
+      call transfer_wavefield_discontinuity_to_GPU()
+    endif
   endif
 
 ! distinguishes two runs: for elements in contact with MPI interfaces, and elements within the partitions
@@ -161,8 +166,7 @@
       call assemble_MPI_vector_send_cuda(NPROC, &
                                          buffer_send_vector_ext_mesh,buffer_recv_vector_ext_mesh, &
                                          num_interfaces_ext_mesh,max_nibool_interfaces_ext_mesh, &
-                                         nibool_interfaces_ext_mesh, &
-                                         my_neighbors_ext_mesh, &
+                                         nibool_interfaces_ext_mesh,my_neighbors_ext_mesh, &
                                          request_send_vector_ext_mesh,request_recv_vector_ext_mesh)
 
       ! transfers MPI buffers onto GPU
@@ -284,7 +288,11 @@
       !! because these terms need to be used in MPI calls
       !! note that this is not called in case of adjoint simulation
       if (IS_WAVEFIELD_DISCONTINUITY .and. (SIMULATION_TYPE == 1)) then
-        call add_traction_discontinuity(accel, NGLOB_AB)
+        if (GPU_MODE) then
+          call add_traction_discontinuity_GPU()
+        else
+          call add_traction_discontinuity(accel, NGLOB_AB)
+        endif
       endif
     endif ! iphase
 
@@ -305,7 +313,7 @@
         ! MPI-send is done from within compute_forces_viscoelastic_cuda,
         ! once the inner element kernels are launched, and the
         ! memcpy has finished. see compute_forces_viscoelastic_cuda: ~ line 1655
-        call transfer_boundary_from_device_a(Mesh_pointer,nspec_outer_elastic)
+        call transfer_boundary_from_device_a(Mesh_pointer)
       endif
     else
       ! waits for send/receive requests to be completed and assembles values
@@ -321,10 +329,9 @@
       else
         ! on GPU
         ! waits for send/receive requests to be completed and assembles values
-        call assemble_MPI_vector_write_cuda(NPROC,NGLOB_AB,accel, Mesh_pointer, &
+        call assemble_MPI_vector_write_cuda(NPROC,NGLOB_AB,accel,Mesh_pointer, &
                                             buffer_recv_vector_ext_mesh,num_interfaces_ext_mesh, &
                                             max_nibool_interfaces_ext_mesh, &
-                                            nibool_interfaces_ext_mesh,ibool_interfaces_ext_mesh, &
                                             request_send_vector_ext_mesh,request_recv_vector_ext_mesh, &
                                             1)
       endif
@@ -484,7 +491,7 @@
         .and. .not. (ELASTIC_SIMULATION .and. ACOUSTIC_SIMULATION)) then
       ! runs with the additionally optimized GPU routine
       ! (combines forward/backward fields in main compute_kernel_acoustic)
-      ! all done in compute_forces_acoustic_GPU_calling()
+      ! all done in compute_forces_viscoelastic_GPU_calling()
       return
     endif
   endif
@@ -614,8 +621,7 @@
         call assemble_MPI_vector_send_cuda(NPROC, &
                                            b_buffer_send_vector_ext_mesh,b_buffer_recv_vector_ext_mesh, &
                                            num_interfaces_ext_mesh,max_nibool_interfaces_ext_mesh, &
-                                           nibool_interfaces_ext_mesh, &
-                                           my_neighbors_ext_mesh, &
+                                           nibool_interfaces_ext_mesh,my_neighbors_ext_mesh, &
                                            b_request_send_vector_ext_mesh,b_request_recv_vector_ext_mesh)
       endif
     else
@@ -631,10 +637,9 @@
                                             my_neighbors_ext_mesh)
       else
         ! on GPU
-        call assemble_MPI_vector_write_cuda(NPROC,NGLOB_AB,b_accel, Mesh_pointer, &
+        call assemble_MPI_vector_write_cuda(NPROC,NGLOB_AB,b_accel,Mesh_pointer, &
                                             b_buffer_recv_vector_ext_mesh,num_interfaces_ext_mesh, &
                                             max_nibool_interfaces_ext_mesh, &
-                                            nibool_interfaces_ext_mesh,ibool_interfaces_ext_mesh, &
                                             b_request_send_vector_ext_mesh,b_request_recv_vector_ext_mesh, &
                                             3)
       endif
@@ -726,9 +731,17 @@
 
   integer:: iphase
 
+  ! runs with the additionally optimized GPU routine
+  ! (combines forward/backward fields in main compute kernels)
+  if (.not. GPU_MODE) return
+
   ! safety check
   if (SIMULATION_TYPE /= 3) &
     call exit_MPI(myrank,'routine compute_forces_viscoelastic_GPU_calling() works only for SIMULATION_TYPE == 3')
+
+  ! checks if for kernel simulation with both, forward & backward fields
+  if (UNDO_ATTENUATION_AND_OR_PML) return                       ! pure elastic / acoustic simulation w/out attenuation
+  if (ELASTIC_SIMULATION .and. ACOUSTIC_SIMULATION) return      ! single domain only - coupling requires switching ordering
 
   ! distinguishes two runs: for elements in contact with MPI interfaces, and elements within the partitions
   do iphase = 1,2
@@ -738,7 +751,7 @@
     call compute_forces_viscoelastic_cuda(Mesh_pointer, iphase, deltat, &
                                           nspec_outer_elastic, &
                                           nspec_inner_elastic, &
-                                          COMPUTE_AND_STORE_STRAIN,ATTENUATION,0) ! 0 == both
+                                          COMPUTE_AND_STORE_STRAIN,ATTENUATION,0) ! 0 == both combined
 
     ! while inner elements compute "Kernel_2", we wait for MPI to
     ! finish and transfer the boundary terms to the device asynchronously
@@ -751,8 +764,7 @@
       call assemble_MPI_vector_send_cuda(NPROC, &
                                          buffer_send_vector_ext_mesh,buffer_recv_vector_ext_mesh, &
                                          num_interfaces_ext_mesh,max_nibool_interfaces_ext_mesh, &
-                                         nibool_interfaces_ext_mesh, &
-                                         my_neighbors_ext_mesh, &
+                                         nibool_interfaces_ext_mesh,my_neighbors_ext_mesh, &
                                          request_send_vector_ext_mesh,request_recv_vector_ext_mesh)
 
       ! transfers MPI buffers onto GPU
@@ -768,15 +780,15 @@
         call compute_stacey_viscoelastic_GPU(iphase,num_abs_boundary_faces, &
                                              NSTEP,it, &
                                              b_num_abs_boundary_faces,b_reclen_field,b_absorb_field, &
-                                             Mesh_pointer,0)
+                                             Mesh_pointer,0)  ! 0 == both combined
       endif
 
       ! acoustic coupling
       if (ACOUSTIC_SIMULATION) then
         if (num_coupling_ac_el_faces > 0) then
+          ! assumes SIMULATION_TYPE == 3
           call compute_coupling_el_ac_cuda(Mesh_pointer,iphase,num_coupling_ac_el_faces,1) ! 1 == forward
-          if (SIMULATION_TYPE == 3) &
-            call compute_coupling_el_ac_cuda(Mesh_pointer,iphase,num_coupling_ac_el_faces,3) ! 3 == backward
+          call compute_coupling_el_ac_cuda(Mesh_pointer,iphase,num_coupling_ac_el_faces,3) ! 3 == backward
         endif
       endif
 
@@ -799,8 +811,9 @@
       ! adds source term (single-force/moment-tensor solution)
       ! note: we will add all source contributions in the first pass, when iphase == 1
       !       to avoid calling the same routine twice and to check if the source element is an inner/outer element
-      call compute_add_sources_viscoelastic_GPU()
-
+      ! assumes SIMULATION_TYPE == 3
+      call compute_add_sources_viscoelastic_GPU()             ! forward/adjoint sources (into accel)
+      call compute_add_sources_viscoelastic_backward_GPU()    ! backward sources (into b_accel)
     endif ! iphase
 
     ! assemble all the contributions between slices using MPI
@@ -811,39 +824,34 @@
       ! MPI-send is done from within compute_forces_viscoelastic_cuda,
       ! once the inner element kernels are launched, and the
       ! memcpy has finished. see compute_forces_viscoelastic_cuda: ~ line 1655
-      call transfer_boundary_from_device_a(Mesh_pointer,nspec_outer_elastic)
+      call transfer_boundary_from_device_a(Mesh_pointer)
 
       ! adjoint simulations
-      if (SIMULATION_TYPE == 3) then
-        call transfer_boun_accel_from_device(Mesh_pointer, &
-                                             b_buffer_send_vector_ext_mesh, &
-                                             3) ! 3 == adjoint b_accel
+      ! assumes SIMULATION_TYPE == 3
+      call transfer_boun_accel_from_device(Mesh_pointer, &
+                                           b_buffer_send_vector_ext_mesh, &
+                                           3) ! 3 == adjoint b_accel
 
-        call assemble_MPI_vector_send_cuda(NPROC, &
-                                           b_buffer_send_vector_ext_mesh,b_buffer_recv_vector_ext_mesh, &
-                                           num_interfaces_ext_mesh,max_nibool_interfaces_ext_mesh, &
-                                           nibool_interfaces_ext_mesh, &
-                                           my_neighbors_ext_mesh, &
-                                           b_request_send_vector_ext_mesh,b_request_recv_vector_ext_mesh)
-      endif !adjoint
+      call assemble_MPI_vector_send_cuda(NPROC, &
+                                         b_buffer_send_vector_ext_mesh,b_buffer_recv_vector_ext_mesh, &
+                                         num_interfaces_ext_mesh,max_nibool_interfaces_ext_mesh, &
+                                         nibool_interfaces_ext_mesh,my_neighbors_ext_mesh, &
+                                         b_request_send_vector_ext_mesh,b_request_recv_vector_ext_mesh)
 
     else
       ! waits for send/receive requests to be completed and assembles values
-      call assemble_MPI_vector_write_cuda(NPROC,NGLOB_AB,accel, Mesh_pointer, &
+      call assemble_MPI_vector_write_cuda(NPROC,NGLOB_AB,accel,Mesh_pointer, &
                                           buffer_recv_vector_ext_mesh,num_interfaces_ext_mesh, &
                                           max_nibool_interfaces_ext_mesh, &
-                                          nibool_interfaces_ext_mesh,ibool_interfaces_ext_mesh, &
                                           request_send_vector_ext_mesh,request_recv_vector_ext_mesh, &
-                                          1)
+                                          1) ! 1 == forward
       ! adjoint simulations
-      if (SIMULATION_TYPE == 3) then
-        call assemble_MPI_vector_write_cuda(NPROC,NGLOB_AB,b_accel, Mesh_pointer, &
-                                            b_buffer_recv_vector_ext_mesh,num_interfaces_ext_mesh, &
-                                            max_nibool_interfaces_ext_mesh, &
-                                            nibool_interfaces_ext_mesh,ibool_interfaces_ext_mesh, &
-                                            b_request_send_vector_ext_mesh,b_request_recv_vector_ext_mesh, &
-                                            3)
-      endif !adjoint
+      ! assumes SIMULATION_TYPE == 3
+      call assemble_MPI_vector_write_cuda(NPROC,NGLOB_AB,b_accel,Mesh_pointer, &
+                                          b_buffer_recv_vector_ext_mesh,num_interfaces_ext_mesh, &
+                                          max_nibool_interfaces_ext_mesh, &
+                                          b_request_send_vector_ext_mesh,b_request_recv_vector_ext_mesh, &
+                                          3)  ! 3 == backward
     endif
 
   enddo
@@ -858,13 +866,15 @@
   endif
 
   ! multiplies with inverse of mass matrix (note: rmass has been inverted already)
+  ! assumes SIMULATION_TYPE == 3
   call kernel_3_a_cuda(Mesh_pointer,deltatover2,b_deltatover2,APPROXIMATE_OCEAN_LOAD,1) ! 1 == forward
-  if (SIMULATION_TYPE == 3) call kernel_3_a_cuda(Mesh_pointer,deltatover2,b_deltatover2,APPROXIMATE_OCEAN_LOAD,3) ! 3 == backward
+  call kernel_3_a_cuda(Mesh_pointer,deltatover2,b_deltatover2,APPROXIMATE_OCEAN_LOAD,3) ! 3 == backward
 
   ! updates acceleration with ocean load term
   if (APPROXIMATE_OCEAN_LOAD) then
+    ! assumes SIMULATION_TYPE == 3
     call compute_coupling_ocean_cuda(Mesh_pointer,1) ! 1 == forward
-    if (SIMULATION_TYPE == 3) call compute_coupling_ocean_cuda(Mesh_pointer,3) ! 3 == backward
+    call compute_coupling_ocean_cuda(Mesh_pointer,3) ! 3 == backward
 
     ! updates velocities
     ! Newmark finite-difference time scheme with elastic domains:
@@ -883,8 +893,9 @@
     ! corrector:
     ! updates the velocity term which requires a(t+delta)
     ! GPU_MODE: this is handled in 'kernel_3' at the same time as accel*rmass
+    ! assumes SIMULATION_TYPE == 3
     call kernel_3_b_cuda(Mesh_pointer,deltatover2,b_deltatover2,1) ! 1 == forward
-    if (SIMULATION_TYPE == 3) call kernel_3_b_cuda(Mesh_pointer,deltatover2,b_deltatover2,3) ! 3 == backward
+    call kernel_3_b_cuda(Mesh_pointer,deltatover2,b_deltatover2,3) ! 3 == backward
   endif
 
   end subroutine compute_forces_viscoelastic_GPU_calling

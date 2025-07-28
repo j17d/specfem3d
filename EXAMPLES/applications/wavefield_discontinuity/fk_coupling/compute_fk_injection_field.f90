@@ -184,8 +184,8 @@ program write_injection_field
     xim((ib-1)*NGLLSQUARE+1:ib*NGLLSQUARE) = (1.0 - xi) * mu_tmp
     bdlambdamu((ib-1)*NGLLSQUARE+1:ib*NGLLSQUARE) = &
         (3.0 * kappa_tmp - 2.0 * mu_tmp) / (6.0 * kappa_tmp + 2.0 * mu_tmp)  ! Poisson's ratio 3K-2G/[2(3K+G)]
-  enddo 
-  
+  enddo
+
   allocate(xx(np), yy(np), zz(np))
   xx(:) = xp(:); yy(:) = yp(:); zz(:) = zp(:) - Z_REF_for_FK
   call FK(alpha_FK, beta_FK, mu_FK, h_FK, nlayer, &
@@ -235,7 +235,7 @@ program write_injection_field
     iim1 = ii-1        ! 0,..
     iip1 = ii+1        ! 2,..
     iip2 = ii+2        ! 3,..
- 
+
     write(88) cs1*displ(:,:,iim1)+cs2*displ(:,:,ii)+cs3*displ(:,:,iip1)&
              +cs4*displ(:,:,iip2)
     write(88) cs1*accel(:,:,iim1)+cs2*accel(:,:,ii)+cs3*accel(:,:,iip1)&

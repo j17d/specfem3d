@@ -760,6 +760,30 @@ module specfem_par_coupling
   ! normal
   real(kind=CUSTOM_REAL),dimension(:),allocatable  :: nmx,nmy,nmz
 
+  ! specfem coupling
+  !
+  ! for saving wavefield solution on coupling boundary points (in coarse simulation)
+  logical :: do_save_coupling_wavefield = .false.      ! stores wavefield solution on all coupling boundary points
+  ! coupling boundary points
+  integer :: npoints_total,npoints_local
+  integer, dimension(:), allocatable :: islice_selected_point,ispec_selected_point
+  ! Lagrange interpolators
+  real(kind=CUSTOM_REAL),dimension(:,:), allocatable :: hxi_point_store,heta_point_store,hgamma_point_store
+  ! velocity & traction
+  real(kind=CUSTOM_REAL),dimension(:,:), allocatable :: veloc_points,traction_points
+  real(kind=CUSTOM_REAL),dimension(:,:), allocatable :: normal_points
+  ! for main process to collect and output velocity
+  real(kind=CUSTOM_REAL),dimension(:,:), allocatable :: veloc_total,traction_total
+  real(kind=CUSTOM_REAL),dimension(:,:), allocatable :: buffer_points_recv
+  ! for collecting local point wavefields
+  integer,dimension(:), allocatable :: nb_points_local_per_proc
+
+  ! for reconstructing boundary wavefield in coupled simulation
+  real(kind=CUSTOM_REAL), dimension(:,:), allocatable :: Veloc_specfem, Tract_specfem
+
+  ! file i/o
+  integer, parameter :: IOUT_COUP = 67
+
 end module specfem_par_coupling
 
 !=====================================================================

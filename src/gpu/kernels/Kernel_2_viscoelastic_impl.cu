@@ -124,7 +124,7 @@ __device__ __forceinline__ void compute_element_att_stress(int tx,int working_el
 
 // updates R_memory
 
-__device__  __forceinline__ void compute_element_att_memory(int tx,int working_element,const int NSPEC,
+__device__  __forceinline__ void compute_element_att_memory(int tx,int working_element,
                                                             realw mul,
                                                             realw_const_p factor_common,
                                                             realw_const_p alphaval,realw_const_p betaval,realw_const_p gammaval,
@@ -332,6 +332,28 @@ __device__  __forceinline__ void load_shared_memory_displ_visco(const int* tx, c
   sh_disply[(*tx)] = d_displ[(*iglob)*3 + 1] + visco * d_veloc[(*iglob)*3 + 1];
   sh_displz[(*tx)] = d_displ[(*iglob)*3 + 2] + visco * d_veloc[(*iglob)*3 + 2];
 #endif
+}
+
+/* ----------------------------------------------------------------------------------------------- */
+
+// add displacement discontinuity in case of wavefield discontinuity
+
+__device__ __forceinline__ void add_displacement_discontinuity_element(
+                                  const int* tx, const int* working_element,
+                                  realw_const_p d_displ_wd,
+                                  const int* ispec_to_elem_wd,
+                                  const int* ibool_wd,
+                                  realw* sh_displx,
+                                  realw* sh_disply,
+                                  realw* sh_displz) {
+  int ispec_wd = ispec_to_elem_wd[(*working_element)]-1;
+  if (ispec_wd >= 0) {
+    int offset = ispec_wd * NGLL3_PADDED + (*tx);
+    int iglob_wd = ibool_wd[offset]-1;
+    sh_displx[(*tx)] = sh_displx[(*tx)] + d_displ_wd[iglob_wd*3];
+    sh_disply[(*tx)] = sh_disply[(*tx)] + d_displ_wd[iglob_wd*3 + 1];
+    sh_displz[(*tx)] = sh_displz[(*tx)] + d_displ_wd[iglob_wd*3 + 2];
+  }
 }
 
 /* ----------------------------------------------------------------------------------------------- */
@@ -661,9 +683,9 @@ __device__  __forceinline__ void get_dot_product(realw jacobianl,
   if (threadIdx.x < NGLL3) {
     if (ispec_irreg >= 0){
       //irregular element
-      sh_tempx[tx] = jacobianl * (sigma_xx*Dxl + sigma_yx*Dyl + sigma_zx*Dzl); // sh_tempx1
-      sh_tempy[tx] = jacobianl * (sigma_xy*Dxl + sigma_yy*Dyl + sigma_zy*Dzl); // sh_tempy1
-      sh_tempz[tx] = jacobianl * (sigma_xz*Dxl + sigma_yz*Dyl + sigma_zz*Dzl); // sh_tempz1
+      sh_tempx[tx] = jacobianl * (sigma_xx*Dxl + sigma_yx*Dyl + sigma_zx*Dzl); // sh_tempx1/sh_tempx2/sh_tempx3
+      sh_tempy[tx] = jacobianl * (sigma_xy*Dxl + sigma_yy*Dyl + sigma_zy*Dzl); // sh_tempy1/..
+      sh_tempz[tx] = jacobianl * (sigma_xz*Dxl + sigma_yz*Dyl + sigma_zz*Dzl); // sh_tempz1/..
     }
     else if (component == 1){
       sh_tempx[tx] = jacobian_regular * (sigma_xx*xix_regular); // sh_tempx1
@@ -671,14 +693,14 @@ __device__  __forceinline__ void get_dot_product(realw jacobianl,
       sh_tempz[tx] = jacobian_regular * (sigma_xz*xix_regular); // sh_tempz1
     }
     else if (component == 2){
-      sh_tempx[tx] = jacobian_regular * (sigma_yx*xix_regular); // sh_tempx1
-      sh_tempy[tx] = jacobian_regular * (sigma_yy*xix_regular); // sh_tempy1
-      sh_tempz[tx] = jacobian_regular * (sigma_yz*xix_regular); // sh_tempz1
+      sh_tempx[tx] = jacobian_regular * (sigma_yx*xix_regular); // sh_tempx2
+      sh_tempy[tx] = jacobian_regular * (sigma_yy*xix_regular); // sh_tempy2
+      sh_tempz[tx] = jacobian_regular * (sigma_yz*xix_regular); // sh_tempz2
 
     }else{
-      sh_tempx[tx] = jacobian_regular * (sigma_zx*xix_regular); // sh_tempx1
-      sh_tempy[tx] = jacobian_regular * (sigma_zy*xix_regular); // sh_tempy1
-      sh_tempz[tx] = jacobian_regular * (sigma_zz*xix_regular); // sh_tempz1
+      sh_tempx[tx] = jacobian_regular * (sigma_zx*xix_regular); // sh_tempx3
+      sh_tempy[tx] = jacobian_regular * (sigma_zy*xix_regular); // sh_tempy3
+      sh_tempz[tx] = jacobian_regular * (sigma_zz*xix_regular); // sh_tempz3
     }
   }
   __syncthreads();
@@ -738,6 +760,10 @@ Kernel_2_noatt_iso_impl(const int nb_blocks_to_compute,
                         realw_const_p d_wgllwgll_xy,realw_const_p d_wgllwgll_xz,realw_const_p d_wgllwgll_yz,
                         realw_const_p d_kappav,
                         realw_const_p d_muv,
+                        const int is_wavefield_discontinuity,
+                        realw_const_p d_displ_wd,
+                        const int* d_ispec_to_elem_wd,
+                        const int* d_ibool_wd,
                         const int pml_conditions,
                         const int* d_is_CPML,
                         const int FORWARD_OR_ADJOINT){
@@ -849,6 +875,9 @@ Kernel_2_noatt_iso_impl(const int nb_blocks_to_compute,
       load_shared_memory_displ<3>(&tx,&iglob,d_displ,sh_tempx,sh_tempy,sh_tempz);
     }else{
       load_shared_memory_displ<1>(&tx,&iglob,d_displ,sh_tempx,sh_tempy,sh_tempz);
+      if (is_wavefield_discontinuity) {
+        add_displacement_discontinuity_element(&tx,&working_element,d_displ_wd,d_ispec_to_elem_wd,d_ibool_wd,sh_tempx,sh_tempy,sh_tempz);
+      }
     }
   }
 
@@ -1773,7 +1802,7 @@ Kernel_2_noatt_iso_grav_impl(int nb_blocks_to_compute,
   sigma_zx = sigma_xz;
   sigma_zy = sigma_yz;
 
-  if (gravity ){
+  if (gravity){
     //  computes non-symmetric terms for gravity
     compute_element_gravity(tx,working_element,&iglob,d_minus_g,d_minus_deriv_gravity,
                             d_rhostore,wgll_cube,jacobianl,
@@ -2128,7 +2157,7 @@ Kernel_2_noatt_ani_impl(int nb_blocks_to_compute,
   sigma_zx = sigma_xz;
   sigma_zy = sigma_yz;
 
-  if (gravity ){
+  if (gravity){
     //  computes non-symmetric terms for gravity
     compute_element_gravity(tx,working_element,&iglob,d_minus_g,d_minus_deriv_gravity,
                             d_rhostore,wgll_cube,jacobianl,
@@ -2167,7 +2196,7 @@ Kernel_2_noatt_ani_impl(int nb_blocks_to_compute,
   sum_terms3 = - (fac1*tempz1l + fac2*tempz2l + fac3*tempz3l);
 
   // adds gravity term
-  if (gravity ){
+  if (gravity){
     sum_terms1 += rho_s_H1;
     sum_terms2 += rho_s_H2;
     sum_terms3 += rho_s_H3;
@@ -2265,7 +2294,6 @@ Kernel_2_att_impl(int nb_blocks_to_compute,
                   realw_p epsilondev_trace,
                   realw_p epsilon_trace_over_3,
                   const int SIMULATION_TYPE,
-                  const int NSPEC,
                   realw_const_p factor_common,
                   realw_p R_xx,realw_p R_yy,realw_p R_xy,realw_p R_xz,realw_p R_yz,
                   realw_p R_trace,
@@ -2634,7 +2662,7 @@ Kernel_2_att_impl(int nb_blocks_to_compute,
 
     // attenuation
     // update memory variables based upon the Runge-Kutta scheme
-    compute_element_att_memory(tx,working_element,NSPEC,
+    compute_element_att_memory(tx,working_element,
                                mul,
                                factor_common,alphaval,betaval,gammaval,
                                R_xx,R_yy,R_xy,R_xz,R_yz,
@@ -3148,7 +3176,7 @@ Kernel_2_att_org_impl(int nb_blocks_to_compute,
     sigma_zx = sigma_xz;
     sigma_zy = sigma_yz;
 
-    if (gravity ){
+    if (gravity){
       //  computes non-symmetric terms for gravity
       compute_element_gravity(tx,working_element,&iglob,d_minus_g,d_minus_deriv_gravity,
                               d_rhostore,wgll_cube,jacobianl,
@@ -3287,7 +3315,7 @@ Kernel_2_att_org_impl(int nb_blocks_to_compute,
     sum_terms3 = - (fac1*tempz1l + fac2*tempz2l + fac3*tempz3l);
 
     // adds gravity term
-    if (gravity ){
+    if (gravity){
       sum_terms1 += rho_s_H1;
       sum_terms2 += rho_s_H2;
       sum_terms3 += rho_s_H3;
@@ -3332,7 +3360,7 @@ Kernel_2_att_org_impl(int nb_blocks_to_compute,
 
     // attenuation
     // update memory variables based upon the Runge-Kutta scheme
-    compute_element_att_memory(tx,working_element,NSPEC,
+    compute_element_att_memory(tx,working_element,
                                d_muv,
                                factor_common,alphaval,betaval,gammaval,
                                R_xx,R_yy,R_xy,R_xz,R_yz,
@@ -3348,7 +3376,7 @@ Kernel_2_att_org_impl(int nb_blocks_to_compute,
     epsilondev_yz[tx + working_element*NGLL3] = epsilondev_yz_loc;
   } // if (active)
 
-} // kernel_2_att_impl()
+} // kernel_2_att_org_impl()
 
 */
 

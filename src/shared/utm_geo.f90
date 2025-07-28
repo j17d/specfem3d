@@ -219,7 +219,7 @@
     ! (Universal) Transverse Mercator projection
     !
     ! page 61, eq. 3-21 for M
-    f1 = (1.d0 - e2/4.d0 - 3.d0*e4/64.d0 - 5.d0*e6/256d0)*rlat
+    f1 = (1.d0 - e2/4.d0 - 3.d0*e4/64.d0 - 5.d0*e6/256.d0)*rlat
     f2 = 3.d0*e2/8.d0 + 3.d0*e4/32.d0 + 45.d0*e6/1024.d0
     f2 = f2 * sin(2.d0*rlat)
     ! corrected: using .. + 45 e6 / 1024 instead of .. * 45 e6 / 1024

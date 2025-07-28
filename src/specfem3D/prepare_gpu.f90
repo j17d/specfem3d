@@ -41,7 +41,10 @@
 
   use pml_par, only: NSPEC_CPML,is_CPML,spec_to_CPML,CPML_to_spec, &
     pml_convolution_coef_alpha,pml_convolution_coef_beta, &
-    pml_convolution_coef_abar,pml_convolution_coef_strain
+    pml_convolution_coef_abar,pml_convolution_coef_strain, &
+    CPML_THETA
+
+  use wavefield_discontinuity_solver, only: prepare_wavefield_discontinuity_GPU
 
   implicit none
 
@@ -97,6 +100,8 @@
                                 SAVE_SEISMOGRAMS_ACCELERATION,SAVE_SEISMOGRAMS_PRESSURE, &
                                 NB_RUNS_ACOUSTIC_GPU, &
                                 FAULT_SIMULATION, &
+                                IS_WAVEFIELD_DISCONTINUITY, &
+                                COUPLE_WITH_INJECTION_TECHNIQUE, &
                                 UNDO_ATTENUATION_AND_OR_PML, &
                                 PML_CONDITIONS)
 
@@ -127,7 +132,6 @@
   endif
 
   ! prepares fields on GPU for elastic simulations
-  ! add GPU support for the C-PML routines
   if (ELASTIC_SIMULATION) then
     ! user output
     if (myrank == 0) then
@@ -145,7 +149,7 @@
                                        epsilondev_xx,epsilondev_yy,epsilondev_xy, &
                                        epsilondev_xz,epsilondev_yz, &
                                        ATTENUATION, &
-                                       size(R_xx), &
+                                       size(R_xx,kind=4), &
                                        R_xx,R_yy,R_xy,R_xz,R_yz, &
                                        factor_common, &
                                        R_trace,epsilondev_trace, &
@@ -171,7 +175,7 @@
                                           b_epsilondev_xx,b_epsilondev_yy,b_epsilondev_xy, &
                                           b_epsilondev_xz,b_epsilondev_yz, &
                                           b_epsilon_trace_over_3, &
-                                          size(R_xx), &
+                                          size(R_xx,kind=4), &
                                           b_R_xx,b_R_yy,b_R_xy,b_R_xz,b_R_yz, &
                                           b_R_trace,b_epsilondev_trace, &
                                           b_alphaval,b_betaval,b_gammaval, &
@@ -181,6 +185,7 @@
 
     ! PML
     if (PML_CONDITIONS) then
+      ! add GPU support for the C-PML routines
       ! user output
       if (myrank == 0) then
         write(IMAIN,*) "  loading elastic PML arrays"
@@ -192,7 +197,7 @@
                                       CPML_to_spec,spec_to_CPML, &
                                       pml_convolution_coef_alpha,pml_convolution_coef_beta, &
                                       pml_convolution_coef_abar,pml_convolution_coef_strain, &
-                                      wgll_cube,rhostore)
+                                      wgll_cube,rhostore,CPML_THETA)
     endif
   endif
 
@@ -223,7 +228,6 @@
     endif
     ! copies noise  arrays to GPU
     call prepare_fields_noise_device(Mesh_pointer, &
-                                     NSPEC_AB, NGLOB_AB, &
                                      free_surface_ispec, &
                                      free_surface_ijk, &
                                      num_free_surface_faces, &
@@ -279,6 +283,19 @@
     endif
   endif
 
+  ! prepares wavefield discontinuity
+  if (IS_WAVEFIELD_DISCONTINUITY) then
+    ! user output
+    if (myrank == 0) then
+      write(IMAIN,*) "  loading wavefield discontinuity"
+      call flush_IMAIN()
+    endif
+    call prepare_wavefield_discontinuity_GPU()
+  endif
+
+  ! LTS preparation for GPU
+  if (LTS_MODE) call lts_prepare_gpu()
+
   ! synchronizes processes
   call synchronize_all()
 
@@ -328,9 +345,6 @@
   !  endif
   !endif
 
-  ! LTS transfers
-  if (LTS_MODE) call lts_prepare_gpu()
-
   ! synchronizes processes
   call synchronize_all()
 
@@ -368,7 +382,7 @@
 
   use pml_par
 
-  use specfem_par_lts, only: num_p_level,max_nibool_interfaces_boundary
+  use specfem_par_lts, only: num_p_level,max_nibool_interfaces_boundary,use_accel_collected
 
   implicit none
 
@@ -571,27 +585,33 @@
     memory_size = memory_size + 3.d0 * 3.d0 * NGLOB_AB * dble(CUSTOM_REAL)
     ! frees rmassx,..
     memory_size = memory_size - 3.d0 * NGLOB_AB * dble(CUSTOM_REAL)
-    ! d_displ_p,d_veloc_p
+    ! d_lts_displ_p,d_lts_veloc_p
     memory_size = memory_size + 2.d0 * num_p_level * 3.d0 * NGLOB_AB * dble(CUSTOM_REAL)
-    ! d_displ_tmp
-    memory_size = memory_size + 3.d0 * NGLOB_AB * dble(CUSTOM_REAL)
-    ! d_iglob_p_refine
+    ! d_lts_displ_tmp,d_lts_accel_tmp
+    memory_size = memory_size + 2.d0 * 3.d0 * NGLOB_AB * dble(CUSTOM_REAL)
+    if (use_accel_collected) then
+      ! d_lts_accel_collected
+      memory_size = memory_size + 3.d0 * NGLOB_AB * dble(CUSTOM_REAL)
+      ! d_lts_mask_ibool_collected
+      memory_size = memory_size + NGLOB_AB * dble(SIZE_INTEGER)
+    endif
+    ! d_lts_iglob_p_refine
     memory_size = memory_size + NGLOB_AB * dble(SIZE_INTEGER)
     ! from routine setup_lts_boundary_contribution:
-    ! d_element_list
+    ! d_lts_element_list
     memory_size = memory_size + 2.d0 * num_p_level * NSPEC_AB * dble(SIZE_INTEGER)
-    ! d_ibool_from,d_ilevel_from
+    ! d_lts_boundary_node,d_lts_boundary_ilevel_from
     memory_size = memory_size + 2.d0 * num_p_level * NGLOB_AB * dble(SIZE_INTEGER)
-    ! d_boundary_ispec
+    ! d_lts_boundary_ispec
     memory_size = memory_size + 2.d0 * num_p_level * NSPEC_AB * dble(SIZE_INTEGER)
-    ! d_p_level_coarser_to_update
+    ! d_lts_p_level_coarser_to_update
     memory_size = memory_size + num_p_level * NGLOB_AB * dble(SIZE_INTEGER)
     if (num_interfaces_ext_mesh > 0) then
-      ! d_num_interface_p_refine_ibool
+      ! d_lts_num_interface_p_refine_ibool
       memory_size = memory_size + num_interfaces_ext_mesh * num_p_level * dble(SIZE_INTEGER)
-      ! d_interface_p_refine_ibool
+      ! d_lts_interface_p_refine_ibool
       memory_size = memory_size + num_interfaces_ext_mesh * num_p_level * max_nibool_interfaces_ext_mesh * dble(SIZE_INTEGER)
-      ! d_interface_p_refine_boundary
+      ! d_lts_interface_p_refine_boundary
       memory_size = memory_size + num_p_level * max_nibool_interfaces_boundary * dble(SIZE_INTEGER)
     endif
   endif

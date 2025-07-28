@@ -49,11 +49,12 @@ program smooth_sem_pde
   use constants, only: m1, m2, CUSTOM_REAL,NGLLX,NGLLY,NGLLZ, MAX_STRING_LEN,IIN,IOUT
   use specfem_par
   use specfem_par_elastic, only: &
-      !ispec_is_elastic, &
+      num_phase_ispec_elastic,&
       nspec_inner_elastic,nspec_outer_elastic,phase_ispec_inner_elastic
-  !use specfem_par_acoustic, only: ispec_is_acoustic
+  !use specfem_par_acoustic, only: ispec_is_acoustic, nspec_acoustic
   !use specfem_par_poroelastic, only: ispec_is_poroelastic
-  use pml_par, only: is_CPML
+
+  use pml_par, only: is_CPML, NSPEC_CPML, CPML_to_spec
 
   implicit none
 
@@ -105,6 +106,8 @@ program smooth_sem_pde
   real(kind=CUSTOM_REAL), dimension(:,:), allocatable :: buffer_send_vector_ext_mesh_smooth
   real(kind=CUSTOM_REAL), dimension(:,:), allocatable :: buffer_recv_vector_ext_mesh_smooth
   logical :: USE_GPU, SET_ZERO_IN_PML
+
+  integer(kind=8) :: Smooth_container
 
   ! initializes MPI
   call init_mpi()
@@ -169,9 +172,9 @@ program smooth_sem_pde
     print *
   endif
 
-  if (USE_GPU) then
-    if (myrank == 0) stop 'GPU mode not available yet'
-  endif
+  !if (USE_GPU) then
+  !  if (myrank == 0) stop 'GPU mode not available yet'
+  !endif
 
   call initialize_simulation()
 
@@ -368,167 +371,256 @@ program smooth_sem_pde
   enddo
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+  ddat_glob(:) = 0.0
+
+  if (USE_GPU .and. GPU_MODE) then 
+  ! both GPU flags in command line and par file needs to be turned on
+    ! user output
+    call synchronize_all()
+    if (myrank == 0) then
+      print *, "preparing fields and constants on GPU devices"
+    endif
+    call synchronize_all()
+
+    ! prepares general fields on GPU
+    ! add GPU support for the C-PML routines
+    call prepare_constants_smooth_device(Mesh_pointer, &
+                                NGLLX, NSPEC_AB, NGLOB_AB, NSPEC_IRREGULAR,irregular_element_number, &
+                                xixstore,xiystore,xizstore, &
+                                etaxstore,etaystore,etazstore, &
+                                gammaxstore,gammaystore,gammazstore, &
+                                xix_regular,jacobian_regular,ibool, &
+                                num_interfaces_ext_mesh, max_nibool_interfaces_ext_mesh, &
+                                nibool_interfaces_ext_mesh, ibool_interfaces_ext_mesh, &
+                                hprime_xx,hprimewgll_xx, &
+                                wgllwgll_xy, wgllwgll_xz, wgllwgll_yz, &
+                                myrank,&
+                                PML_CONDITIONS)
+
+
+    if (myrank == 0) then
+      print *, "preparing smoothing parameters on GPU"
+    endif
+
+    call prepare_smooth_pde_gpu(Mesh_pointer, &
+                                Smooth_container, &
+                                dat_glob, &
+                                rvol, &
+                                phase_ispec_inner_elastic,&
+                                num_phase_ispec_elastic,&
+                                CPML_to_spec,&
+                                NSPEC_CPML,&
+                                cv,&
+                                ch)
+  endif
+
+  if (myrank == 0) then
+    print *, "start stepping"
+  endif
+
   do istep = 1, ntstep
     !if (myrank == 0) print *, istep
-    ddat_glob(:) = 0.0
     do iphase = 1,2
       if (iphase == 1) then
         num_elements = nspec_outer_elastic
       else
         num_elements = nspec_inner_elastic
       endif
-      do ispec_p = 1,num_elements
-        ispec = phase_ispec_inner_elastic(ispec_p,iphase)
-        do k = 1,NGLLZ;do j = 1,NGLLY;do i = 1,NGLLX
-          dat_elem(i,j,k) = dat(i,j,k,ispec)
-        enddo; enddo; enddo
-        select case (NGLLX)
-        case (5)
-          call mxm5_single(hprime_xx,m1,dat_elem,stemp1,m2)
-          call mxm5_3dmat_single(dat_elem,m1,hprime_xxT,m1, &
-                                 stemp2,NGLLX)
-          call mxm5_single(dat_elem,m2,hprime_xxT,stemp3,m1)
-        case default
-          !! derivative along xi, eta, zeta
-          do k = 1,NGLLZ;do j = 1,NGLLY;do i = 1,NGLLX
-            stemp1l = 0._CUSTOM_REAL
-            stemp2l = 0._CUSTOM_REAL
-            stemp3l = 0._CUSTOM_REAL
-            ! we can merge the loops because NGLLX == NGLLY == NGLLZ
-            do l = 1,NGLLX
-              stemp1l = stemp1l + dat_elem(l,j,k)*hprime_xx(i,l)
-              stemp2l = stemp2l + dat_elem(i,l,k)*hprime_yy(j,l)
-              stemp3l = stemp3l + dat_elem(i,j,l)*hprime_zz(k,l)
-            enddo
-            stemp1(i,j,k) = stemp1l
-            stemp2(i,j,k) = stemp2l
-            stemp3(i,j,k) = stemp3l
-          enddo;enddo;enddo
-        end select
 
-        ispec_irreg = irregular_element_number(ispec)
-        if (ispec_irreg /= 0) then
+      if (USE_GPU .and. GPU_MODE) then
+        call compute_update_element_smooth_pde_gpu(Mesh_pointer, &
+                                                   Smooth_container, &
+                                                   iphase, &
+                                                   num_elements)
+      else
+        do ispec_p = 1,num_elements
+          ispec = phase_ispec_inner_elastic(ispec_p,iphase)
           do k = 1,NGLLZ;do j = 1,NGLLY;do i = 1,NGLLX
-            xixl = xixstore(i,j,k,ispec_irreg)
-            xiyl = xiystore(i,j,k,ispec_irreg)
-            xizl = xizstore(i,j,k,ispec_irreg)
-            etaxl = etaxstore(i,j,k,ispec_irreg)
-            etayl = etaystore(i,j,k,ispec_irreg)
-            etazl = etazstore(i,j,k,ispec_irreg)
-            gammaxl = gammaxstore(i,j,k,ispec_irreg)
-            gammayl = gammaystore(i,j,k,ispec_irreg)
-            gammazl = gammazstore(i,j,k,ispec_irreg)
-            jacobianl = jacobianstore(i,j,k,ispec_irreg)
-
-            ! derivatives along x, y, z
-            ddxl = xixl*stemp1(i,j,k) + etaxl*stemp2(i,j,k) + &
-                   gammaxl*stemp3(i,j,k)
-            ddyl = xiyl*stemp1(i,j,k) + etayl*stemp2(i,j,k) + &
-                   gammayl*stemp3(i,j,k)
-            ddzl = xizl*stemp1(i,j,k) + etazl*stemp2(i,j,k) + &
-                   gammazl*stemp3(i,j,k)
-            !! spherical coordinate
-            !rxl = rotate_r(1,i,j,k,ispec)
-            !ryl = rotate_r(2,i,j,k,ispec)
-            !rzl = rotate_r(3,i,j,k,ispec)
-            !stemp1(i,j,k) = ((cv-ch) * (rxl*xixl+ryl*xiyl+rzl*xizl) * &
-            !  (rxl*ddxl+ryl*ddyl+rzl*ddzl) +&
-            !  ch * (xixl*ddxl+xiyl*ddyl+xizl*ddzl)) * jacobianl
-            !stemp2(i,j,k) = ((cv-ch) * (rxl*etaxl+ryl*etayl+rzl*etazl) * &
-            !  (rxl*ddxl+ryl*ddyl+rzl*ddzl) +&
-            !  ch * (etaxl*ddxl+etayl*ddyl+etazl*dzl)) * jacobianl
-            !stemp3(i,j,k) = ((cv-ch) * (rxl*gammaxl+ryl*gammayl+rzl*gammazl)* &
-            !  (rxl*ddxl+ryl*ddyl+rzl*ddzl) +&
-            !  ch * (gammaxl*ddxl+gammayl*ddyl+gammazl*ddzl)) * jacobianl
-            !! Cartesian coordinate
-            stemp1(i,j,k) = ((cv-ch) * xizl * ddzl +&
-              ch * (xixl*ddxl+xiyl*ddyl+xizl*ddzl)) * jacobianl
-            stemp2(i,j,k) = ((cv-ch) * etazl * ddzl +&
-              ch * (etaxl*ddxl+etayl*ddyl+etazl*ddzl)) * jacobianl
-            stemp3(i,j,k) = ((cv-ch) * gammazl * ddzl +&
-              ch * (gammaxl*ddxl+gammayl*ddyl+gammazl*ddzl)) * jacobianl
-          enddo;enddo;enddo
-        else
-          xixl = xix_regular
-          jacobianl = jacobian_regular
+            iglob = ibool(i,j,k,ispec)
+            dat_elem(i,j,k) = dat_glob(iglob)
+          enddo; enddo; enddo
+          select case (NGLLX)
+          case (5)
+            call mxm5_single(hprime_xx,m1,dat_elem,stemp1,m2)
+            call mxm5_3dmat_single(dat_elem,m1,hprime_xxT,m1, &
+                                   stemp2,NGLLX)
+            call mxm5_single(dat_elem,m2,hprime_xxT,stemp3,m1)
+          case default
+            !! derivative along xi, eta, zeta
+            do k = 1,NGLLZ;do j = 1,NGLLY;do i = 1,NGLLX
+              stemp1l = 0._CUSTOM_REAL
+              stemp2l = 0._CUSTOM_REAL
+              stemp3l = 0._CUSTOM_REAL
+              ! we can merge the loops because NGLLX == NGLLY == NGLLZ
+              do l = 1,NGLLX
+                stemp1l = stemp1l + dat_elem(l,j,k)*hprime_xx(i,l)
+                stemp2l = stemp2l + dat_elem(i,l,k)*hprime_yy(j,l)
+                stemp3l = stemp3l + dat_elem(i,j,l)*hprime_zz(k,l)
+              enddo
+              stemp1(i,j,k) = stemp1l
+              stemp2(i,j,k) = stemp2l
+              stemp3(i,j,k) = stemp3l
+            enddo;enddo;enddo
+          end select
+  
+          ispec_irreg = irregular_element_number(ispec)
+          if (ispec_irreg /= 0) then
+            do k = 1,NGLLZ;do j = 1,NGLLY;do i = 1,NGLLX
+              xixl = xixstore(i,j,k,ispec_irreg)
+              xiyl = xiystore(i,j,k,ispec_irreg)
+              xizl = xizstore(i,j,k,ispec_irreg)
+              etaxl = etaxstore(i,j,k,ispec_irreg)
+              etayl = etaystore(i,j,k,ispec_irreg)
+              etazl = etazstore(i,j,k,ispec_irreg)
+              gammaxl = gammaxstore(i,j,k,ispec_irreg)
+              gammayl = gammaystore(i,j,k,ispec_irreg)
+              gammazl = gammazstore(i,j,k,ispec_irreg)
+              jacobianl = jacobianstore(i,j,k,ispec_irreg)
+  
+              ! derivatives along x, y, z
+              ddxl = xixl*stemp1(i,j,k) + etaxl*stemp2(i,j,k) + &
+                     gammaxl*stemp3(i,j,k)
+              ddyl = xiyl*stemp1(i,j,k) + etayl*stemp2(i,j,k) + &
+                     gammayl*stemp3(i,j,k)
+              ddzl = xizl*stemp1(i,j,k) + etazl*stemp2(i,j,k) + &
+                     gammazl*stemp3(i,j,k)
+              !! spherical coordinate
+              !rxl = rotate_r(1,i,j,k,ispec)
+              !ryl = rotate_r(2,i,j,k,ispec)
+              !rzl = rotate_r(3,i,j,k,ispec)
+              !stemp1(i,j,k) = ((cv-ch) * (rxl*xixl+ryl*xiyl+rzl*xizl) * &
+              !  (rxl*ddxl+ryl*ddyl+rzl*ddzl) +&
+              !  ch * (xixl*ddxl+xiyl*ddyl+xizl*ddzl)) * jacobianl
+              !stemp2(i,j,k) = ((cv-ch) * (rxl*etaxl+ryl*etayl+rzl*etazl) * &
+              !  (rxl*ddxl+ryl*ddyl+rzl*ddzl) +&
+              !  ch * (etaxl*ddxl+etayl*ddyl+etazl*dzl)) * jacobianl
+              !stemp3(i,j,k) = ((cv-ch) * (rxl*gammaxl+ryl*gammayl+rzl*gammazl)* &
+              !  (rxl*ddxl+ryl*ddyl+rzl*ddzl) +&
+              !  ch * (gammaxl*ddxl+gammayl*ddyl+gammazl*ddzl)) * jacobianl
+              !! Cartesian coordinate
+              stemp1(i,j,k) = ((cv-ch) * xizl * ddzl +&
+                ch * (xixl*ddxl+xiyl*ddyl+xizl*ddzl)) * jacobianl
+              stemp2(i,j,k) = ((cv-ch) * etazl * ddzl +&
+                ch * (etaxl*ddxl+etayl*ddyl+etazl*ddzl)) * jacobianl
+              stemp3(i,j,k) = ((cv-ch) * gammazl * ddzl +&
+                ch * (gammaxl*ddxl+gammayl*ddyl+gammazl*ddzl)) * jacobianl
+            enddo;enddo;enddo
+          else
+            xixl = xix_regular
+            jacobianl = jacobian_regular
+            do k = 1,NGLLZ;do j = 1,NGLLY;do i = 1,NGLLX
+              stemp1(i,j,k) = (&
+                ch * xixl*xixl*stemp1(i,j,k)) * jacobianl
+              stemp2(i,j,k) = (&
+                ch * xixl*xixl*stemp2(i,j,k)) * jacobianl
+              stemp3(i,j,k) = (&
+                cv * xixl*xixl*stemp3(i,j,k)) * jacobianl
+            enddo;enddo;enddo
+          endif
+  
+          select case (NGLLX)
+          case (5)
+            call mxm5_single(hprimewgll_xxT,m1,stemp1,snewtemp1,m2)
+            call mxm5_3dmat_single(stemp2,m1,hprimewgll_xx,m1, &
+                                   snewtemp2,NGLLX)
+            call mxm5_single(stemp3,m2,hprimewgll_xx,snewtemp3,m1)
+          case default
+            do k = 1,NGLLZ;do j = 1,NGLLY;do i = 1,NGLLX
+              stemp1l = 0._CUSTOM_REAL
+              stemp2l = 0._CUSTOM_REAL
+              stemp3l = 0._CUSTOM_REAL
+              ! we can merge these loops because NGLLX = NGLLY = NGLLZ
+              do l = 1,NGLLX
+                stemp1l = stemp1l + stemp1(l,j,k) * hprimewgll_xx(l,i)
+                stemp2l = stemp2l + stemp2(i,l,k) * hprimewgll_yy(l,j)
+                stemp3l = stemp3l + stemp3(i,j,l) * hprimewgll_zz(l,k)
+              enddo
+              ! to be compatible with matrix versions from above
+              snewtemp1(i,j,k) = stemp1l
+              snewtemp2(i,j,k) = stemp2l
+              snewtemp3(i,j,k) = stemp3l
+            enddo;enddo;enddo
+          end select
+  
           do k = 1,NGLLZ;do j = 1,NGLLY;do i = 1,NGLLX
-            stemp1(i,j,k) = (&
-              ch * xixl*xixl*stemp1(i,j,k)) * jacobianl
-            stemp2(i,j,k) = (&
-              ch * xixl*xixl*stemp2(i,j,k)) * jacobianl
-            stemp3(i,j,k) = (&
-              cv * xixl*xixl*stemp3(i,j,k)) * jacobianl
+            iglob = ibool(i,j,k,ispec)
+            ddat_glob(iglob) = ddat_glob(iglob) - (&
+                            wgllwgll_yz_3D(i,j,k) * snewtemp1(i,j,k)+&
+                            wgllwgll_xz_3D(i,j,k) * snewtemp2(i,j,k)+&
+                            wgllwgll_xy_3D(i,j,k) * snewtemp3(i,j,k))
           enddo;enddo;enddo
-        endif
-
-        select case (NGLLX)
-        case (5)
-          call mxm5_single(hprimewgll_xxT,m1,stemp1,snewtemp1,m2)
-          call mxm5_3dmat_single(stemp2,m1,hprimewgll_xx,m1, &
-                                 snewtemp2,NGLLX)
-          call mxm5_single(stemp3,m2,hprimewgll_xx,snewtemp3,m1)
-        case default
-          do k = 1,NGLLZ;do j = 1,NGLLY;do i = 1,NGLLX
-            stemp1l = 0._CUSTOM_REAL
-            stemp2l = 0._CUSTOM_REAL
-            stemp3l = 0._CUSTOM_REAL
-            ! we can merge these loops because NGLLX = NGLLY = NGLLZ
-            do l = 1,NGLLX
-              stemp1l = stemp1l + stemp1(l,j,k) * hprimewgll_xx(l,i)
-              stemp2l = stemp2l + stemp2(i,l,k) * hprimewgll_yy(l,j)
-              stemp3l = stemp3l + stemp3(i,j,l) * hprimewgll_zz(l,k)
-            enddo
-            ! to be compatible with matrix versions from above
-            snewtemp1(i,j,k) = stemp1l
-            snewtemp2(i,j,k) = stemp2l
-            snewtemp3(i,j,k) = stemp3l
-          enddo;enddo;enddo
-        end select
-
-        do k = 1,NGLLZ;do j = 1,NGLLY;do i = 1,NGLLX
-          iglob = ibool(i,j,k,ispec)
-          ddat_glob(iglob) = ddat_glob(iglob) - (&
-                          wgllwgll_yz_3D(i,j,k) * snewtemp1(i,j,k)+&
-                          wgllwgll_xz_3D(i,j,k) * snewtemp2(i,j,k)+&
-                          wgllwgll_xy_3D(i,j,k) * snewtemp3(i,j,k))
-        enddo;enddo;enddo
-      enddo  ! ispec_p = 1, num_elements
+        enddo  ! ispec_p = 1, num_elements
+      endif ! GPU
 
       !! assemble MPI
       if (iphase == 1) then
-        call assemble_MPI_send_smooth(NPROC,NGLOB_AB, &
+        if (USE_GPU .and. GPU_MODE) then
+          call transfer_boun_dat_smooth_pde_from_device(Mesh_pointer, &
+                                                        Smooth_container, &
+                                                        buffer_send_vector_ext_mesh_smooth)
+          call assemble_MPI_send_smooth_cuda(NPROC,&
+                                      buffer_send_vector_ext_mesh_smooth, &
+                                      buffer_recv_vector_ext_mesh_smooth, &
+                                      num_interfaces_ext_mesh,max_nibool_interfaces_ext_mesh, &
+                                      nibool_interfaces_ext_mesh,ibool_interfaces_ext_mesh, &
+                                      my_neighbors_ext_mesh, &
+                                      request_send_vector_ext_mesh,request_recv_vector_ext_mesh)
+        else
+          call assemble_MPI_send_smooth(NPROC,NGLOB_AB, &
                                       ddat_glob,buffer_send_vector_ext_mesh_smooth, &
                                       buffer_recv_vector_ext_mesh_smooth, &
                                       num_interfaces_ext_mesh,max_nibool_interfaces_ext_mesh, &
                                       nibool_interfaces_ext_mesh,ibool_interfaces_ext_mesh, &
                                       my_neighbors_ext_mesh, &
                                       request_send_vector_ext_mesh,request_recv_vector_ext_mesh)
+        endif
       else
-        call assemble_MPI_w_ord_smooth(NPROC,NGLOB_AB, &
+        if (USE_GPU .and. GPU_MODE) then
+          call assemble_MPI_write_smooth_cuda(NPROC,&
+                                       Mesh_pointer, Smooth_container, &
+                                       buffer_recv_vector_ext_mesh_smooth,num_interfaces_ext_mesh, &
+                                       max_nibool_interfaces_ext_mesh, &
+                                       nibool_interfaces_ext_mesh,ibool_interfaces_ext_mesh, &
+                                       request_send_vector_ext_mesh,request_recv_vector_ext_mesh, &
+                                       my_neighbors_ext_mesh)
+        else
+          call assemble_MPI_w_ord_smooth(NPROC,NGLOB_AB, &
                                        ddat_glob,buffer_recv_vector_ext_mesh_smooth,num_interfaces_ext_mesh, &
                                        max_nibool_interfaces_ext_mesh, &
                                        nibool_interfaces_ext_mesh,ibool_interfaces_ext_mesh, &
                                        request_send_vector_ext_mesh,request_recv_vector_ext_mesh, &
                                        my_neighbors_ext_mesh,myrank)
+        endif
       endif
       !!!!!!!!!!!!!!!!!
     enddo !iphase = 1,2
 
-    ddat_glob(:) = ddat_glob(:) * rvol(:)
+    if (USE_GPU .and. GPU_MODE) then
+      call kernel_3_smooth_pde_cuda(Mesh_pointer, Smooth_container)
+    else
+      ddat_glob(:) = ddat_glob(:) * rvol(:)
+    endif
     !! update
-    dat_glob(:) = dat_glob(:) + ddat_glob(:)
+    if (USE_GPU .and. GPU_MODE) then
+      call update_dat_smooth_pde_cuda(Mesh_pointer, Smooth_container)
+    else
+      dat_glob(:) = dat_glob(:) + ddat_glob(:)
+      ddat_glob(:) = 0.0
+    endif
 
     !! info
     if (mod(istep, PRINT_INFO_PER_STEP) == 0) then
       if (myrank == 0) print *, 'Step:', istep
-      min_val = minval(dat_glob)
-      max_val = maxval(dat_glob)
-      call min_all_cr(min_val, min_val_glob)
+      if (USE_GPU .and. GPU_MODE) then
+        call get_norm_smooth_pde_from_device(Mesh_pointer, Smooth_container, &
+                                             max_val, 0)
+      else
+        max_val = maxval(abs(dat_glob))
+      endif
       call max_all_cr(max_val, max_val_glob)
       if (myrank == 0) then
         print *, '  '//trim(kernel_name)
-        print *, '    minval:', min_val_glob
-        print *, '    maxval:', max_val_glob
+        print *, '    max abs val:', max_val_glob
         call cpu_time(tnow)
         print *, 'time since last message:', tnow-tlast
         call cpu_time(tlast)
@@ -536,30 +628,36 @@ program smooth_sem_pde
     endif
 
     !!!!!!!!!!!!!
-    !! broadcast glob array back to local array
-    do ispec = 1, NSPEC_AB
-      do k = 1,NGLLZ;do j = 1,NGLLY;do i = 1,NGLLX
-        iglob = ibool(i,j,k,ispec)
-        !! mute everything in the PML domain
-        if (SET_ZERO_IN_PML .and. is_CPML(ispec)) then
-          dat_glob(iglob) = 0.0
-        endif
-        dat(i,j,k,ispec) = dat_glob(iglob)
-      enddo;enddo;enddo
-    enddo
+    !! mute everything in the PML domain
+    if (SET_ZERO_IN_PML .and. PML_CONDITIONS) then
+      if (USE_GPU .and. GPU_MODE) then
+        call zero_pml_smooth_pde_cuda(Mesh_pointer, Smooth_container)
+      else
+        do ispec = 1, NSPEC_AB
+          do k = 1,NGLLZ;do j = 1,NGLLY;do i = 1,NGLLX
+            iglob = ibool(i,j,k,ispec)
+            if (is_CPML(ispec)) then
+              dat_glob(iglob) = 0.0
+            endif
+          enddo;enddo;enddo
+        enddo
+      endif
+    endif
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     call synchronize_all()
   enddo
+
+  if (USE_GPU .and. GPU_MODE) then
+    call transfer_dat_smooth_pde_from_device(Mesh_pointer, Smooth_container, &
+                                             dat_glob)
+  endif
 
   call synchronize_all()
   call cpu_time(t2)
   if (myrank == 0) &
     print *, 'Computation time with PDE-based smoothing on CPU:', t2-t1
 
-  !! output
-  ! file output
-  ! smoothed kernel file name
-  ! statistics
+  !! statistics
   min_val = minval(dat_glob)
   max_val = maxval(dat_glob)
   call min_all_cr(min_val, min_val_glob)
@@ -571,6 +669,15 @@ program smooth_sem_pde
     print *, '    maxval:', max_val_glob
   endif
 
+  !! broadcast glob array back to local array
+  do ispec = 1, NSPEC_AB
+    do k = 1,NGLLZ;do j = 1,NGLLY;do i = 1,NGLLX
+      iglob = ibool(i,j,k,ispec)
+      dat(i,j,k,ispec) = dat_glob(iglob)
+    enddo;enddo;enddo
+  enddo
+
+  !! output
   write(ks_file,'(a,i6.6,a)') trim(output_dir)//'/proc',myrank,'_'//trim(kernel_name)//'_smooth.bin'
   open(IOUT,file=trim(ks_file),status='unknown',form='unformatted',iostat=ier)
   if (ier /= 0) stop 'Error opening smoothed kernel file'
@@ -749,6 +856,64 @@ end program smooth_sem_pde
 !-------------------------------------------------------------------------------------------------
 !
 
+  subroutine assemble_MPI_send_smooth_cuda(NPROC,&
+          buffer_send_vector_ext_mesh_smooth, &
+          buffer_recv_vector_ext_mesh_smooth, &
+          num_interfaces_ext_mesh,max_nibool_interfaces_ext_mesh, &
+          nibool_interfaces_ext_mesh,ibool_interfaces_ext_mesh, &
+          my_neighbors_ext_mesh, &
+          request_send_vector_ext_mesh,request_recv_vector_ext_mesh)
+ 
+    ! sends data
+ 
+  use constants, only: CUSTOM_REAL, itag
+ 
+  implicit none
+ 
+  integer :: NPROC
+ 
+  integer :: num_interfaces_ext_mesh,max_nibool_interfaces_ext_mesh
+ 
+  real(kind=CUSTOM_REAL), &
+    dimension(max_nibool_interfaces_ext_mesh,num_interfaces_ext_mesh) :: &
+       buffer_send_vector_ext_mesh_smooth,buffer_recv_vector_ext_mesh_smooth
+ 
+  integer, dimension(num_interfaces_ext_mesh) :: &
+    nibool_interfaces_ext_mesh,my_neighbors_ext_mesh
+  integer, dimension(max_nibool_interfaces_ext_mesh,num_interfaces_ext_mesh):: &
+    ibool_interfaces_ext_mesh
+  integer, dimension(num_interfaces_ext_mesh) :: &
+    request_send_vector_ext_mesh,request_recv_vector_ext_mesh
+ 
+  integer iinterface
+ 
+  ! here we have to assemble all the contributions between partitions using MPI
+ 
+  ! assemble only if more than one partition
+  if (NPROC > 1) then
+
+    ! send messages
+    do iinterface = 1, num_interfaces_ext_mesh
+      call isend_cr(buffer_send_vector_ext_mesh_smooth(1,iinterface), &
+                    nibool_interfaces_ext_mesh(iinterface), &
+                    my_neighbors_ext_mesh(iinterface), &
+                    itag, &
+                    request_send_vector_ext_mesh(iinterface))
+      call irecv_cr(buffer_recv_vector_ext_mesh_smooth(1,iinterface), &
+                    nibool_interfaces_ext_mesh(iinterface), &
+                    my_neighbors_ext_mesh(iinterface), &
+                    itag, &
+                    request_recv_vector_ext_mesh(iinterface))
+    enddo
+ 
+  endif
+ 
+  end subroutine assemble_MPI_send_smooth_cuda
+
+!
+!-------------------------------------------------------------------------------------------------
+!
+
   subroutine assemble_MPI_w_ord_smooth(NPROC,NGLOB_AB, &
           array_val,buffer_recv_vector_ext_mesh_smooth,num_interfaces_ext_mesh, &
           max_nibool_interfaces_ext_mesh, &
@@ -845,3 +1010,55 @@ end program smooth_sem_pde
 
   end subroutine assemble_MPI_w_ord_smooth
 
+  subroutine assemble_MPI_write_smooth_cuda(NPROC,Mesh_pointer, &
+          Smooth_container, &
+          buffer_recv_vector_ext_mesh_smooth,num_interfaces_ext_mesh, &
+          max_nibool_interfaces_ext_mesh, &
+          nibool_interfaces_ext_mesh,ibool_interfaces_ext_mesh, &
+          request_send_vector_ext_mesh,request_recv_vector_ext_mesh, &
+          my_neighbors_ext_mesh)
+ 
+! waits for data to receive and assembles
+ 
+  use constants, only: CUSTOM_REAL
+ 
+  implicit none
+ 
+  integer :: NPROC
+
+  integer(kind=8), intent(in) :: Mesh_pointer, Smooth_container
+ 
+  integer :: num_interfaces_ext_mesh,max_nibool_interfaces_ext_mesh
+ 
+  real(kind=CUSTOM_REAL), &
+    dimension(max_nibool_interfaces_ext_mesh,num_interfaces_ext_mesh) :: &
+       buffer_recv_vector_ext_mesh_smooth
+ 
+  integer, dimension(num_interfaces_ext_mesh) :: nibool_interfaces_ext_mesh
+  integer, dimension(max_nibool_interfaces_ext_mesh,num_interfaces_ext_mesh)::&
+    ibool_interfaces_ext_mesh
+  integer, dimension(num_interfaces_ext_mesh) :: &
+    request_send_vector_ext_mesh,request_recv_vector_ext_mesh
+  integer, dimension(num_interfaces_ext_mesh) :: my_neighbors_ext_mesh
+ 
+  integer :: iinterface
+
+! here we have to assemble all the contributions between partitions using MPI
+ 
+! assemble only if more than one partition
+  if (NPROC == 1) return
+ 
+! wait for communications completion (recv)
+  do iinterface = 1, num_interfaces_ext_mesh
+    call wait_req(request_recv_vector_ext_mesh(iinterface))
+  enddo
+ 
+  call transfer_asmbl_dat_smooth_pde_from_device(Mesh_pointer, &
+                                           Smooth_container, &
+                                           buffer_recv_vector_ext_mesh_smooth) 
+! wait for communications completion (send)
+  do iinterface = 1, num_interfaces_ext_mesh
+    call wait_req(request_send_vector_ext_mesh(iinterface))
+  enddo
+
+  end subroutine assemble_MPI_write_smooth_cuda

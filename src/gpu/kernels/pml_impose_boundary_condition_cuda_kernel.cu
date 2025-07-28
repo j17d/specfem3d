@@ -65,15 +65,15 @@ __global__ void pml_impose_boundary_condition_cuda_kernel(realw* accel,
 
       // gets associated velocity
 
-      displ[iglob*3+0] = 0.f;
+      displ[iglob*3] = 0.f;
       displ[iglob*3+1] = 0.f;
       displ[iglob*3+2] = 0.f;
 
-      veloc[iglob*3+0] = 0.f;
+      veloc[iglob*3] = 0.f;
       veloc[iglob*3+1] = 0.f;
       veloc[iglob*3+2] = 0.f;
 
-      accel[iglob*3+0] = 0.f;
+      accel[iglob*3] = 0.f;
       accel[iglob*3+1] = 0.f;
       accel[iglob*3+2] = 0.f;
 

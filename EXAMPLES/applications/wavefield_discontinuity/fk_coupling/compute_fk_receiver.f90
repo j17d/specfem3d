@@ -35,7 +35,7 @@ program compute_fk_receiver
     read(77, *) sta_name(ip), nt_name(ip), yp(ip), xp(ip), zp(ip)
   enddo
   close(77)
-  
+
   call ReadFKModelInput()
 
   ! converts origin point Z to reference framework depth for FK,

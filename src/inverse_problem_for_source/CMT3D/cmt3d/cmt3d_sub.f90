@@ -207,11 +207,11 @@ contains
   subroutine setup_matrix(A,b,npar)
 
     integer, intent(in) :: npar
-    real*8, intent(out) :: A(npar,npar), b(npar)
+    double precision, intent(out) :: A(npar,npar), b(npar)
 
     integer :: ios,nf,nw,nwint,i,j
     real :: tstart, tend
-    real*8 :: A1(npar,npar), b1(npar)
+    double precision :: A1(npar,npar), b1(npar)
 
     open(IOWIN,file=trim(flexwin_out_file),iostat=ios)
     if (ios /= 0) stop 'Flexwin output file can not be found'
@@ -254,15 +254,15 @@ contains
   subroutine invert_cmt(A,b,dm,npar)
 
     integer, intent(in) :: npar
-    real*8 , intent(inout) :: A(npar,npar), b(npar)
-    real*8 , intent(out) :: dm(npar)
+    double precision, intent(inout) :: A(npar,npar), b(npar)
+    double precision, intent(out) :: dm(npar)
 
-    real*8 :: old_par(npar),new_par(npar)
-    real*8 :: trace, max_row
+    double precision :: old_par(npar),new_par(npar)
+    double precision :: trace, max_row
     logical :: linear_inversion,singular
     integer :: na, niter, i
-    real*8 :: xout(NPARMAX+2), AA(NPARMAX+2,NPARMAX+2), bb(NPARMAX+2)
-    real*8 :: m1(npar),lam(2), mstart(npar)
+    double precision :: xout(NPARMAX+2), AA(NPARMAX+2,NPARMAX+2), bb(NPARMAX+2)
+    double precision :: m1(npar),lam(2), mstart(npar)
     integer, parameter :: NMAX_NL_ITER = 10
 
     ! do we really need the extra scaling??
@@ -364,7 +364,7 @@ contains
   subroutine variance_reduction(dm,npar)
 
     integer,intent(in) :: npar
-    real*8,intent(in) :: dm(npar)
+    double precision,intent(in) :: dm(npar)
 
     integer :: ios, nf, nwint, nw,  is, ie, i, j, npts, ishift, ishift_new
     real :: b, dt, tstart, tend

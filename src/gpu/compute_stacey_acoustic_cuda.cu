@@ -86,7 +86,7 @@ void FC_FUNC_(compute_stacey_acoustic_cuda,
     // combined forward/backward fields
 #ifdef USE_CUDA
     if (run_cuda){
-      compute_stacey_acoustic_kernel<<<grid,threads>>>(mp->d_potential_dot_acoustic,
+      compute_stacey_acoustic_kernel<<<grid,threads,0,mp->compute_stream>>>(mp->d_potential_dot_acoustic,
                                                        mp->d_potential_dot_dot_acoustic,
                                                        mp->d_abs_boundary_ispec,
                                                        mp->d_abs_boundary_ijk,
@@ -105,7 +105,7 @@ void FC_FUNC_(compute_stacey_acoustic_cuda,
 #endif
 #ifdef USE_HIP
     if (run_hip){
-      hipLaunchKernelGGL(compute_stacey_acoustic_kernel, dim3(grid), dim3(threads), 0, 0,
+      hipLaunchKernelGGL(compute_stacey_acoustic_kernel, dim3(grid), dim3(threads), 0, mp->compute_stream,
                                                          mp->d_potential_dot_acoustic,
                                                          mp->d_potential_dot_dot_acoustic,
                                                          mp->d_abs_boundary_ispec,
@@ -138,7 +138,7 @@ void FC_FUNC_(compute_stacey_acoustic_cuda,
     // single forward or backward fields
 #ifdef USE_CUDA
     if (run_cuda){
-      compute_stacey_acoustic_single_kernel<<<grid,threads>>>(potential_dot,
+      compute_stacey_acoustic_single_kernel<<<grid,threads,0,mp->compute_stream>>>(potential_dot,
                                                               potential_dot_dot,
                                                               mp->d_abs_boundary_ispec,
                                                               mp->d_abs_boundary_ijk,
@@ -157,7 +157,7 @@ void FC_FUNC_(compute_stacey_acoustic_cuda,
 #endif
 #ifdef USE_HIP
     if (run_hip){
-      hipLaunchKernelGGL(compute_stacey_acoustic_single_kernel, dim3(grid), dim3(threads), 0, 0,
+      hipLaunchKernelGGL(compute_stacey_acoustic_single_kernel, dim3(grid), dim3(threads), 0 ,mp->compute_stream,
                                                                 potential_dot,
                                                                 potential_dot_dot,
                                                                 mp->d_abs_boundary_ispec,
@@ -179,7 +179,10 @@ void FC_FUNC_(compute_stacey_acoustic_cuda,
 
   //  adjoint simulations: stores absorbed wavefield part
   if (mp->simulation_type == 1 && mp->save_forward){
+    // explicitly wait until compute stream is done
     // (cudaMemcpy implicitly synchronizes all other cuda operations)
+    gpuStreamSynchronize(mp->compute_stream);
+
     // copies array to CPU
     gpuMemcpy_tohost_void((void*)h_b_absorb_potential,(void*)mp->d_b_absorb_potential,mp->d_b_reclen_potential);
   }
@@ -244,7 +247,7 @@ void FC_FUNC_(compute_stacey_acoustic_undoatt_cuda,
   // undoatt: single forward or backward fields
 #ifdef USE_CUDA
   if (run_cuda){
-    compute_stacey_acoustic_undoatt_kernel<<<grid,threads>>>(potential_dot,
+    compute_stacey_acoustic_undoatt_kernel<<<grid,threads,0,mp->compute_stream>>>(potential_dot,
                                                              potential_dot_dot,
                                                              mp->d_abs_boundary_ispec,
                                                              mp->d_abs_boundary_ijk,
@@ -259,7 +262,7 @@ void FC_FUNC_(compute_stacey_acoustic_undoatt_cuda,
 #endif
 #ifdef USE_HIP
   if (run_hip){
-    hipLaunchKernelGGL(compute_stacey_acoustic_undoatt_kernel, dim3(grid), dim3(threads), 0, 0,
+    hipLaunchKernelGGL(compute_stacey_acoustic_undoatt_kernel, dim3(grid), dim3(threads), 0, mp->compute_stream,
                                                                potential_dot,
                                                                potential_dot_dot,
                                                                mp->d_abs_boundary_ispec,
@@ -279,3 +282,66 @@ void FC_FUNC_(compute_stacey_acoustic_undoatt_cuda,
   GPU_ERROR_CHECKING("compute_stacey_acoustic_undoatt_cuda");
 }
 
+/* ----------------------------------------------------------------------------------------------- */
+
+extern EXTERN_LANG
+void FC_FUNC_(compute_coupled_injection_contribution_ac_device,
+              COMPUTE_COUPLED_INJECTION_CONTRIBUTION_AC_DEVICE)(long *Mesh_pointer,
+                                                                realw* b_boundary_injection_potential,
+                                                                int* SAVE_STACEY_f) {
+
+  TRACE("compute_coupled_injection_contribution_ac_device");
+
+  Mesh* mp = (Mesh*)(*Mesh_pointer); //get mesh pointer out of fortran integer container
+  int SAVE_STACEY = *SAVE_STACEY_f;
+
+  // checks if anything to do
+  if (mp->d_num_abs_boundary_faces == 0) return;
+
+  int blocksize = NGLL2;
+
+  int num_blocks_x, num_blocks_y;
+  get_blocks_xy(mp->d_num_abs_boundary_faces,&num_blocks_x,&num_blocks_y);
+
+  dim3 grid(num_blocks_x,num_blocks_y);
+  dim3 threads(blocksize,1,1);
+
+  GPU_ERROR_CHECKING("between cudamemcpy and compute_stacey_acoustic_injection_kernel");
+
+  if(mp->simulation_type == 1) {
+#ifdef USE_CUDA
+    if(run_cuda) {
+      compute_stacey_acoustic_injection_kernel <<<grid,threads,0,mp->compute_stream >>> (
+        mp->d_veloc_inj,mp->d_tract_inj,mp->d_potential_dot_dot_acoustic,
+        mp->d_abs_boundary_ispec,mp->d_abs_boundary_ijk,mp->d_abs_boundary_normal,
+        mp->d_abs_boundary_jacobian2Dw,mp->d_ibool,mp->d_rhostore,
+        mp->d_kappastore,mp->d_ispec_is_acoustic,mp->simulation_type,
+        SAVE_STACEY,mp->d_num_abs_boundary_faces,mp->d_b_boundary_injection_potential
+      );
+    }
+#endif
+#ifdef USE_HIP
+    if (run_hip){
+      hipLaunchKernelGGL(compute_stacey_acoustic_injection_kernel,dim3(grid), dim3(threads), 0, mp->compute_stream,
+                      mp->d_veloc_inj,mp->d_tract_inj,mp->d_potential_dot_dot_acoustic,
+                      mp->d_abs_boundary_ispec,mp->d_abs_boundary_ijk,mp->d_abs_boundary_normal,
+                      mp->d_abs_boundary_jacobian2Dw,mp->d_ibool,mp->d_rhostore,
+                      mp->d_kappastore,mp->d_ispec_is_acoustic,mp->simulation_type,
+                      SAVE_STACEY,mp->d_num_abs_boundary_faces,mp->d_b_boundary_injection_potential
+      );
+    }
+#endif
+  }
+  GPU_ERROR_CHECKING("compute_stacey_acoustic_injection_kernel");
+
+  if (SAVE_STACEY) {
+    // explicitly wait until compute stream is done
+    // (cudaMemcpy implicitly synchronizes all other cuda operations)
+    gpuStreamSynchronize(mp->compute_stream);
+
+    // copies absorb_field values to CPU
+    size_t size = mp->d_num_abs_boundary_faces * NGLL2;
+    gpuMemcpy_tohost_realw(b_boundary_injection_potential,mp->d_b_boundary_injection_potential,size);
+    // writing is done in fortran routine
+  }
+}
