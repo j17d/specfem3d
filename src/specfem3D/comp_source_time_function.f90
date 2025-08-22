@@ -373,6 +373,7 @@
   double precision function comp_source_time_function_ext(it_index,isource)
 
   use specfem_par, only: myrank, NSTEP, user_source_time_function
+  use specfem_par, only : USE_BINARY_SOURCE_FILE,isource_glob2loc
 
   implicit none
 
@@ -390,6 +391,10 @@
   endif
 
   ! gets stored STF
-  comp_source_time_function_ext = user_source_time_function(it_index,isource)
+  if(.not. USE_BINARY_SOURCE_FILE) then 
+    comp_source_time_function_ext = user_source_time_function(it_index,isource)
+  else
+    comp_source_time_function_ext = user_source_time_function(it_index,isource_glob2loc(isource))
+  endif
 
   end function comp_source_time_function_ext

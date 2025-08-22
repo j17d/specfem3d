@@ -838,7 +838,9 @@
 
   use constants, only: USE_MONOCHROMATIC_CMT_SOURCE
 
-  use specfem_par, only: USE_FORCE_POINT_SOURCE,USE_RICKER_TIME_FUNCTION, &
+  ! use specfem_par, only: USE_FORCE_POINT_SOURCE,USE_RICKER_TIME_FUNCTION, &
+  !                        hdur,hdur_Gaussian,force_stf
+  use specfem_par, only: is_POINTFORCE,USE_RICKER_TIME_FUNCTION, &
                          hdur,hdur_Gaussian,force_stf
 
   ! for external STFs
@@ -869,7 +871,8 @@
   endif
 
   ! determines source time function value
-  if (USE_FORCE_POINT_SOURCE) then
+  !if (USE_FORCE_POINT_SOURCE) then
+  if(is_POINTFORCE(isource)) then 
     ! single point force
     select case(force_stf(isource))
     case (0)

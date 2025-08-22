@@ -157,6 +157,13 @@ module specfem_par
   double precision, dimension(:), allocatable :: comp_dir_vect_source_N
   double precision, dimension(:), allocatable :: comp_dir_vect_source_Z_UP
 
+  ! source type flags
+  logical, dimension(:),allocatable :: is_POINTFORCE
+
+  ! Index conversion from the global source list to the local processor list
+  integer,dimension(:),allocatable :: isource_glob2loc ! isource_loc/0 = isource_glob2loc(isource)
+
+
   !-----------------------------------------------------------------
   ! receivers
   !-----------------------------------------------------------------

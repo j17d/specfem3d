@@ -423,6 +423,18 @@
       write(*,*)
     endif
 
+    ! read two flags in CMT + FORCE simulation
+    call read_value_logical(USE_CMT_AND_FORCE_SOURCE, 'USE_CMT_AND_FORCE_SOURCE', ier)
+    ier = 0
+    if (USE_CMT_AND_FORCE_SOURCE) then 
+      ! write(*,'(a)') 'cmt + force simulation is enabled'
+      USE_FORCE_POINT_SOURCE  = .true.
+    endif
+
+    call read_value_logical(USE_BINARY_SOURCE_FILE, 'USE_BINARY_SOURCE_FILE', ier)
+    ier = 0
+    if(.not. USE_CMT_AND_FORCE_SOURCE) USE_BINARY_SOURCE_FILE = .false.  ! binary file is disabled 
+
     call read_value_logical(USE_RICKER_TIME_FUNCTION, 'USE_RICKER_TIME_FUNCTION', ier)
     if (ier /= 0) then
       some_parameters_missing_from_Par_file = .true.
@@ -1102,7 +1114,7 @@
   ! local parameters
   integer :: i,irange
   character(len=MAX_STRING_LEN) :: sources_filename
-  character(len=MAX_STRING_LEN) :: path_to_add
+  character(len=MAX_STRING_LEN) :: path_to_add = ''
   character(len=MAX_STRING_LEN) :: tmp_PATH
 
   ! updates values for simulation settings
@@ -1235,7 +1247,34 @@
     NSOURCES = 0
   else
     ! gets number of sources
-    call count_number_of_sources(NSOURCES,sources_filename)
+    !NQDU call count_number_of_sources(NSOURCES,sources_filename)
+    if(USE_CMT_AND_FORCE_SOURCE) then 
+      if(.not. USE_BINARY_SOURCE_FILE) then
+        ! Force
+        sources_filename = path_to_add(1:len_trim(path_to_add)) // &
+                           IN_DATA_FILES(1:len_trim(IN_DATA_FILES))//'FORCESOLUTION'
+        call count_number_of_sources_by_type(NSOURCES_FORCE,sources_filename,.true.)
+
+        ! CMT
+        sources_filename = path_to_add(1:len_trim(path_to_add)) // &
+                           IN_DATA_FILES(1:len_trim(IN_DATA_FILES))//'CMTSOLUTION'
+        call count_number_of_sources_by_type(NSOURCES_CMT,sources_filename,.false.)
+      else 
+        sources_filename = path_to_add(1:len_trim(path_to_add)) // &
+                          IN_DATA_FILES(1:len_trim(IN_DATA_FILES))//'SOLUTION.bin'
+        call count_number_of_sources_binary(NSOURCES_CMT,NSOURCES_FORCE,sources_filename)
+      endif
+      NSOURCES = NSOURCES_CMT + NSOURCES_FORCE
+    else 
+      NSOURCES_CMT = 0
+      NSOURCES_FORCE = 0
+      call count_number_of_sources_by_type(NSOURCES,sources_filename,USE_FORCE_POINT_SOURCE)
+      if(USE_FORCE_POINT_SOURCE) then 
+        NSOURCES_FORCE = NSOURCES
+      else
+        NSOURCES_CMT = NSOURCES
+      endif
+    endif
   endif
 
   ! converts all string characters to lowercase
@@ -1402,6 +1441,10 @@
   call bcast_all_singlel(USE_EXTERNAL_SOURCE_FILE)
   call bcast_all_singlel(PRINT_SOURCE_TIME_FUNCTION)
 
+  !NQDU bcast cmt + force parameters
+  call bcast_all_singlel(USE_CMT_AND_FORCE_SOURCE)
+  call bcast_all_singlel(USE_BINARY_SOURCE_FILE)
+
   ! seismograms
   call bcast_all_singlei(NTSTEP_BETWEEN_OUTPUT_SEISMOS)
 
@@ -1475,6 +1518,10 @@
 
   call bcast_all_singlei(NSOURCES)
   call bcast_all_singlel(HAS_FINITE_FAULT_SOURCE)
+
+  !NQDU
+  call bcast_all_singlei(NSOURCES_CMT)
+  call bcast_all_singlei(NSOURCES_FORCE)
 
   end subroutine broadcast_computed_parameters
 
