@@ -9,12 +9,12 @@ d_bin = np.loadtxt(f"OUTPUT_FILES.bin/{stnm}")
 # cmt + force separately
 d_sep = np.loadtxt(f"OUTPUT_FILES.force/{stnm}")
 d_sep1 = np.loadtxt(f"OUTPUT_FILES.moment/{stnm}")
-d_sep[:,1] += d_sep1[:,1]
+d_sum = d_sep[:,1] + d_sep1[:,1]
 
 # plot
 plt.figure(1,figsize=(14,5))
-plt.plot(d_bin[:,0],d_bin[:,1],label='force + cmt with binary source')
-plt.plot(d_txt[:,0],d_txt[:,1],label='force + cmt with txt file',ls='--')
-plt.plot(d_sep[:,0],d_sep[:,1],label='separate',ls=':')
+plt.plot(d_bin[:,0],d_bin[:,1],label='force + cmt with binary')
+plt.plot(d_txt[:,0],d_txt[:,1],label='force + cmt with txt',ls='--')
+plt.plot(d_sep[:,0],d_sum,label='separate',ls=':',color='k')
 plt.legend()
 plt.savefig("seismo.jpg",dpi=300)

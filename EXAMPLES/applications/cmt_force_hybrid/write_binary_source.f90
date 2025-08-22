@@ -54,7 +54,7 @@ program main
   fe = -1.0; fn = 2.0; fzup = 1.0
   lat_f = 0; depth_f = 1.
   hdur_f = 0.5; shift_f = 0.
-  call linspace(NS_FORCE,-500.,500.,lon_f)
+  call linspace(NS_FORCE,-512.54,541.5,lon_f)
 
   do isource = 1,NS_FORCE
     write(filename,'(a,i0,a)') './DATA/stf.force.',isource-1,'.txt'
@@ -66,14 +66,14 @@ program main
   enddo
 
   ! set value for CMT, same as CMTSOLUTION
-  mt(:,1) = (/1.0,1.0,1.0,0.,0.,0./)
+  mt(:,1) = (/1.0,1.0,0.0,1.,0.,0./)
   mt = mt * 1.0d23
   lon_c = 0.; depth_c = 0.5
   hdur_c = 5.0; shift_c = 0.
   call linspace(NS_CMT,-500.,500.,lat_c)
 
   do i = 1,NS_CMT
-    lat_c(i) = -500 + 1000. / (NS_CMT - 1) * (i-1)
+    lat_c(i) = -523.131 + 1000. / (NS_CMT - 1) * (i-1)
   enddo 
 
   do isource = 1,NS_CMT
