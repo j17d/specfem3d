@@ -216,6 +216,7 @@
            hdur_Gaussian(NSOURCES), &
            utm_x_source(NSOURCES), &
            utm_y_source(NSOURCES), &
+           isource_glob2loc(NSOURCES), &  ! nqdu add
            nu_source(NDIM,NDIM,NSOURCES),stat=ier)
   if (ier /= 0) call exit_MPI_without_rank('error allocating array 2049')
   if (ier /= 0) stop 'error allocating arrays for sources'
@@ -225,27 +226,33 @@
   ispec_selected_source(:) = 0
   Mxx(:) = 0.d0; Myy(:) = 0.d0; Mzz(:) = 0.d0
   Mxy(:) = 0.d0; Mxz(:) = 0.d0; Myz(:) = 0.d0
+  isource_glob2loc(:) = 0
   xi_source(:) = 0.d0; eta_source(:) = 0.d0; gamma_source(:) = 0.d0
   tshift_src(:) = 0.d0; hdur(:) = 0.d0; hdur_Gaussian(:) = 0.d0
   utm_x_source(:) = 0.d0; utm_y_source(:) = 0.d0
   nu_source(:,:,:) = 0.d0
 
-  if (USE_FORCE_POINT_SOURCE) then
-    allocate(force_stf(NSOURCES), &
-             factor_force_source(NSOURCES), &
-             comp_dir_vect_source_E(NSOURCES), &
-             comp_dir_vect_source_N(NSOURCES), &
-             comp_dir_vect_source_Z_UP(NSOURCES),stat=ier)
-    if (ier /= 0) call exit_MPI_without_rank('error allocating array 2053')
-  else
-    allocate(force_stf(1), &
-             factor_force_source(1), &
-             comp_dir_vect_source_E(1), &
-             comp_dir_vect_source_N(1), &
-             comp_dir_vect_source_Z_UP(1),stat=ier)
-    if (ier /= 0) call exit_MPI_without_rank('error allocating array 2057')
-  endif
-  if (ier /= 0) stop 'error allocating arrays for force point sources'
+  ! if (USE_FORCE_POINT_SOURCE) then
+  !   allocate(force_stf(NSOURCES), &
+  !            factor_force_source(NSOURCES), &
+  !            comp_dir_vect_source_E(NSOURCES), &
+  !            comp_dir_vect_source_N(NSOURCES), &
+  !            comp_dir_vect_source_Z_UP(NSOURCES),stat=ier)
+  !   if (ier /= 0) call exit_MPI_without_rank('error allocating array 2053')
+  ! else
+  !   allocate(force_stf(1), &
+  !            factor_force_source(1), &
+  !            comp_dir_vect_source_E(1), &
+  !            comp_dir_vect_source_N(1), &
+  !            comp_dir_vect_source_Z_UP(1),stat=ier)
+  !   if (ier /= 0) call exit_MPI_without_rank('error allocating array 2057')
+  ! endif
+  allocate(force_stf(NSOURCES), &
+            factor_force_source(NSOURCES), &
+            comp_dir_vect_source_E(NSOURCES), &
+            comp_dir_vect_source_N(NSOURCES), &
+            comp_dir_vect_source_Z_UP(NSOURCES),stat=ier)
+  if (ier /= 0) call exit_MPI_without_rank('error allocating array 2057')
   force_stf(:) = 0
   factor_force_source(:) = 0.d0
   comp_dir_vect_source_E(:) = 0.d0
@@ -262,10 +269,17 @@
     NSOURCES_STF = 1
   endif
   ! allocate array that contains the user defined source time function
-  allocate(user_source_time_function(NSTEP_STF, NSOURCES_STF),stat=ier)
-  if (ier /= 0) call exit_MPI_without_rank('error allocating array 2058')
-  if (ier /= 0) stop 'error allocating arrays for user sources time function'
-  user_source_time_function(:,:) = 0.0_CUSTOM_REAL
+  ! allocate(user_source_time_function(NSTEP_STF, NSOURCES_STF),stat=ier)
+  ! if (ier /= 0) call exit_MPI_without_rank('error allocating array 2058')
+  ! if (ier /= 0) stop 'error allocating arrays for user sources time function'
+  ! user_source_time_function(:,:) = 0.0_CUSTOM_REAL
+  ! allocate array that contains the user defined source time function
+  if(.not. USE_BINARY_SOURCE_FILE) then  !nqdu added
+    allocate(user_source_time_function(NSTEP_STF, NSOURCES_STF),stat=ier)
+    if (ier /= 0) call exit_MPI_without_rank('error allocating array 2058')
+    if (ier /= 0) stop 'error allocating arrays for user sources time function'
+    user_source_time_function(:,:) = 0.0_CUSTOM_REAL
+  endif
 
   ! fused wavefield simulations
   call get_run_number_of_the_source()
@@ -288,8 +302,13 @@
 
   ! count number of sources located in this slice
   nsources_local = 0
+  isource_glob2loc(:) = 0
   do isource = 1, NSOURCES
-    if (myrank == islice_selected_source(isource)) nsources_local = nsources_local + 1
+    !if (myrank == islice_selected_source(isource)) nsources_local = nsources_local + 1
+    if (myrank == islice_selected_source(isource)) then 
+      nsources_local = nsources_local + 1
+      isource_glob2loc(isource) = nsources_local
+    endif
   enddo
 
   ! checks if source is in an acoustic element and exactly on the free surface because pressure is zero there
@@ -404,6 +423,10 @@
   double precision :: t0_acoustic
   integer :: isource,ispec
 
+  !nqdu
+  double precision :: t0_cmt 
+  character(len=MAX_STRING_LEN) :: path_to_add,filename
+
   ! initializes simulation start time t0
   t0 = 0.d0
 
@@ -442,15 +465,24 @@
   ! convert the half duration for triangle STF to the one for Gaussian STF
   hdur_Gaussian(:) = hdur(:) / SOURCE_DECAY_MIMIC_TRIANGLE
 
-  ! define t0 as the earliest start time
-  if (USE_FORCE_POINT_SOURCE) then
-    ! point force sources
-    ! (might start depending on the frequency given by hdur)
-    ! note: point force sources will give the dominant frequency in hdur, thus the main period is 1/hdur.
-    !       also, these sources might use a Ricker source time function instead of a Gaussian.
-    !       For a Ricker source time function, a start time ~1.2 * main_period is a good choice.
-    t0 = 0.d0
-    do isource = 1,NSOURCES
+  ! sanity check
+  if(INVERSE_FWI_FULL_PROBLEM) then 
+    if(.not. allocated(is_POINTFORCE)) then 
+      allocate(is_POINTFORCE(NSOURCES))
+      if(USE_FORCE_POINT_SOURCE) then 
+        is_POINTFORCE(:) = .true.
+      else 
+        is_POINTFORCE(:) = .false.
+      endif
+    endif
+  endif
+
+  !loop every force source to find t0
+  t0 = 0. 
+  t0_cmt = 0
+  do isource = 1,NSOURCES
+    ! point source
+    if(is_POINTFORCE(isource)) then 
       select case(force_stf(isource))
       case (0)
         ! Gaussian source time function
@@ -478,23 +510,70 @@
       case default
         stop 'unsupported force_stf value!'
       end select
-    enddo
-    ! start time defined as positive value, will be subtracted
-    t0 = - t0
-  else
-    ! moment tensors
-    if (USE_RICKER_TIME_FUNCTION) then
-      ! note: sources will give the dominant frequency in hdur,
-      !       thus the main period is 1/hdur.
-      !       for a Ricker source time function, a start time ~1.2 * dominant_period is a good choice
-      t0 = - 1.2d0 * minval(tshift_src(:) - 1.0d0/hdur(:))
-    else
-      ! (based on Heaviside functions)
-      ! note: an earlier start time also reduces numerical noise due to a
-      !          non-zero offset at the beginning of the source time function
-      t0 = - 2.0d0 * minval(tshift_src(:) - hdur(:))   ! - 1.5d0 * minval(tshift_src-hdur)
+    else  ! CMT
+      if (USE_RICKER_TIME_FUNCTION) then
+        t0_cmt = min(t0_cmt,1.20 * (tshift_src(isource) - 1.0d0/hdur(isource)))
+      else 
+        t0_cmt = min(t0_cmt,2.0 * (tshift_src(isource) - hdur(isource)))
+      endif
     endif
-  endif
+  enddo
+  t0 = min(t0_cmt,t0)
+  t0 = -t0
+
+  ! ! define t0 as the earliest start time
+  ! if (USE_FORCE_POINT_SOURCE) then
+  !   ! point force sources
+  !   ! (might start depending on the frequency given by hdur)
+  !   ! note: point force sources will give the dominant frequency in hdur, thus the main period is 1/hdur.
+  !   !       also, these sources might use a Ricker source time function instead of a Gaussian.
+  !   !       For a Ricker source time function, a start time ~1.2 * main_period is a good choice.
+  !   t0 = 0.d0
+  !   do isource = 1,NSOURCES
+  !     select case(force_stf(isource))
+  !     case (0)
+  !       ! Gaussian source time function
+  !       t0 = min(t0,1.5d0 * (tshift_src(isource) - hdur(isource)))
+  !     case (1)
+  !       ! Ricker source time function
+  !       t0 = min(t0,1.2d0 * (tshift_src(isource) - 1.0d0/hdur(isource)))
+  !     case (2)
+  !       ! Heaviside
+  !       t0 = min(t0,1.5d0 * (tshift_src(isource) - hdur(isource)))
+  !     case (3)
+  !       ! Monochromatic
+  !       t0 = 0.d0
+  !     case (4)
+  !       ! Gaussian source time function by Meschede et al. (2011)
+  !       t0 = min(t0,1.5d0 * (tshift_src(isource) - hdur(isource)))
+  !     case (5)
+  !       ! Brune
+  !       ! This needs to be CHECKED!!!
+  !       t0 = min(t0,1.5d0 * (tshift_src(isource) - hdur(isource)))
+  !     case (6)
+  !       ! Smoothed Brune
+  !       ! This needs to be CHECKED!!!
+  !       t0 = min(t0,1.5d0 * (tshift_src(isource) - hdur(isource)))
+  !     case default
+  !       stop 'unsupported force_stf value!'
+  !     end select
+  !   enddo
+  !   ! start time defined as positive value, will be subtracted
+  !   t0 = - t0
+  ! else
+  !   ! moment tensors
+  !   if (USE_RICKER_TIME_FUNCTION) then
+  !     ! note: sources will give the dominant frequency in hdur,
+  !     !       thus the main period is 1/hdur.
+  !     !       for a Ricker source time function, a start time ~1.2 * dominant_period is a good choice
+  !     t0 = - 1.2d0 * minval(tshift_src(:) - 1.0d0/hdur(:))
+  !   else
+  !     ! (based on Heaviside functions)
+  !     ! note: an earlier start time also reduces numerical noise due to a
+  !     !          non-zero offset at the beginning of the source time function
+  !     t0 = - 2.0d0 * minval(tshift_src(:) - hdur(:))   ! - 1.5d0 * minval(tshift_src-hdur)
+  !   endif
+  ! endif
 
   ! uses an earlier start time if source is acoustic with a Gaussian source time function
   t0_acoustic = 0.0d0
@@ -503,7 +582,8 @@
       ispec = ispec_selected_source(isource)
       if (ispec_is_acoustic(ispec)) then
         ! uses an earlier start time
-        if (USE_FORCE_POINT_SOURCE) then
+        !if (USE_FORCE_POINT_SOURCE) then
+        if(is_POINTFORCE(isource)) then
           if (force_stf(isource) == 0) then
             ! Gaussian
             t0_acoustic = - 3.0d0 * ( tshift_src(isource) - hdur(isource) )
@@ -533,6 +613,25 @@
       write(IMAIN,*)
       call flush_IMAIN()
     endif
+  endif
+
+  ! read stf from binary source file if required 
+  if(USE_BINARY_SOURCE_FILE) then 
+    allocate(user_source_time_function(NSTEP_STF,nsources_local))
+    path_to_add = ''
+    if (NUMBER_OF_SIMULTANEOUS_RUNS > 1 .and. mygroup >= 0) then
+      write(path_to_add,"('run',i4.4,'/')") mygroup + 1
+    endif
+    filename = path_to_add(1:len_trim(path_to_add)) // &
+              IN_DATA_FILES(1:len_trim(IN_DATA_FILES))//'SOLUTION.bin'
+    if(myrank == 0) then 
+      write(IMAIN,*) ' reading source time function from binary file ...'
+      write(IMAIN,*) ' proc 0 has ', nsources_local, ' source ...'
+      write(IMAIN,*)
+      call flush_IMAIN()
+    endif
+
+    call get_solutions_stf(filename,nsources_local,user_source_time_function)
   endif
 
   ! check if couple injection
@@ -1145,7 +1244,8 @@
         call lagrange_any(eta_source(isource),NGLLY,yigll,hetas,hpetas)
         call lagrange_any(gamma_source(isource),NGLLZ,zigll,hgammas,hpgammas)
 
-        if (USE_FORCE_POINT_SOURCE) then
+        !if (USE_FORCE_POINT_SOURCE) then
+        if(is_POINTFORCE(isource)) then 
           ! use of FORCESOLUTION files
           !
           ! note: for use_force_point_source xi/eta/gamma are also in the range [-1,1], for exact positioning

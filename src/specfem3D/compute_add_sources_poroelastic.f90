@@ -30,7 +30,17 @@
   subroutine compute_add_sources_poroelastic()
 
   use constants
-  use specfem_par, only: station_name,network_name,USE_FORCE_POINT_SOURCE, &
+  ! use specfem_par, only: station_name,network_name,USE_FORCE_POINT_SOURCE, &
+  !                        nsources_local,tshift_src,dt,t0,USE_LDDRK,istage, &
+  !                        USE_BINARY_FOR_SEISMOGRAMS,ibool, &
+  !                        UNDO_ATTENUATION_AND_OR_PML, &
+  !                        NSOURCES,myrank,it,islice_selected_source,ispec_selected_source, &
+  !                        sourcearrays,SIMULATION_TYPE,NSTEP, &
+  !                        SU_FORMAT,READ_ADJSRC_ASDF, &
+  !                        ispec_selected_rec, &
+  !                        nadj_rec_local,NTSTEP_BETWEEN_READ_ADJSRC, &
+  !                        hxir_adjstore,hetar_adjstore,hgammar_adjstore,source_adjoint,number_adjsources_global,nadj_rec_local
+  use specfem_par, only: station_name,network_name,is_POINTFORCE, &
                          nsources_local,tshift_src,dt,t0,USE_LDDRK,istage, &
                          USE_BINARY_FOR_SEISMOGRAMS,ibool, &
                          UNDO_ATTENUATION_AND_OR_PML, &
@@ -124,7 +134,8 @@
 
                 ! we distinguish between a single force which can be applied both in fluid and solid
                 ! and a moment-tensor source which only makes sense for a solid
-                if (USE_FORCE_POINT_SOURCE) then
+                !if (USE_FORCE_POINT_SOURCE) then
+                if(is_POINTFORCE(isource)) then 
                   ! single point force
                   ! the source is applied to both solid and fluid phase: bulk source.
                   fac_s = 1._CUSTOM_REAL - phil/tortl
@@ -351,7 +362,8 @@
 
                 ! we distinguish between a single force which can be applied both in fluid and solid
                 ! and a moment-tensor source which only makes sense for a solid
-                if (USE_FORCE_POINT_SOURCE) then
+                !if (USE_FORCE_POINT_SOURCE) then
+                if(is_POINTFORCE(isource)) then 
                   ! single point force
                   ! the source is applied to both solid and fluid phase: bulk source.
                   fac_s = 1._CUSTOM_REAL - phil/tortl
@@ -389,7 +401,9 @@
 
 ! returns source time function value for specified time
 
-  use specfem_par, only: USE_FORCE_POINT_SOURCE,USE_RICKER_TIME_FUNCTION, &
+  ! use specfem_par, only: USE_FORCE_POINT_SOURCE,USE_RICKER_TIME_FUNCTION, &
+  !                        hdur,hdur_Gaussian,force_stf
+  use specfem_par, only: is_POINTFORCE,USE_RICKER_TIME_FUNCTION, &
                          hdur,hdur_Gaussian,force_stf
 
   ! for external STFs
@@ -419,7 +433,8 @@
   endif
 
   ! determines source time function value
-  if (USE_FORCE_POINT_SOURCE) then
+  !if (USE_FORCE_POINT_SOURCE) then
+  if(is_POINTFORCE(isource)) then 
     ! single point force
     select case(force_stf(isource))
     case (0)

@@ -184,6 +184,8 @@
     deallocate(utm_x_source,utm_y_source)
     deallocate(nu_source)
     deallocate(user_source_time_function)
+    if(allocated(is_POINTFORCE)) deallocate(is_POINTFORCE)
+    if(allocated(isource_glob2loc)) deallocate(isource_glob2loc)
   endif
 
   ! receivers

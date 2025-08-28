@@ -436,6 +436,9 @@
   ! faults
   use specfem_par, only: FAULT_SIMULATION
 
+  !
+  use specfem_par,only : islice_selected_source
+
   implicit none
 
   ! local parameters
@@ -479,7 +482,9 @@
       time_source_dble = time_t - tshift_src(isource)
 
       ! determines source time function value
-      stf = get_stf_acoustic(time_source_dble,isource,it)
+      stf = 0.
+      if(myrank == islice_selected_source(isource)) &
+        stf = get_stf_acoustic(time_source_dble,isource,it)
 
       ! stores precomputed source time function factor
       stf_pre_compute(isource) = stf
@@ -597,6 +602,8 @@
   ! faults
   use specfem_par, only: FAULT_SIMULATION
 
+  use specfem_par,only: islice_selected_source
+
   implicit none
 
   ! local parameters
@@ -696,7 +703,9 @@
     time_source_dble = time_t - tshift_src(isource)
 
     ! determines source time function value
-    stf = get_stf_acoustic(time_source_dble,isource,NSTEP-it_tmp+1)
+    stf = 0.0d0 
+    if(myrank == islice_selected_source(isource)) &
+      stf = get_stf_acoustic(time_source_dble,isource,NSTEP-it_tmp+1)
 
     ! stores precomputed source time function factor
     stf_pre_compute(isource) = stf
@@ -715,7 +724,10 @@
 
 ! returns source time function value for specified time
 
-  use specfem_par, only: USE_FORCE_POINT_SOURCE,USE_RICKER_TIME_FUNCTION,USE_TRICK_FOR_BETTER_PRESSURE, &
+  ! use specfem_par, only: USE_FORCE_POINT_SOURCE,USE_RICKER_TIME_FUNCTION,USE_TRICK_FOR_BETTER_PRESSURE, &
+  !                        USE_SOURCE_ENCODING,pm1_source_encoding, &
+  !                        hdur,hdur_Gaussian,force_stf
+  use specfem_par, only: is_POINTFORCE,USE_RICKER_TIME_FUNCTION,USE_TRICK_FOR_BETTER_PRESSURE, &
                          USE_SOURCE_ENCODING,pm1_source_encoding, &
                          hdur,hdur_Gaussian,force_stf
 
@@ -749,7 +761,8 @@
   endif
 
   ! determines source time function value
-  if (USE_FORCE_POINT_SOURCE) then
+  !NQDU if (USE_FORCE_POINT_SOURCE) then
+  if(is_POINTFORCE(isource)) then 
     ! single point force
     select case(force_stf(isource))
     case (0)

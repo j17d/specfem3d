@@ -495,6 +495,8 @@
     islice_selected_rec, &
     nadj_rec_local,source_adjoint,nadj_rec_local,number_adjsources_global, &
     Mesh_pointer
+  
+  use specfem_par,only : islice_selected_source
 
   use specfem_par_noise, only: irec_main_noise,noise_surface_movie
 
@@ -569,7 +571,9 @@
         time_source_dble = time_t - tshift_src(isource)
 
         ! determines source time function value
-        stf = get_stf_viscoelastic(time_source_dble,isource,it)
+        stf = 0.0d0
+        if(myrank == islice_selected_source(isource)) &
+          stf = get_stf_viscoelastic(time_source_dble,isource,it)
 
         ! LTS
         if (LTS_MODE) then
@@ -729,6 +733,8 @@
   ! faults
   use specfem_par, only: FAULT_SIMULATION
 
+  use specfem_par,only : islice_selected_source
+
   implicit none
 
   ! local parameters
@@ -800,7 +806,9 @@
       time_source_dble = time_t - tshift_src(isource)
 
       ! determines source time function value
-      stf = get_stf_viscoelastic(time_source_dble,isource,NSTEP-it_tmp+1)
+      stf = 0.0d0
+      if(myrank == islice_selected_source(isource)) &
+        stf = get_stf_viscoelastic(time_source_dble,isource,NSTEP-it_tmp+1)
 
       ! stores precomputed source time function factor
       stf_pre_compute(isource) = stf
@@ -838,7 +846,9 @@
 
   use constants, only: USE_MONOCHROMATIC_CMT_SOURCE
 
-  use specfem_par, only: USE_FORCE_POINT_SOURCE,USE_RICKER_TIME_FUNCTION, &
+  ! use specfem_par, only: USE_FORCE_POINT_SOURCE,USE_RICKER_TIME_FUNCTION, &
+  !                        hdur,hdur_Gaussian,force_stf
+  use specfem_par, only: is_POINTFORCE,USE_RICKER_TIME_FUNCTION, &
                          hdur,hdur_Gaussian,force_stf
 
   ! for external STFs
@@ -869,7 +879,8 @@
   endif
 
   ! determines source time function value
-  if (USE_FORCE_POINT_SOURCE) then
+  !if (USE_FORCE_POINT_SOURCE) then
+  if(is_POINTFORCE(isource)) then 
     ! single point force
     select case(force_stf(isource))
     case (0)
