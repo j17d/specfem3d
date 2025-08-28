@@ -241,11 +241,7 @@ void initialize_cuda_device(int* myrank_f,int* ncuda_devices) {
       }else{
         fprintf(fp,"  canMapHostMemory: FALSE\n");
       }
-      if (deviceProp.deviceOverlap){
-        fprintf(fp,"  deviceOverlap: TRUE\n");
-      }else{
-        fprintf(fp,"  deviceOverlap: FALSE\n");
-      }
+      fprintf(fp,"  asyncEngineCount: %d\n", deviceProp.asyncEngineCount);
       if (deviceProp.concurrentKernels){
         fprintf(fp,"  concurrentKernels: TRUE\n");
       }else{
