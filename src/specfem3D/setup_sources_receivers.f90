@@ -465,6 +465,18 @@
   ! convert the half duration for triangle STF to the one for Gaussian STF
   hdur_Gaussian(:) = hdur(:) / SOURCE_DECAY_MIMIC_TRIANGLE
 
+  ! sanity check
+  if(INVERSE_FWI_FULL_PROBLEM) then 
+    if(.not. allocated(is_POINTFORCE)) then 
+      allocate(is_POINTFORCE(NSOURCES))
+      if(USE_FORCE_POINT_SOURCE) then 
+        is_POINTFORCE(:) = .true.
+      else 
+        is_POINTFORCE(:) = .false.
+      endif
+    endif
+  endif
+
   !loop every force source to find t0
   t0 = 0. 
   t0_cmt = 0

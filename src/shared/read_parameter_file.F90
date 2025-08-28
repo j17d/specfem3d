@@ -849,6 +849,16 @@
       STACEY_INSTEAD_OF_FREE_SURFACE = .false.
     endif
 
+    ! inverse problem is enabled, disable USE_CMT_AND_FORCE/USE_BINARY_SOURCE_FILE
+    if(INVERSE_FWI_FULL_PROBLEM .and. (USE_CMT_AND_FORCE_SOURCE)) then
+      if(myrank == 0) then
+        write(*,'(a)') 'INVERSE_FWI_FULL_PROBLEM is enabled, disabling USE_CMT_AND_FORCE_SOURCE'
+        write(*,*)
+      endif
+      USE_CMT_AND_FORCE_SOURCE = .false.
+      USE_BINARY_SOURCE_FILE = .false.
+    endif
+
     ! checks parameter settings
     call check_simulation_parameters()
 
