@@ -169,7 +169,7 @@ end module constants
   logical :: HAS_FINITE_FAULT_SOURCE
 
   ! cmt + point force simulation
-  logical :: USE_CMT_AND_FORCE_SOURCE = .false. 
+  logical :: USE_CMT_AND_FORCE_SOURCE = .false.
   logical :: USE_BINARY_SOURCE_FILE = .false.
 
   ! external source time function
@@ -234,7 +234,7 @@ end module constants
   integer :: NSOURCES
 
   !number of sources in CMTSOLUTION/FORCESOLUTION
-  integer :: NSOURCES_CMT, NSOURCES_FORCE 
+  integer :: NSOURCES_CMT, NSOURCES_FORCE
 
   ! anchor points
   integer :: NGNOD2D

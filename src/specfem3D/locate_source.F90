@@ -53,7 +53,7 @@
   use specfem_par_lts, only: p_elem,ispec_p_refine,p_lookup,num_p_level
 
   ! CMT + FORCE
-  use specfem_par,only: USE_CMT_AND_FORCE_SOURCE,is_POINTFORCE
+  use specfem_par, only: USE_CMT_AND_FORCE_SOURCE,is_POINTFORCE
 
   implicit none
 
@@ -137,7 +137,7 @@
   allocate(is_POINTFORCE(NSOURCES),stat=ier)
   if (ier /= 0) call exit_MPI(myrank,'Error allocating is_POINTFORCE arrays')
   is_POINTFORCE(:) = .true.
-  if((.not. USE_CMT_AND_FORCE_SOURCE) .and. (.not. USE_FORCE_POINT_SOURCE)) is_POINTFORCE(:) = .FALSE.
+  if ((.not. USE_CMT_AND_FORCE_SOURCE) .and. (.not. USE_FORCE_POINT_SOURCE)) is_POINTFORCE(:) = .false.
 
 
   ! allocates temporary arrays
@@ -461,7 +461,7 @@
 
         ! source location (reference element)
         !NQDU if (USE_FORCE_POINT_SOURCE) then
-        if(is_POINTFORCE(isource)) then 
+        if (is_POINTFORCE(isource)) then
           ! single point force
           write(IMAIN,*) '  using force point source: '
           write(IMAIN,*) '    xi coordinate of source in that element: ',xi_source(isource)
@@ -496,7 +496,7 @@
         else
           ! STF details
           !if (USE_FORCE_POINT_SOURCE) then
-          if(is_POINTFORCE(isource)) then 
+          if (is_POINTFORCE(isource)) then
             ! force sources
             ! single point force
             ! prints frequency content for point forces
@@ -604,7 +604,7 @@
 #else
         write(IMAIN,*) '  magnitude of the source:'
         !NQDU if (USE_FORCE_POINT_SOURCE) then
-        if(is_POINTFORCE(isource)) then 
+        if (is_POINTFORCE(isource)) then
           ! single point force
           ! force in Newton
           force_N = factor_force_source(isource)
@@ -737,7 +737,7 @@
 
       do isource = 1,NSOURCES
         !NQDU if (USE_FORCE_POINT_SOURCE) then
-        if(is_POINTFORCE(isource)) then 
+        if (is_POINTFORCE(isource)) then
           ! single point force
           ! factor_force_source in FORCESOLUTION file is by default in Newton
           ! 1 Newton is 1 kg * 1 m / (1 second)^2
@@ -773,7 +773,7 @@
       !   write(IMAIN,*) '     total scalar moment M0 = ', M0,' dyne-cm'
       !   write(IMAIN,*) '  total moment magnitude Mw = ', Mw
       ! endif
-      if(.not. USE_CMT_AND_FORCE_SOURCE) then 
+      if (.not. USE_CMT_AND_FORCE_SOURCE) then
         if (USE_FORCE_POINT_SOURCE) then
           ! total force in Newton
           write(IMAIN,*) '  total force = ', sngl(force_N),'(Newton)' ! dimensionalized
@@ -858,7 +858,7 @@
   hdur(:) = 0.d0
   min_tshift_src_original = 0.d0
   !user_source_time_function(:,:) = 0.0_CUSTOM_REAL
-  if(.not. USE_BINARY_SOURCE_FILE) &
+  if (.not. USE_BINARY_SOURCE_FILE) &
     user_source_time_function(:,:) = 0.0_CUSTOM_REAL
 
   yr_PDE = 0
@@ -876,10 +876,10 @@
   ! else
   !   SOURCE_FILE = IN_DATA_FILES(1:len_trim(IN_DATA_FILES))//'CMTSOLUTION'
   ! endif
-  if(USE_CMT_AND_FORCE_SOURCE) then 
+  if (USE_CMT_AND_FORCE_SOURCE) then
     SOURCE_FILE = IN_DATA_FILES(1:len_trim(IN_DATA_FILES))//'FORCESOLUTION'
     SOURCE_FILE = trim(SOURCE_FILE) // ' and  ' //  IN_DATA_FILES(1:len_trim(IN_DATA_FILES))//'CMTSOLUTION'
-  else 
+  else
     if (USE_FORCE_POINT_SOURCE) then
       SOURCE_FILE = IN_DATA_FILES(1:len_trim(IN_DATA_FILES))//'FORCESOLUTION'
     else
@@ -902,9 +902,9 @@
 
   ! user output
   if (myrank == 0) then
-    if(.not. USE_BINARY_SOURCE_FILE) then 
+    if (.not. USE_BINARY_SOURCE_FILE) then
       write(IMAIN,'(1x,a,a,a)') 'reading source information from ', trim(filename), ' file'
-    else 
+    else
       write(IMAIN,'(1x,a,a,a)') 'reading source information from SOLUTION.bin'
     endif
     write(IMAIN,*)
@@ -912,7 +912,7 @@
   endif
 
   !NQDU reads in source descriptsions
-  if (.NOT. USE_CMT_AND_FORCE_SOURCE) then 
+  if (.not. USE_CMT_AND_FORCE_SOURCE) then
     ! reads in source descriptions
     if (USE_FORCE_POINT_SOURCE) then
       ! point forces
@@ -950,12 +950,12 @@
       ! broadcasts specific moment tensor infos
       call bcast_all_dp(moment_tensor,6*NSOURCES)
     endif
-  else if(.not. USE_BINARY_SOURCE_FILE) then 
+  else if (.not. USE_BINARY_SOURCE_FILE) then
     ! CMT
     filename = path_to_add(1:len_trim(path_to_add)) // &
               IN_DATA_FILES(1:len_trim(IN_DATA_FILES))//'CMTSOLUTION'
     filename = trim(filename)
-    if(myrank == 0) then 
+    if (myrank == 0) then
       call get_cmt(filename,yr,jda,mo,da,ho,mi,sec, &
                    tshift_src,hdur, &
                    lat,lon,depth,moment_tensor, &
@@ -978,10 +978,10 @@
       ! only main process reads in FORCESOLUTION file
       call get_force(filename,tshift_src(NSOURCES_CMT+1),hdur(NSOURCES_CMT+1), &
                      lat(NSOURCES_CMT+1),lon(NSOURCES_CMT+1),depth(NSOURCES_CMT+1),NSOURCES_FORCE, &
-                     min_tshift_src_original,force_stf(NSOURCES_CMT+1),&
+                     min_tshift_src_original,force_stf(NSOURCES_CMT+1), &
                      factor_force_source(NSOURCES_CMT+1), &
-                     comp_dir_vect_source_E(NSOURCES_CMT+1),&
-                     comp_dir_vect_source_N(NSOURCES_CMT+1),&
+                     comp_dir_vect_source_E(NSOURCES_CMT+1), &
+                     comp_dir_vect_source_N(NSOURCES_CMT+1), &
                      comp_dir_vect_source_Z_UP(NSOURCES_CMT+1), &
                      user_source_time_function(:,NSOURCES_CMT+1:NSOURCES))
     endif
@@ -992,18 +992,18 @@
     call bcast_all_dp(comp_dir_vect_source_N,NSOURCES)
     call bcast_all_dp(comp_dir_vect_source_Z_UP,NSOURCES)
     is_POINTFORCE(NSOURCES_CMT+1:NSOURCES) = .true.
-  else 
+  else
     ! binary source file
-    filename = path_to_add(1:len_trim(path_to_add)) // & 
+    filename = path_to_add(1:len_trim(path_to_add)) // &
               IN_DATA_FILES(1:len_trim(IN_DATA_FILES))//'SOLUTION.bin'
     filename = trim(filename)
-    if (myrank == 0) then 
-      call get_solutions_attr(filename,tshift_src,hdur,lat,lon,depth,moment_tensor,&
-                        DT, NSOURCES_CMT,NSOURCES,min_tshift_src_original,&
-                        force_stf,factor_force_source,comp_dir_vect_source_E,&
+    if (myrank == 0) then
+      call get_solutions_attr(filename,tshift_src,hdur,lat,lon,depth,moment_tensor, &
+                        DT, NSOURCES_CMT,NSOURCES,min_tshift_src_original, &
+                        force_stf,factor_force_source,comp_dir_vect_source_E, &
                         comp_dir_vect_source_N,comp_dir_vect_source_Z_UP)
     endif
-    
+
     ! set is_points
     is_POINTFORCE(1:NSOURCES_CMT) = .false.
     is_POINTFORCE(NSOURCES_CMT+1:NSOURCES) = .true.
@@ -1072,7 +1072,7 @@
 
   ! external STF
   if (USE_EXTERNAL_SOURCE_FILE) then
-    if(.not. USE_BINARY_SOURCE_FILE) &
+    if (.not. USE_BINARY_SOURCE_FILE) &
       call bcast_all_cr(user_source_time_function,NSOURCES_STF*NSTEP_STF)
   endif
 
