@@ -279,10 +279,9 @@ program smooth_sem_pde
   allocate(dat(NGLLX,NGLLY,NGLLZ,NSPEC_AB))
   allocate(dat_glob(NGLOB_AB))
   allocate(ddat_glob(NGLOB_AB))
-  allocate(buffer_send_vector_ext_mesh_smooth( &
-              max_nibool_interfaces_ext_mesh,num_interfaces_ext_mesh),stat=ier)
-  allocate(buffer_recv_vector_ext_mesh_smooth( &
-              max_nibool_interfaces_ext_mesh,num_interfaces_ext_mesh),stat=ier)
+  allocate(buffer_send_vector_ext_mesh_smooth(max_nibool_interfaces_ext_mesh,num_interfaces_ext_mesh))
+  allocate(buffer_recv_vector_ext_mesh_smooth(max_nibool_interfaces_ext_mesh,num_interfaces_ext_mesh))
+
    ! prepare assemble array
   allocate(rvol(NGLOB_AB))
   rvol(:) = 0.0
@@ -302,9 +301,9 @@ program smooth_sem_pde
     enddo;enddo;enddo
   enddo
   call assemble_MPI_scalar_blocking(NPROC,NGLOB_AB,rvol, &
-                       num_interfaces_ext_mesh,max_nibool_interfaces_ext_mesh, &
-                       nibool_interfaces_ext_mesh,ibool_interfaces_ext_mesh, &
-                       my_neighbors_ext_mesh)
+                                    num_interfaces_ext_mesh,max_nibool_interfaces_ext_mesh, &
+                                    nibool_interfaces_ext_mesh,ibool_interfaces_ext_mesh, &
+                                    my_neighbors_ext_mesh)
   rvol(:) = 1.0 / rvol(:)
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    ! read in data to be smoothed
@@ -385,17 +384,17 @@ program smooth_sem_pde
     ! prepares general fields on GPU
     ! add GPU support for the C-PML routines
     call prepare_constants_smooth_device(Mesh_pointer, &
-                                NGLLX, NSPEC_AB, NGLOB_AB, NSPEC_IRREGULAR,irregular_element_number, &
-                                xixstore,xiystore,xizstore, &
-                                etaxstore,etaystore,etazstore, &
-                                gammaxstore,gammaystore,gammazstore, &
-                                xix_regular,jacobian_regular,ibool, &
-                                num_interfaces_ext_mesh, max_nibool_interfaces_ext_mesh, &
-                                nibool_interfaces_ext_mesh, ibool_interfaces_ext_mesh, &
-                                hprime_xx,hprimewgll_xx, &
-                                wgllwgll_xy, wgllwgll_xz, wgllwgll_yz, &
-                                myrank, &
-                                PML_CONDITIONS)
+                                         NGLLX, NSPEC_AB, NGLOB_AB, NSPEC_IRREGULAR,irregular_element_number, &
+                                         xixstore,xiystore,xizstore, &
+                                         etaxstore,etaystore,etazstore, &
+                                         gammaxstore,gammaystore,gammazstore, &
+                                         xix_regular,jacobian_regular,ibool, &
+                                         num_interfaces_ext_mesh, max_nibool_interfaces_ext_mesh, &
+                                         nibool_interfaces_ext_mesh, ibool_interfaces_ext_mesh, &
+                                         hprime_xx,hprimewgll_xx, &
+                                         wgllwgll_xy, wgllwgll_xz, wgllwgll_yz, &
+                                         myrank, &
+                                         PML_CONDITIONS)
 
 
     if (myrank == 0) then
@@ -562,7 +561,7 @@ program smooth_sem_pde
                                       buffer_send_vector_ext_mesh_smooth, &
                                       buffer_recv_vector_ext_mesh_smooth, &
                                       num_interfaces_ext_mesh,max_nibool_interfaces_ext_mesh, &
-                                      nibool_interfaces_ext_mesh,ibool_interfaces_ext_mesh, &
+                                      nibool_interfaces_ext_mesh, &
                                       my_neighbors_ext_mesh, &
                                       request_send_vector_ext_mesh,request_recv_vector_ext_mesh)
         else
@@ -580,9 +579,7 @@ program smooth_sem_pde
                                        Mesh_pointer, Smooth_container, &
                                        buffer_recv_vector_ext_mesh_smooth,num_interfaces_ext_mesh, &
                                        max_nibool_interfaces_ext_mesh, &
-                                       nibool_interfaces_ext_mesh,ibool_interfaces_ext_mesh, &
-                                       request_send_vector_ext_mesh,request_recv_vector_ext_mesh, &
-                                       my_neighbors_ext_mesh)
+                                       request_send_vector_ext_mesh,request_recv_vector_ext_mesh)
         else
           call assemble_MPI_w_ord_smooth(NPROC,NGLOB_AB, &
                                        ddat_glob,buffer_recv_vector_ext_mesh_smooth,num_interfaces_ext_mesh, &
@@ -787,12 +784,12 @@ end program smooth_sem_pde
 !
 
   subroutine assemble_MPI_send_smooth(NPROC,NGLOB_AB, &
-          array_val,buffer_send_vector_ext_mesh_smooth, &
-          buffer_recv_vector_ext_mesh_smooth, &
-          num_interfaces_ext_mesh,max_nibool_interfaces_ext_mesh, &
-          nibool_interfaces_ext_mesh,ibool_interfaces_ext_mesh, &
-          my_neighbors_ext_mesh, &
-          request_send_vector_ext_mesh,request_recv_vector_ext_mesh)
+                                      array_val,buffer_send_vector_ext_mesh_smooth, &
+                                      buffer_recv_vector_ext_mesh_smooth, &
+                                      num_interfaces_ext_mesh,max_nibool_interfaces_ext_mesh, &
+                                      nibool_interfaces_ext_mesh,ibool_interfaces_ext_mesh, &
+                                      my_neighbors_ext_mesh, &
+                                      request_send_vector_ext_mesh,request_recv_vector_ext_mesh)
 
     ! sends data
 
@@ -857,12 +854,12 @@ end program smooth_sem_pde
 !
 
   subroutine assemble_MPI_send_smooth_cuda(NPROC, &
-          buffer_send_vector_ext_mesh_smooth, &
-          buffer_recv_vector_ext_mesh_smooth, &
-          num_interfaces_ext_mesh,max_nibool_interfaces_ext_mesh, &
-          nibool_interfaces_ext_mesh,ibool_interfaces_ext_mesh, &
-          my_neighbors_ext_mesh, &
-          request_send_vector_ext_mesh,request_recv_vector_ext_mesh)
+                                           buffer_send_vector_ext_mesh_smooth, &
+                                           buffer_recv_vector_ext_mesh_smooth, &
+                                           num_interfaces_ext_mesh,max_nibool_interfaces_ext_mesh, &
+                                           nibool_interfaces_ext_mesh, &
+                                           my_neighbors_ext_mesh, &
+                                           request_send_vector_ext_mesh,request_recv_vector_ext_mesh)
 
     ! sends data
 
@@ -874,18 +871,15 @@ end program smooth_sem_pde
 
   integer :: num_interfaces_ext_mesh,max_nibool_interfaces_ext_mesh
 
-  real(kind=CUSTOM_REAL), &
-    dimension(max_nibool_interfaces_ext_mesh,num_interfaces_ext_mesh) :: &
+  real(kind=CUSTOM_REAL), dimension(max_nibool_interfaces_ext_mesh,num_interfaces_ext_mesh) :: &
        buffer_send_vector_ext_mesh_smooth,buffer_recv_vector_ext_mesh_smooth
 
   integer, dimension(num_interfaces_ext_mesh) :: &
     nibool_interfaces_ext_mesh,my_neighbors_ext_mesh
-  integer, dimension(max_nibool_interfaces_ext_mesh,num_interfaces_ext_mesh):: &
-    ibool_interfaces_ext_mesh
   integer, dimension(num_interfaces_ext_mesh) :: &
     request_send_vector_ext_mesh,request_recv_vector_ext_mesh
 
-  integer iinterface
+  integer :: iinterface
 
   ! here we have to assemble all the contributions between partitions using MPI
 
@@ -915,11 +909,11 @@ end program smooth_sem_pde
 !
 
   subroutine assemble_MPI_w_ord_smooth(NPROC,NGLOB_AB, &
-          array_val,buffer_recv_vector_ext_mesh_smooth,num_interfaces_ext_mesh, &
-          max_nibool_interfaces_ext_mesh, &
-          nibool_interfaces_ext_mesh,ibool_interfaces_ext_mesh, &
-          request_send_vector_ext_mesh,request_recv_vector_ext_mesh, &
-          my_neighbors_ext_mesh,myrank)
+                                       array_val,buffer_recv_vector_ext_mesh_smooth,num_interfaces_ext_mesh, &
+                                       max_nibool_interfaces_ext_mesh, &
+                                       nibool_interfaces_ext_mesh,ibool_interfaces_ext_mesh, &
+                                       request_send_vector_ext_mesh,request_recv_vector_ext_mesh, &
+                                       my_neighbors_ext_mesh,myrank)
 
 ! waits for data to receive and assembles
 
@@ -934,19 +928,17 @@ end program smooth_sem_pde
 
   integer :: num_interfaces_ext_mesh,max_nibool_interfaces_ext_mesh,myrank
 
-  real(kind=CUSTOM_REAL), &
-    dimension(max_nibool_interfaces_ext_mesh,num_interfaces_ext_mesh) :: &
+  real(kind=CUSTOM_REAL), dimension(max_nibool_interfaces_ext_mesh,num_interfaces_ext_mesh) :: &
        buffer_recv_vector_ext_mesh_smooth
 
   integer, dimension(num_interfaces_ext_mesh) :: nibool_interfaces_ext_mesh
-  integer, dimension(max_nibool_interfaces_ext_mesh,num_interfaces_ext_mesh)::&
+  integer, dimension(max_nibool_interfaces_ext_mesh,num_interfaces_ext_mesh):: &
     ibool_interfaces_ext_mesh
   integer, dimension(num_interfaces_ext_mesh) :: &
     request_send_vector_ext_mesh,request_recv_vector_ext_mesh
   integer, dimension(num_interfaces_ext_mesh) :: my_neighbors_ext_mesh
 
-  real(kind=CUSTOM_REAL), &
-    dimension(max_nibool_interfaces_ext_mesh,num_interfaces_ext_mesh) :: &
+  real(kind=CUSTOM_REAL), dimension(max_nibool_interfaces_ext_mesh,num_interfaces_ext_mesh) :: &
     mybuffer
   integer :: ipoin,iinterface,iglob
   logical :: need_add_my_contrib
@@ -1011,12 +1003,10 @@ end program smooth_sem_pde
   end subroutine assemble_MPI_w_ord_smooth
 
   subroutine assemble_MPI_write_smooth_cuda(NPROC,Mesh_pointer, &
-          Smooth_container, &
-          buffer_recv_vector_ext_mesh_smooth,num_interfaces_ext_mesh, &
-          max_nibool_interfaces_ext_mesh, &
-          nibool_interfaces_ext_mesh,ibool_interfaces_ext_mesh, &
-          request_send_vector_ext_mesh,request_recv_vector_ext_mesh, &
-          my_neighbors_ext_mesh)
+                                            Smooth_container, &
+                                            buffer_recv_vector_ext_mesh_smooth,num_interfaces_ext_mesh, &
+                                            max_nibool_interfaces_ext_mesh, &
+                                            request_send_vector_ext_mesh,request_recv_vector_ext_mesh)
 
 ! waits for data to receive and assembles
 
@@ -1034,12 +1024,8 @@ end program smooth_sem_pde
     dimension(max_nibool_interfaces_ext_mesh,num_interfaces_ext_mesh) :: &
        buffer_recv_vector_ext_mesh_smooth
 
-  integer, dimension(num_interfaces_ext_mesh) :: nibool_interfaces_ext_mesh
-  integer, dimension(max_nibool_interfaces_ext_mesh,num_interfaces_ext_mesh)::&
-    ibool_interfaces_ext_mesh
   integer, dimension(num_interfaces_ext_mesh) :: &
     request_send_vector_ext_mesh,request_recv_vector_ext_mesh
-  integer, dimension(num_interfaces_ext_mesh) :: my_neighbors_ext_mesh
 
   integer :: iinterface
 

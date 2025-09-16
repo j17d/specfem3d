@@ -592,13 +592,16 @@
 
   end function get_cmt_moment_magnitude_from_M0
 
-
+!
+!-------------------------------------------------------------------------------------------------
+!
 
 !> read source attributes in binary source file, skip source time function
-subroutine get_solutions_attr(filename,tshift_src,hdur,lat,long,depth,moment_tensor, &
-                      DT,NSOURCES_CMT,NSOURCES,min_tshift_src_original,force_stf,factor_force_source, &
-                      comp_dir_vect_source_E,comp_dir_vect_source_N,comp_dir_vect_source_Z_UP)
-  use constants, only: IIN,MAX_STRING_LEN,CUSTOM_REAL,TINYVAL
+  subroutine get_solutions_attr(filename,tshift_src,hdur,lat,long,depth,moment_tensor, &
+                                DT,NSOURCES_CMT,NSOURCES,min_tshift_src_original,force_stf,factor_force_source, &
+                                comp_dir_vect_source_E,comp_dir_vect_source_N,comp_dir_vect_source_Z_UP)
+
+  use constants, only: MAX_STRING_LEN,CUSTOM_REAL,TINYVAL
   use shared_parameters, only: USE_EXTERNAL_SOURCE_FILE,NSTEP_STF,NOISE_TOMOGRAPHY,USE_RICKER_TIME_FUNCTION
   implicit none
 
@@ -757,13 +760,17 @@ subroutine get_solutions_attr(filename,tshift_src,hdur,lat,long,depth,moment_ten
     endif
   enddo
 
-end subroutine get_solutions_attr
+  end subroutine get_solutions_attr
 
+!
+!-------------------------------------------------------------------------------------------------
+!
 
 
 !> read stf from binary source file,
-subroutine get_solutions_stf(filename,NSOURCES_local,user_source_time_function)
-  use constants, only: IIN,MAX_STRING_LEN,CUSTOM_REAL,TINYVAL
+  subroutine get_solutions_stf(filename,NSOURCES_local,user_source_time_function)
+
+  use constants, only: MAX_STRING_LEN,CUSTOM_REAL
   use shared_parameters, only: USE_EXTERNAL_SOURCE_FILE,NSTEP_STF
   use shared_parameters, only: NSOURCES
   use specfem_par, only: isource_glob2loc
@@ -819,4 +826,4 @@ subroutine get_solutions_stf(filename,NSOURCES_local,user_source_time_function)
   enddo
   close(IO_SRC)
 
-end subroutine get_solutions_stf
+  end subroutine get_solutions_stf
