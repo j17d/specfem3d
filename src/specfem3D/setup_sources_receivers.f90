@@ -274,7 +274,7 @@
   ! if (ier /= 0) stop 'error allocating arrays for user sources time function'
   ! user_source_time_function(:,:) = 0.0_CUSTOM_REAL
   ! allocate array that contains the user defined source time function
-  if(.not. USE_BINARY_SOURCE_FILE) then  !nqdu added
+  if (.not. USE_BINARY_SOURCE_FILE) then  !nqdu added
     allocate(user_source_time_function(NSTEP_STF, NSOURCES_STF),stat=ier)
     if (ier /= 0) call exit_MPI_without_rank('error allocating array 2058')
     if (ier /= 0) stop 'error allocating arrays for user sources time function'
@@ -305,7 +305,7 @@
   isource_glob2loc(:) = 0
   do isource = 1, NSOURCES
     !if (myrank == islice_selected_source(isource)) nsources_local = nsources_local + 1
-    if (myrank == islice_selected_source(isource)) then 
+    if (myrank == islice_selected_source(isource)) then
       nsources_local = nsources_local + 1
       isource_glob2loc(isource) = nsources_local
     endif
@@ -424,7 +424,7 @@
   integer :: isource,ispec
 
   !nqdu
-  double precision :: t0_cmt 
+  double precision :: t0_cmt
   character(len=MAX_STRING_LEN) :: path_to_add,filename
 
   ! initializes simulation start time t0
@@ -466,23 +466,23 @@
   hdur_Gaussian(:) = hdur(:) / SOURCE_DECAY_MIMIC_TRIANGLE
 
   ! sanity check
-  if(INVERSE_FWI_FULL_PROBLEM) then 
-    if(.not. allocated(is_POINTFORCE)) then 
+  if (INVERSE_FWI_FULL_PROBLEM) then
+    if (.not. allocated(is_POINTFORCE)) then
       allocate(is_POINTFORCE(NSOURCES))
-      if(USE_FORCE_POINT_SOURCE) then 
+      if (USE_FORCE_POINT_SOURCE) then
         is_POINTFORCE(:) = .true.
-      else 
+      else
         is_POINTFORCE(:) = .false.
       endif
     endif
   endif
 
   !loop every force source to find t0
-  t0 = 0. 
+  t0 = 0.
   t0_cmt = 0
   do isource = 1,NSOURCES
     ! point source
-    if(is_POINTFORCE(isource)) then 
+    if (is_POINTFORCE(isource)) then
       select case(force_stf(isource))
       case (0)
         ! Gaussian source time function
@@ -513,7 +513,7 @@
     else  ! CMT
       if (USE_RICKER_TIME_FUNCTION) then
         t0_cmt = min(t0_cmt,1.20 * (tshift_src(isource) - 1.0d0/hdur(isource)))
-      else 
+      else
         t0_cmt = min(t0_cmt,2.0 * (tshift_src(isource) - hdur(isource)))
       endif
     endif
@@ -583,7 +583,7 @@
       if (ispec_is_acoustic(ispec)) then
         ! uses an earlier start time
         !if (USE_FORCE_POINT_SOURCE) then
-        if(is_POINTFORCE(isource)) then
+        if (is_POINTFORCE(isource)) then
           if (force_stf(isource) == 0) then
             ! Gaussian
             t0_acoustic = - 3.0d0 * ( tshift_src(isource) - hdur(isource) )
@@ -615,8 +615,8 @@
     endif
   endif
 
-  ! read stf from binary source file if required 
-  if(USE_BINARY_SOURCE_FILE) then 
+  ! read stf from binary source file if required
+  if (USE_BINARY_SOURCE_FILE) then
     allocate(user_source_time_function(NSTEP_STF,nsources_local))
     path_to_add = ''
     if (NUMBER_OF_SIMULTANEOUS_RUNS > 1 .and. mygroup >= 0) then
@@ -624,7 +624,7 @@
     endif
     filename = path_to_add(1:len_trim(path_to_add)) // &
               IN_DATA_FILES(1:len_trim(IN_DATA_FILES))//'SOLUTION.bin'
-    if(myrank == 0) then 
+    if (myrank == 0) then
       write(IMAIN,*) ' reading source time function from binary file ...'
       write(IMAIN,*) ' proc 0 has ', nsources_local, ' source ...'
       write(IMAIN,*)
@@ -1245,7 +1245,7 @@
         call lagrange_any(gamma_source(isource),NGLLZ,zigll,hgammas,hpgammas)
 
         !if (USE_FORCE_POINT_SOURCE) then
-        if(is_POINTFORCE(isource)) then 
+        if (is_POINTFORCE(isource)) then
           ! use of FORCESOLUTION files
           !
           ! note: for use_force_point_source xi/eta/gamma are also in the range [-1,1], for exact positioning

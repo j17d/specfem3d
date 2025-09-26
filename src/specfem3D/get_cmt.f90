@@ -592,14 +592,17 @@
 
   end function get_cmt_moment_magnitude_from_M0
 
-
+!
+!-------------------------------------------------------------------------------------------------
+!
 
 !> read source attributes in binary source file, skip source time function
-subroutine get_solutions_attr(filename,tshift_src,hdur,lat,long,depth,moment_tensor, &
-                      DT,NSOURCES_CMT,NSOURCES,min_tshift_src_original,force_stf,factor_force_source, &
-                      comp_dir_vect_source_E,comp_dir_vect_source_N,comp_dir_vect_source_Z_UP)
-  use constants, only: IIN,MAX_STRING_LEN,CUSTOM_REAL,TINYVAL
-  use shared_parameters, only: USE_EXTERNAL_SOURCE_FILE,NSTEP_STF,NOISE_TOMOGRAPHY,USE_RICKER_TIME_FUNCTION 
+  subroutine get_solutions_attr(filename,tshift_src,hdur,lat,long,depth,moment_tensor, &
+                                DT,NSOURCES_CMT,NSOURCES,min_tshift_src_original,force_stf,factor_force_source, &
+                                comp_dir_vect_source_E,comp_dir_vect_source_N,comp_dir_vect_source_Z_UP)
+
+  use constants, only: MAX_STRING_LEN,CUSTOM_REAL,TINYVAL
+  use shared_parameters, only: USE_EXTERNAL_SOURCE_FILE,NSTEP_STF,NOISE_TOMOGRAPHY,USE_RICKER_TIME_FUNCTION
   implicit none
 
   character(len=MAX_STRING_LEN), intent(in) :: filename
@@ -641,24 +644,24 @@ subroutine get_solutions_attr(filename,tshift_src,hdur,lat,long,depth,moment_ten
   read(IO_SRC) dummy
 
   ! read CMTSOLUTION first!
-  do isource = 1, NSOURCES_CMT 
+  do isource = 1, NSOURCES_CMT
     read(IO_SRC) t_shift(isource),hdur(isource),lat(isource),long(isource),depth(isource)
     read(IO_SRC) moment_tensor(:,isource) ! Voigt notation
 
     ! check half duration
-    if(hdur(isource) < 5.0d0 * DT) hdur(isource) = 5.0d0 * DT 
+    if (hdur(isource) < 5.0d0 * DT) hdur(isource) = 5.0d0 * DT
 
-    ! read USER EXTERNAL SOURCE 
-    if(USE_EXTERNAL_SOURCE_FILE) then 
+    ! read USER EXTERNAL SOURCE
+    if (USE_EXTERNAL_SOURCE_FILE) then
       read(IO_SRC) user_stf
     endif
   enddo
 
   ! noise_tomography
-  IF(NOISE_TOMOGRAPHY /= 0) hdur(:) = 0.0d0
+  if (NOISE_TOMOGRAPHY /= 0) hdur(:) = 0.0d0
 
   ! dont need hdur for external source
-  if(USE_EXTERNAL_SOURCE_FILE) hdur(:) = 0.0d0
+  if (USE_EXTERNAL_SOURCE_FILE) hdur(:) = 0.0d0
 
   ! moment tensor
   moment_tensor = moment_tensor * 1.0d-7
@@ -667,11 +670,11 @@ subroutine get_solutions_attr(filename,tshift_src,hdur,lat,long,depth,moment_ten
   do isource = NSOURCES_CMT + 1, NSOURCES
     read(IO_SRC) t_shift(isource),hdur(isource),lat(isource),long(isource),depth(isource)
     read(IO_SRC) force_stf(isource)
-    read(IO_SRC) factor_force_source(isource),&
-                 comp_dir_vect_source_E(isource),&
-                 comp_dir_vect_source_N(isource),&
+    read(IO_SRC) factor_force_source(isource), &
+                 comp_dir_vect_source_E(isource), &
+                 comp_dir_vect_source_N(isource), &
                  comp_dir_vect_source_Z_UP(isource)
-    if(USE_EXTERNAL_SOURCE_FILE) then 
+    if (USE_EXTERNAL_SOURCE_FILE) then
       read(IO_SRC) user_stf
     endif
 
@@ -725,7 +728,7 @@ subroutine get_solutions_attr(filename,tshift_src,hdur,lat,long,depth,moment_ten
     case default
       stop 'unsupported source time function type (force_stf) value!'
     end select
-  enddo 
+  enddo
   close(IO_SRC)
 
   ! Sets tshift_force to zero to initiate the simulation!
@@ -756,17 +759,21 @@ subroutine get_solutions_attr(filename,tshift_src,hdur,lat,long,depth,moment_ten
       stop 'Error set force point normal length, make sure all forces have a non-zero direction vector'
     endif
   enddo
-  
-end subroutine get_solutions_attr
 
+  end subroutine get_solutions_attr
+
+!
+!-------------------------------------------------------------------------------------------------
+!
 
 
 !> read stf from binary source file,
-subroutine get_solutions_stf(filename,NSOURCES_local,user_source_time_function)
-  use constants, only: IIN,MAX_STRING_LEN,CUSTOM_REAL,TINYVAL
+  subroutine get_solutions_stf(filename,NSOURCES_local,user_source_time_function)
+
+  use constants, only: MAX_STRING_LEN,CUSTOM_REAL
   use shared_parameters, only: USE_EXTERNAL_SOURCE_FILE,NSTEP_STF
-  use shared_parameters,only: NSOURCES
-  use specfem_par,only: isource_glob2loc
+  use shared_parameters, only: NSOURCES
+  use specfem_par, only: isource_glob2loc
   implicit none
 
   character(len=MAX_STRING_LEN), intent(in) :: filename
@@ -777,12 +784,12 @@ subroutine get_solutions_stf(filename,NSOURCES_local,user_source_time_function)
   integer,parameter :: IO_SRC = 99143
   integer :: isource,dummy,ns_cmt,ns_force,isource_loc
   double precision :: dummy_d(15)
-  real(kind=CUSTOM_REAL), dimension(NSTEP_STF) :: stf 
+  real(kind=CUSTOM_REAL), dimension(NSTEP_STF) :: stf
 
   ! read flag
   open(IO_SRC,file=trim(filename),form='unformatted',action='read',access='stream')
   read(IO_SRC) ns_cmt
-  read(IO_SRC) ns_force 
+  read(IO_SRC) ns_force
 
   ! read CMTSOLUTION first!
   do isource = 1, ns_cmt
@@ -790,11 +797,11 @@ subroutine get_solutions_stf(filename,NSOURCES_local,user_source_time_function)
     ! read(IO_SRC) t_shift(isource),hdur(isource),lat(isource),long(isource),depth(isource)
     ! read(IO_SRC) moment_tensor(:,isource) ! Voigt notation
 
-    ! read USER EXTERNAL SOURCE 
-    if(USE_EXTERNAL_SOURCE_FILE) then 
+    ! read USER EXTERNAL SOURCE
+    if (USE_EXTERNAL_SOURCE_FILE) then
       read(IO_SRC) stf(:)
       isource_loc = isource_glob2loc(isource)
-      if(isource_loc > 0) &
+      if (isource_loc > 0) &
         user_source_time_function(:,isource_loc) = stf(:)
     endif
   enddo
@@ -803,20 +810,20 @@ subroutine get_solutions_stf(filename,NSOURCES_local,user_source_time_function)
   do isource = ns_cmt + 1, NSOURCES
     ! read(IO_SRC) t_shift(isource),hdur(isource),lat(isource),long(isource),depth(isource)
     ! read(IO_SRC) force_stf(isource)
-    ! read(IO_SRC) factor_force_source(isource),&
-    !              comp_dir_vect_source_E(isource),&
-    !              comp_dir_vect_source_N(isource),&
+    ! read(IO_SRC) factor_force_source(isource), &
+    !              comp_dir_vect_source_E(isource), &
+    !              comp_dir_vect_source_N(isource), &
     !              comp_dir_vect_source_Z_UP(isource)
     read(IO_SRC) dummy_d(1:5)
-    read(IO_SRC) dummy 
+    read(IO_SRC) dummy
     read(IO_SRC) dummy_d(6:9)
-    if(USE_EXTERNAL_SOURCE_FILE) then 
+    if (USE_EXTERNAL_SOURCE_FILE) then
       read(IO_SRC) stf(:)
       isource_loc = isource_glob2loc(isource)
-      if(isource_loc > 0) &
+      if (isource_loc > 0) &
         user_source_time_function(:,isource_loc) = stf(:)
     endif
-  enddo 
+  enddo
   close(IO_SRC)
-  
-end subroutine get_solutions_stf
+
+  end subroutine get_solutions_stf

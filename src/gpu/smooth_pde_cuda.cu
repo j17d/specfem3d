@@ -17,7 +17,7 @@ void FC_FUNC_(prepare_smooth_pde_gpu,
   Mesh* mp = (Mesh*)(*Mesh_pointer);
   Smooth_pde_data* sp = (Smooth_pde_data*) malloc(sizeof(Smooth_pde_data));
   *Container_smooth_pde = (long)sp;
-  
+
   gpuCreateCopy_todevice_realw((void**)&sp->d_dat_smooth_glob, dat_smooth_glob, mp->NGLOB_AB);
   gpuMalloc_field((void**)&sp->d_ddat_smooth_glob, mp->NGLOB_AB);
   // initializes values to zero
@@ -70,8 +70,8 @@ void FC_FUNC_(compute_update_element_smooth_pde_gpu,
                                                                mp->xix_regular,mp->jacobian_regular,
                                                                mp->d_hprime_xx,
                                                                mp->d_hprimewgll_xx,
-                                                               mp->d_wgllwgll_xy, 
-                                                               mp->d_wgllwgll_xz, 
+                                                               mp->d_wgllwgll_xy,
+                                                               mp->d_wgllwgll_xz,
                                                                mp->d_wgllwgll_yz,
                                                                sp->cv, sp->ch
                                                                );
@@ -94,8 +94,8 @@ void FC_FUNC_(compute_update_element_smooth_pde_gpu,
                                                                mp->xix_regular,mp->jacobian_regular,
                                                                mp->d_hprime_xx,
                                                                mp->d_hprimewgll_xx,
-                                                               mp->d_wgllwgll_xy, 
-                                                               mp->d_wgllwgll_xz, 
+                                                               mp->d_wgllwgll_xy,
+                                                               mp->d_wgllwgll_xz,
                                                                mp->d_wgllwgll_yz,
                                                                sp->cv, sp->ch
                                                                );
@@ -114,7 +114,7 @@ void FC_FUNC_(transfer_boun_dat_smooth_pde_from_device,
   TRACE("transfer_boun_dat_smooth_pde_from_device");
   Mesh* mp = (Mesh*)(*Mesh_pointer);
   Smooth_pde_data* sp = (Smooth_pde_data*)(*Container_smooth_pde);
-  
+
   if (sp->size_mpi_buffer_smooth > 0) {
     int blocksize = BLOCKSIZE_TRANSFER;
     int size_padded = ((int)ceil(((double)(mp->max_nibool_interfaces_ext_mesh))/((double)blocksize)))*blocksize;
@@ -152,7 +152,7 @@ void FC_FUNC_(transfer_boun_dat_smooth_pde_from_device,
     // copies buffer to CPU
     gpuMemcpy_tohost_field(send_buffer_smooth,sp->d_send_buffer,sp->size_mpi_buffer_smooth);
   }
-  
+
   GPU_ERROR_CHECKING("transfer_boun_dat_smooth_pde_from_device");
 }
 
@@ -162,7 +162,7 @@ void FC_FUNC_(transfer_asmbl_dat_smooth_pde_from_device,
                                                          long * Container_smooth_pde,
                                                          field * recv_buffer_smooth){
   TRACE("transfer_asmbl_dat_smooth_pde_from_device");
-  
+
   Mesh* mp = (Mesh*)(*Mesh_pointer);
   Smooth_pde_data* sp = (Smooth_pde_data*)(*Container_smooth_pde);
 
@@ -244,7 +244,7 @@ void FC_FUNC_(kernel_3_smooth_pde_cuda,
                                                                               sp->d_rvol,
                                                                               size);
   }
-#endif  
+#endif
 
   GPU_ERROR_CHECKING("kernel_3_smooth_pde_cuda");
 }
@@ -295,7 +295,7 @@ void FC_FUNC_(zero_pml_smooth_pde_cuda,
               ZERO_PML_SMOOTH_PDE_CUDA)(long * Mesh_pointer,
                                         long * Container_smooth_pde) {
   TRACE("zero_pml_smooth_pde_cuda");
-  
+
   Mesh* mp = (Mesh*)(*Mesh_pointer);
   Smooth_pde_data* sp = (Smooth_pde_data*)(*Container_smooth_pde);
 
@@ -325,7 +325,7 @@ void FC_FUNC_(zero_pml_smooth_pde_cuda,
                                                                          mp->d_ibool,
                                                                          sp->d_CPML_to_spec);
   }
-#endif 
+#endif
 
   GPU_ERROR_CHECKING("zero_pml_smooth_pde_cuda");
 }
@@ -429,5 +429,5 @@ void FC_FUNC_(transfer_dat_smooth_pde_from_device,
   gpuMemcpy_tohost_realw(dat_smooth_glob, sp->d_dat_smooth_glob, mp->NGLOB_AB);
 
   GPU_ERROR_CHECKING("transfer_dat_smooth_pde_from_device");
-  
+
 }

@@ -184,8 +184,8 @@
     deallocate(utm_x_source,utm_y_source)
     deallocate(nu_source)
     deallocate(user_source_time_function)
-    if(allocated(is_POINTFORCE)) deallocate(is_POINTFORCE)
-    if(allocated(isource_glob2loc)) deallocate(isource_glob2loc)
+    if (allocated(is_POINTFORCE)) deallocate(is_POINTFORCE)
+    if (allocated(isource_glob2loc)) deallocate(isource_glob2loc)
   endif
 
   ! receivers
@@ -274,7 +274,7 @@
     if (allocated(cs_kl)) deallocate(cs_kl)
     if (allocated(cpI_kl)) deallocate(cpI_kl)
     if (allocated(cpII_kl)) deallocate(cpII_kl)
-    ! hessians
+    ! Hessians
     if (allocated(hess_ac_kl)) deallocate(hess_ac_kl)
     if (allocated(hess_rho_ac_kl)) deallocate(hess_rho_ac_kl)
     if (allocated(hess_kappa_ac_kl)) deallocate(hess_kappa_ac_kl)

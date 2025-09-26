@@ -36,7 +36,7 @@ import meshio
 import gmsh
 
 # from python file import
-sys.path.append('../../utils/Cubit_or_Gmsh/')
+sys.path.append('../../../utils/Cubit_or_Gmsh/')
 from Gmsh2specfem import export2SPECFEM3D
 
 
@@ -634,6 +634,24 @@ def mesh_3D():
     meshio.write(filename, mesh)
     print("VTK file written to : ",filename)
 
+    # cleans out unnecessary cell data
+    # to avoid issues when storing/reading mesh in older Gmsh format (legacy) 2.2
+    if pygmsh_major_version >= 7:
+        print("")
+        print("mesh items:")
+        keys_to_clean = []
+        for key, d in mesh.cell_data.items():
+            print("  key: ",key)
+            if key in ["gmsh:physical", "gmsh:geometrical", "cell_tags"]:
+                continue
+            else:
+                # delete key
+                print("        will be cleaned out...")
+                keys_to_clean.append(key)
+        # clean out element data
+        for key in keys_to_clean: del mesh.cell_data[key]
+        print("")
+
     # saves as Gmsh-file (msh mesh format)
     filename = "MESH/box.msh"
     if pygmsh_major_version >= 7:
@@ -678,12 +696,19 @@ def create_mesh():
     print("pygmsh version: ",version)
 
     # Gmsh version
+    # try to get Gmsh version also through pygmsh and compare against loaded gmsh module
     if pygmsh_major_version >= 7:
         # pygmsh version >= 7.x
-        version = pygmsh.__gmsh_version__
+        try:
+            version = pygmsh.__gmsh_version__
+        except:
+            version = gmsh.__version__
     else:
         # pygmsh version 6.x
-        version = pygmsh.get_gmsh_major_version()
+        try:
+            version = pygmsh.get_gmsh_major_version()
+        except:
+            version = gmsh.__version__
     print("Gmsh version  : ",version, " module version ",gmsh.__version__)
 
     # creates a simple 3D mesh

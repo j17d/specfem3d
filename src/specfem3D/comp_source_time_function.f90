@@ -27,6 +27,24 @@
 
   double precision function comp_source_time_function(t,hdur)
 
+  implicit none
+
+  double precision, intent(in) :: t,hdur
+
+  double precision, external :: netlib_specfun_erf
+
+  ! quasi Heaviside, small Gaussian moment-rate tensor with hdur
+  comp_source_time_function = 0.5d0 * (1.0d0 + netlib_specfun_erf(t/hdur))
+
+  end function comp_source_time_function
+
+
+!
+!-------------------------------------------------------------------------------------------------
+!
+
+  double precision function comp_source_time_function_tapered(t,hdur)
+
   use specfem_par, only: DT,t0,PI
 
   implicit none
@@ -39,36 +57,39 @@
   ! idea: to see if tapering the onset of the source time function would diminish numerical noise.
   !       so far not really, spurious oscillations still occur due to discretization.
   !       thus, artefacts seem not too much affected by non-zero onset values of source time function.
-  logical, parameter :: USE_TAPERED_BEGINNING = .false.
   double precision, parameter :: length_window = 200
   double precision :: taper
   integer :: l
 
   ! quasi Heaviside, small Gaussian moment-rate tensor with hdur
-  comp_source_time_function = 0.5d0*(1.0d0 + netlib_specfun_erf(t/hdur))
+  comp_source_time_function_tapered = 0.5d0 * (1.0d0 + netlib_specfun_erf(t/hdur))
 
-  ! taper to suppress noise?
-  if (USE_TAPERED_BEGINNING) then
-    if (t < length_window * DT - t0) then
-      ! check if taper length is reasonable compared to hdur
-      if ( nint(hdur/DT) > length_window) then
-        ! index from length_window to 0
-        l = nint( ((length_window * DT - t0) - t)/DT )
-        ! from 0 to length_window-1
-        l = length_window - l
-        ! cosine taper, otherwise using a constant (1.0) instead
-        taper = (1.d0 - cos(PI*(l+1)/(length_window)))/2.d0
-        ! linear taper
-        !taper = dble(l+1)/dble(length_window)
-        ! tapers stf
-        comp_source_time_function = comp_source_time_function * taper
-        !debug
-        !print *,'debug: taper ',taper,l,t,length_window*DT-t0,hdur,nint(hdur/DT)
-      endif
+  ! taper
+  ! idea is to suppress noise...
+  if (t < length_window * DT - t0) then
+
+    ! check if taper length is reasonable compared to hdur
+    if ( nint(hdur/DT) > length_window) then
+      ! index from length_window to 0
+      l = nint( ((length_window * DT - t0) - t)/DT )
+      ! from 0 to length_window-1
+      l = length_window - l
+
+      ! cosine taper, otherwise using a constant (1.0) instead
+      taper = (1.d0 - cos(PI*(l+1)/(length_window)))/2.d0
+
+      ! linear taper
+      !taper = dble(l+1)/dble(length_window)
+
+      ! tapers stf
+      comp_source_time_function_tapered = comp_source_time_function_tapered * taper
+
+      !debug
+      !print *,'debug: taper ',taper,l,t,length_window*DT-t0,hdur,nint(hdur/DT)
     endif
   endif
 
-  end function comp_source_time_function
+  end function comp_source_time_function_tapered
 
 
 !
@@ -97,7 +118,7 @@
 
   ! Gaussian wavelet
   a = 1.d0 / (hdur_decay**2)
-  comp_source_time_function_gauss = exp(-a*t**2) / (sqrt(PI)*hdur_decay)
+  comp_source_time_function_gauss = exp(-a * t**2) / (sqrt(PI) * hdur_decay)
 
   end function comp_source_time_function_gauss
 
@@ -157,7 +178,7 @@
 
   ! first derivative of a Gaussian wavelet
   a = 1.d0 / (hdur_decay**2)
-  comp_source_time_function_dgau = - 2.d0 * a * t * exp(-a*t**2) / (sqrt(PI)*hdur_decay)
+  comp_source_time_function_dgau = - 2.d0 * a * t * exp(-a * t**2) / (sqrt(PI) * hdur_decay)
 
   end function comp_source_time_function_dgau
 
@@ -187,7 +208,7 @@
 
   ! second derivative of a Gaussian wavelet
   a = 1.d0 / (hdur_decay**2)
-  comp_source_time_function_d2gau = 2.d0 * a * (-1.d0 + 2.d0*a*t**2) * exp(-a*t**2) / (sqrt(PI)*hdur_decay)
+  comp_source_time_function_d2gau = 2.d0 * a * (-1.d0 + 2.d0 * a * t**2) * exp(-a * t**2) / (sqrt(PI) * hdur_decay)
 
   end function comp_source_time_function_d2gau
 
@@ -208,7 +229,7 @@
 
   ! Ricker wavelet
   a = PI**2 * f0**2
-  comp_source_time_function_rickr = (1.d0 - 2.d0*a*t*t) * exp( -a*t*t )
+  comp_source_time_function_rickr = (1.d0 - 2.d0 * a * t*t) * exp(-a * t*t)
 
   !!! another source time function they have called 'ricker' in some old papers,
   !!! e.g., 'Finite-Frequency Kernels Based on Adjoint Methods' by Liu & Tromp, BSSA (2006)
@@ -234,7 +255,7 @@
 
   ! first derivative of a Ricker wavelet
   a = PI**2 * f0**2
-  comp_source_time_function_drck = 2.d0*a*t * (-3.d0 + 2.d0*a*t*t) * exp( -a*t*t )
+  comp_source_time_function_drck = 2.d0 * a * t * (-3.d0 + 2.d0 * a * t*t) * exp(-a * t*t)
 
   end function comp_source_time_function_drck
 
@@ -255,7 +276,7 @@
 
   ! second derivative of a Ricker wavelet
   a = PI**2 * f0**2
-  comp_source_time_function_d2rck = -2.d0*a * (3.d0 - 12.d0*a*t*t + 4.d0*a**2*t*t*t*t) * exp( -a*t*t )
+  comp_source_time_function_d2rck = -2.d0 * a * (3.d0 - 12.d0 * a * t*t + 4.d0 * a**2 * t*t*t*t) * exp(-a * t*t)
 
   end function comp_source_time_function_d2rck
 
@@ -282,13 +303,15 @@
   !  omegat = 2.d0*PI*f0*t
   !  comp_source_time_function_brune = 1.d0 - exp( -omegat ) * (1.0d0+omegat)
   !endif
+
   ! Moment rate function
+  omega = 2.d0 * PI * f0
+  omegat = omega * t
+
   if (t < 0.d0) then
     comp_source_time_function_brune = 0.d0
   else
-    omega = 2.d0*PI*f0
-    omegat = omega*t
-    comp_source_time_function_brune = omega*omegat*exp( -omegat )
+    comp_source_time_function_brune = omega * omegat * exp(-omegat)
   endif
 
   end function comp_source_time_function_brune
@@ -322,17 +345,21 @@
   !  comp_source_time_function_smooth_brune = 1.d0 - exp( -omegat ) *
   !  (1.0d0+omegat)
   !endif
+
   ! Moment rate function
-  omega = 2.d0*PI*f0
-  omegat = omega*t
+  omega = 2.d0 * PI * f0
+  omegat = omega * t
+
   if (t < 0.d0) then
     comp_source_time_function_smooth_brune = 0.d0
+
   else if (omegat >= 0.d0 .and. omegat < tau0) then
-    comp_source_time_function_smooth_brune = ( 0.5d0*omega*(omegat**2)* &
-      exp(-omegat)/tau0**3 ) * ( tau0**3 - 3.d0*(tau0**2)*(omegat-3.d0) + &
-      3.d0*tau0*omegat*(omegat-4.d0) - (omegat**2)*(omegat-5.d0) )
-  else ! (omegat > tau0) then
-    comp_source_time_function_smooth_brune = omega*omegat*exp( -omegat )
+    comp_source_time_function_smooth_brune = ( 0.5d0 * omega * (omegat**2) * exp(-omegat)/tau0**3 ) &
+                                           * ( tau0**3 - 3.d0 * (tau0**2) * (omegat-3.d0) + &
+                                               3.d0 * tau0 * omegat * (omegat-4.d0) - (omegat**2) * (omegat-5.d0) )
+  else
+    ! (omegat > tau0) then
+    comp_source_time_function_smooth_brune = omega * omegat * exp(-omegat)
   endif
 
   end function comp_source_time_function_smooth_brune
@@ -373,7 +400,7 @@
   double precision function comp_source_time_function_ext(it_index,isource)
 
   use specfem_par, only: myrank, NSTEP, user_source_time_function
-  use specfem_par, only : USE_BINARY_SOURCE_FILE,isource_glob2loc
+  use specfem_par, only: USE_BINARY_SOURCE_FILE,isource_glob2loc
 
   implicit none
 
@@ -391,7 +418,7 @@
   endif
 
   ! gets stored STF
-  if(.not. USE_BINARY_SOURCE_FILE) then 
+  if (.not. USE_BINARY_SOURCE_FILE) then
     comp_source_time_function_ext = user_source_time_function(it_index,isource)
   else
     comp_source_time_function_ext = user_source_time_function(it_index,isource_glob2loc(isource))

@@ -135,7 +135,7 @@
                 ! we distinguish between a single force which can be applied both in fluid and solid
                 ! and a moment-tensor source which only makes sense for a solid
                 !if (USE_FORCE_POINT_SOURCE) then
-                if(is_POINTFORCE(isource)) then 
+                if (is_POINTFORCE(isource)) then
                   ! single point force
                   ! the source is applied to both solid and fluid phase: bulk source.
                   fac_s = 1._CUSTOM_REAL - phil/tortl
@@ -363,7 +363,7 @@
                 ! we distinguish between a single force which can be applied both in fluid and solid
                 ! and a moment-tensor source which only makes sense for a solid
                 !if (USE_FORCE_POINT_SOURCE) then
-                if(is_POINTFORCE(isource)) then 
+                if (is_POINTFORCE(isource)) then
                   ! single point force
                   ! the source is applied to both solid and fluid phase: bulk source.
                   fac_s = 1._CUSTOM_REAL - phil/tortl
@@ -434,7 +434,7 @@
 
   ! determines source time function value
   !if (USE_FORCE_POINT_SOURCE) then
-  if(is_POINTFORCE(isource)) then 
+  if (is_POINTFORCE(isource)) then
     ! single point force
     select case(force_stf(isource))
     case (0)

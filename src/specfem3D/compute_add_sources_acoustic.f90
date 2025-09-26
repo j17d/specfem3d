@@ -437,7 +437,7 @@
   use specfem_par, only: FAULT_SIMULATION
 
   !
-  use specfem_par,only : islice_selected_source
+  use specfem_par, only: islice_selected_source
 
   implicit none
 
@@ -483,7 +483,7 @@
 
       ! determines source time function value
       stf = 0.
-      if(myrank == islice_selected_source(isource)) &
+      if (myrank == islice_selected_source(isource)) &
         stf = get_stf_acoustic(time_source_dble,isource,it)
 
       ! stores precomputed source time function factor
@@ -602,7 +602,7 @@
   ! faults
   use specfem_par, only: FAULT_SIMULATION
 
-  use specfem_par,only: islice_selected_source
+  use specfem_par, only: islice_selected_source
 
   implicit none
 
@@ -703,8 +703,8 @@
     time_source_dble = time_t - tshift_src(isource)
 
     ! determines source time function value
-    stf = 0.0d0 
-    if(myrank == islice_selected_source(isource)) &
+    stf = 0.0d0
+    if (myrank == islice_selected_source(isource)) &
       stf = get_stf_acoustic(time_source_dble,isource,NSTEP-it_tmp+1)
 
     ! stores precomputed source time function factor
@@ -762,7 +762,7 @@
 
   ! determines source time function value
   !NQDU if (USE_FORCE_POINT_SOURCE) then
-  if(is_POINTFORCE(isource)) then 
+  if (is_POINTFORCE(isource)) then
     ! single point force
     select case(force_stf(isource))
     case (0)

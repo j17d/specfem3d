@@ -197,7 +197,7 @@
 
   ! get the number of lines describing the sources
   !if (USE_FORCE_POINT_SOURCE) then
-  if(source_is_force) then 
+  if (source_is_force) then
     ! FORCESOLUTION
     nlines_per_source = NLINES_PER_FORCESOLUTION_SOURCE
   else
@@ -233,7 +233,7 @@
   ! checks lines are a multiple
   if (mod(icounter,nlines_per_source) /= 0) then
     !if (USE_FORCE_POINT_SOURCE) then
-    if(source_is_force) then 
+    if (source_is_force) then
       print *,'Error: total number of lines in FORCESOLUTION file should be a multiple of ',nlines_per_source
       stop 'Error total number of lines in FORCESOLUTION file should be a multiple of NLINES_PER_FORCESOLUTION_SOURCE'
     else
@@ -261,15 +261,15 @@
 
   ! NQDU for binary source file
   subroutine count_number_of_sources_binary(ns_cmt,ns_force,sources_filename)
-    use constants, only : MAX_STRING_LEN
+    use constants, only: MAX_STRING_LEN
     implicit none
     integer,intent(inout) :: ns_cmt,ns_force
-    character(len=MAX_STRING_LEN),intent(in) :: sources_filename 
+    character(len=MAX_STRING_LEN),intent(in) :: sources_filename
 
     ! local
     integer,parameter :: IO_SOURCE = 12341
 
-    open(IO_SOURCE,file=trim(sources_filename),form='unformatted',&
+    open(IO_SOURCE,file=trim(sources_filename),form='unformatted', &
               action='read',access='stream')
     read(IO_SOURCE) ns_cmt
     read(IO_SOURCE) ns_force

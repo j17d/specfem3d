@@ -426,14 +426,14 @@
     ! read two flags in CMT + FORCE simulation
     call read_value_logical(USE_CMT_AND_FORCE_SOURCE, 'USE_CMT_AND_FORCE_SOURCE', ier)
     ier = 0
-    if (USE_CMT_AND_FORCE_SOURCE) then 
+    if (USE_CMT_AND_FORCE_SOURCE) then
       ! write(*,'(a)') 'cmt + force simulation is enabled'
       USE_FORCE_POINT_SOURCE  = .true.
     endif
 
     call read_value_logical(USE_BINARY_SOURCE_FILE, 'USE_BINARY_SOURCE_FILE', ier)
     ier = 0
-    if(.not. USE_CMT_AND_FORCE_SOURCE) USE_BINARY_SOURCE_FILE = .false.  ! binary file is disabled 
+    if (.not. USE_CMT_AND_FORCE_SOURCE) USE_BINARY_SOURCE_FILE = .false.  ! binary file is disabled
 
     call read_value_logical(USE_RICKER_TIME_FUNCTION, 'USE_RICKER_TIME_FUNCTION', ier)
     if (ier /= 0) then
@@ -850,8 +850,8 @@
     endif
 
     ! inverse problem is enabled, disable USE_CMT_AND_FORCE/USE_BINARY_SOURCE_FILE
-    if(INVERSE_FWI_FULL_PROBLEM .and. (USE_CMT_AND_FORCE_SOURCE)) then
-      if(myrank == 0) then
+    if (INVERSE_FWI_FULL_PROBLEM .and. (USE_CMT_AND_FORCE_SOURCE)) then
+      if (myrank == 0) then
         write(*,'(a)') 'INVERSE_FWI_FULL_PROBLEM is enabled, disabling USE_CMT_AND_FORCE_SOURCE'
         write(*,*)
       endif
@@ -1258,8 +1258,8 @@
   else
     ! gets number of sources
     !NQDU call count_number_of_sources(NSOURCES,sources_filename)
-    if(USE_CMT_AND_FORCE_SOURCE) then 
-      if(.not. USE_BINARY_SOURCE_FILE) then
+    if (USE_CMT_AND_FORCE_SOURCE) then
+      if (.not. USE_BINARY_SOURCE_FILE) then
         ! Force
         sources_filename = path_to_add(1:len_trim(path_to_add)) // &
                            IN_DATA_FILES(1:len_trim(IN_DATA_FILES))//'FORCESOLUTION'
@@ -1269,17 +1269,17 @@
         sources_filename = path_to_add(1:len_trim(path_to_add)) // &
                            IN_DATA_FILES(1:len_trim(IN_DATA_FILES))//'CMTSOLUTION'
         call count_number_of_sources_by_type(NSOURCES_CMT,sources_filename,.false.)
-      else 
+      else
         sources_filename = path_to_add(1:len_trim(path_to_add)) // &
                           IN_DATA_FILES(1:len_trim(IN_DATA_FILES))//'SOLUTION.bin'
         call count_number_of_sources_binary(NSOURCES_CMT,NSOURCES_FORCE,sources_filename)
       endif
       NSOURCES = NSOURCES_CMT + NSOURCES_FORCE
-    else 
+    else
       NSOURCES_CMT = 0
       NSOURCES_FORCE = 0
       call count_number_of_sources_by_type(NSOURCES,sources_filename,USE_FORCE_POINT_SOURCE)
-      if(USE_FORCE_POINT_SOURCE) then 
+      if (USE_FORCE_POINT_SOURCE) then
         NSOURCES_FORCE = NSOURCES
       else
         NSOURCES_CMT = NSOURCES

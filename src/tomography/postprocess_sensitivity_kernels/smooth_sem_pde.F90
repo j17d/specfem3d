@@ -49,7 +49,7 @@ program smooth_sem_pde
   use constants, only: m1, m2, CUSTOM_REAL,NGLLX,NGLLY,NGLLZ, MAX_STRING_LEN,IIN,IOUT
   use specfem_par
   use specfem_par_elastic, only: &
-      num_phase_ispec_elastic,&
+      num_phase_ispec_elastic, &
       nspec_inner_elastic,nspec_outer_elastic,phase_ispec_inner_elastic
   !use specfem_par_acoustic, only: ispec_is_acoustic, nspec_acoustic
   !use specfem_par_poroelastic, only: ispec_is_poroelastic
@@ -279,10 +279,9 @@ program smooth_sem_pde
   allocate(dat(NGLLX,NGLLY,NGLLZ,NSPEC_AB))
   allocate(dat_glob(NGLOB_AB))
   allocate(ddat_glob(NGLOB_AB))
-  allocate(buffer_send_vector_ext_mesh_smooth( &
-              max_nibool_interfaces_ext_mesh,num_interfaces_ext_mesh),stat=ier)
-  allocate(buffer_recv_vector_ext_mesh_smooth( &
-              max_nibool_interfaces_ext_mesh,num_interfaces_ext_mesh),stat=ier)
+  allocate(buffer_send_vector_ext_mesh_smooth(max_nibool_interfaces_ext_mesh,num_interfaces_ext_mesh))
+  allocate(buffer_recv_vector_ext_mesh_smooth(max_nibool_interfaces_ext_mesh,num_interfaces_ext_mesh))
+
    ! prepare assemble array
   allocate(rvol(NGLOB_AB))
   rvol(:) = 0.0
@@ -302,9 +301,9 @@ program smooth_sem_pde
     enddo;enddo;enddo
   enddo
   call assemble_MPI_scalar_blocking(NPROC,NGLOB_AB,rvol, &
-                       num_interfaces_ext_mesh,max_nibool_interfaces_ext_mesh, &
-                       nibool_interfaces_ext_mesh,ibool_interfaces_ext_mesh, &
-                       my_neighbors_ext_mesh)
+                                    num_interfaces_ext_mesh,max_nibool_interfaces_ext_mesh, &
+                                    nibool_interfaces_ext_mesh,ibool_interfaces_ext_mesh, &
+                                    my_neighbors_ext_mesh)
   rvol(:) = 1.0 / rvol(:)
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    ! read in data to be smoothed
@@ -373,7 +372,7 @@ program smooth_sem_pde
 
   ddat_glob(:) = 0.0
 
-  if (USE_GPU .and. GPU_MODE) then 
+  if (USE_GPU .and. GPU_MODE) then
   ! both GPU flags in command line and par file needs to be turned on
     ! user output
     call synchronize_all()
@@ -385,17 +384,17 @@ program smooth_sem_pde
     ! prepares general fields on GPU
     ! add GPU support for the C-PML routines
     call prepare_constants_smooth_device(Mesh_pointer, &
-                                NGLLX, NSPEC_AB, NGLOB_AB, NSPEC_IRREGULAR,irregular_element_number, &
-                                xixstore,xiystore,xizstore, &
-                                etaxstore,etaystore,etazstore, &
-                                gammaxstore,gammaystore,gammazstore, &
-                                xix_regular,jacobian_regular,ibool, &
-                                num_interfaces_ext_mesh, max_nibool_interfaces_ext_mesh, &
-                                nibool_interfaces_ext_mesh, ibool_interfaces_ext_mesh, &
-                                hprime_xx,hprimewgll_xx, &
-                                wgllwgll_xy, wgllwgll_xz, wgllwgll_yz, &
-                                myrank,&
-                                PML_CONDITIONS)
+                                         NGLLX, NSPEC_AB, NGLOB_AB, NSPEC_IRREGULAR,irregular_element_number, &
+                                         xixstore,xiystore,xizstore, &
+                                         etaxstore,etaystore,etazstore, &
+                                         gammaxstore,gammaystore,gammazstore, &
+                                         xix_regular,jacobian_regular,ibool, &
+                                         num_interfaces_ext_mesh, max_nibool_interfaces_ext_mesh, &
+                                         nibool_interfaces_ext_mesh, ibool_interfaces_ext_mesh, &
+                                         hprime_xx,hprimewgll_xx, &
+                                         wgllwgll_xy, wgllwgll_xz, wgllwgll_yz, &
+                                         myrank, &
+                                         PML_CONDITIONS)
 
 
     if (myrank == 0) then
@@ -406,11 +405,11 @@ program smooth_sem_pde
                                 Smooth_container, &
                                 dat_glob, &
                                 rvol, &
-                                phase_ispec_inner_elastic,&
-                                num_phase_ispec_elastic,&
-                                CPML_to_spec,&
-                                NSPEC_CPML,&
-                                cv,&
+                                phase_ispec_inner_elastic, &
+                                num_phase_ispec_elastic, &
+                                CPML_to_spec, &
+                                NSPEC_CPML, &
+                                cv, &
                                 ch)
   endif
 
@@ -462,7 +461,7 @@ program smooth_sem_pde
               stemp3(i,j,k) = stemp3l
             enddo;enddo;enddo
           end select
-  
+
           ispec_irreg = irregular_element_number(ispec)
           if (ispec_irreg /= 0) then
             do k = 1,NGLLZ;do j = 1,NGLLY;do i = 1,NGLLX
@@ -476,7 +475,7 @@ program smooth_sem_pde
               gammayl = gammaystore(i,j,k,ispec_irreg)
               gammazl = gammazstore(i,j,k,ispec_irreg)
               jacobianl = jacobianstore(i,j,k,ispec_irreg)
-  
+
               ! derivatives along x, y, z
               ddxl = xixl*stemp1(i,j,k) + etaxl*stemp2(i,j,k) + &
                      gammaxl*stemp3(i,j,k)
@@ -517,7 +516,7 @@ program smooth_sem_pde
                 cv * xixl*xixl*stemp3(i,j,k)) * jacobianl
             enddo;enddo;enddo
           endif
-  
+
           select case (NGLLX)
           case (5)
             call mxm5_single(hprimewgll_xxT,m1,stemp1,snewtemp1,m2)
@@ -541,7 +540,7 @@ program smooth_sem_pde
               snewtemp3(i,j,k) = stemp3l
             enddo;enddo;enddo
           end select
-  
+
           do k = 1,NGLLZ;do j = 1,NGLLY;do i = 1,NGLLX
             iglob = ibool(i,j,k,ispec)
             ddat_glob(iglob) = ddat_glob(iglob) - (&
@@ -558,11 +557,11 @@ program smooth_sem_pde
           call transfer_boun_dat_smooth_pde_from_device(Mesh_pointer, &
                                                         Smooth_container, &
                                                         buffer_send_vector_ext_mesh_smooth)
-          call assemble_MPI_send_smooth_cuda(NPROC,&
+          call assemble_MPI_send_smooth_cuda(NPROC, &
                                       buffer_send_vector_ext_mesh_smooth, &
                                       buffer_recv_vector_ext_mesh_smooth, &
                                       num_interfaces_ext_mesh,max_nibool_interfaces_ext_mesh, &
-                                      nibool_interfaces_ext_mesh,ibool_interfaces_ext_mesh, &
+                                      nibool_interfaces_ext_mesh, &
                                       my_neighbors_ext_mesh, &
                                       request_send_vector_ext_mesh,request_recv_vector_ext_mesh)
         else
@@ -576,13 +575,11 @@ program smooth_sem_pde
         endif
       else
         if (USE_GPU .and. GPU_MODE) then
-          call assemble_MPI_write_smooth_cuda(NPROC,&
+          call assemble_MPI_write_smooth_cuda(NPROC, &
                                        Mesh_pointer, Smooth_container, &
                                        buffer_recv_vector_ext_mesh_smooth,num_interfaces_ext_mesh, &
                                        max_nibool_interfaces_ext_mesh, &
-                                       nibool_interfaces_ext_mesh,ibool_interfaces_ext_mesh, &
-                                       request_send_vector_ext_mesh,request_recv_vector_ext_mesh, &
-                                       my_neighbors_ext_mesh)
+                                       request_send_vector_ext_mesh,request_recv_vector_ext_mesh)
         else
           call assemble_MPI_w_ord_smooth(NPROC,NGLOB_AB, &
                                        ddat_glob,buffer_recv_vector_ext_mesh_smooth,num_interfaces_ext_mesh, &
@@ -787,12 +784,12 @@ end program smooth_sem_pde
 !
 
   subroutine assemble_MPI_send_smooth(NPROC,NGLOB_AB, &
-          array_val,buffer_send_vector_ext_mesh_smooth, &
-          buffer_recv_vector_ext_mesh_smooth, &
-          num_interfaces_ext_mesh,max_nibool_interfaces_ext_mesh, &
-          nibool_interfaces_ext_mesh,ibool_interfaces_ext_mesh, &
-          my_neighbors_ext_mesh, &
-          request_send_vector_ext_mesh,request_recv_vector_ext_mesh)
+                                      array_val,buffer_send_vector_ext_mesh_smooth, &
+                                      buffer_recv_vector_ext_mesh_smooth, &
+                                      num_interfaces_ext_mesh,max_nibool_interfaces_ext_mesh, &
+                                      nibool_interfaces_ext_mesh,ibool_interfaces_ext_mesh, &
+                                      my_neighbors_ext_mesh, &
+                                      request_send_vector_ext_mesh,request_recv_vector_ext_mesh)
 
     ! sends data
 
@@ -856,39 +853,36 @@ end program smooth_sem_pde
 !-------------------------------------------------------------------------------------------------
 !
 
-  subroutine assemble_MPI_send_smooth_cuda(NPROC,&
-          buffer_send_vector_ext_mesh_smooth, &
-          buffer_recv_vector_ext_mesh_smooth, &
-          num_interfaces_ext_mesh,max_nibool_interfaces_ext_mesh, &
-          nibool_interfaces_ext_mesh,ibool_interfaces_ext_mesh, &
-          my_neighbors_ext_mesh, &
-          request_send_vector_ext_mesh,request_recv_vector_ext_mesh)
- 
+  subroutine assemble_MPI_send_smooth_cuda(NPROC, &
+                                           buffer_send_vector_ext_mesh_smooth, &
+                                           buffer_recv_vector_ext_mesh_smooth, &
+                                           num_interfaces_ext_mesh,max_nibool_interfaces_ext_mesh, &
+                                           nibool_interfaces_ext_mesh, &
+                                           my_neighbors_ext_mesh, &
+                                           request_send_vector_ext_mesh,request_recv_vector_ext_mesh)
+
     ! sends data
- 
+
   use constants, only: CUSTOM_REAL, itag
- 
+
   implicit none
- 
+
   integer :: NPROC
- 
+
   integer :: num_interfaces_ext_mesh,max_nibool_interfaces_ext_mesh
- 
-  real(kind=CUSTOM_REAL), &
-    dimension(max_nibool_interfaces_ext_mesh,num_interfaces_ext_mesh) :: &
+
+  real(kind=CUSTOM_REAL), dimension(max_nibool_interfaces_ext_mesh,num_interfaces_ext_mesh) :: &
        buffer_send_vector_ext_mesh_smooth,buffer_recv_vector_ext_mesh_smooth
- 
+
   integer, dimension(num_interfaces_ext_mesh) :: &
     nibool_interfaces_ext_mesh,my_neighbors_ext_mesh
-  integer, dimension(max_nibool_interfaces_ext_mesh,num_interfaces_ext_mesh):: &
-    ibool_interfaces_ext_mesh
   integer, dimension(num_interfaces_ext_mesh) :: &
     request_send_vector_ext_mesh,request_recv_vector_ext_mesh
- 
-  integer iinterface
- 
+
+  integer :: iinterface
+
   ! here we have to assemble all the contributions between partitions using MPI
- 
+
   ! assemble only if more than one partition
   if (NPROC > 1) then
 
@@ -905,9 +899,9 @@ end program smooth_sem_pde
                     itag, &
                     request_recv_vector_ext_mesh(iinterface))
     enddo
- 
+
   endif
- 
+
   end subroutine assemble_MPI_send_smooth_cuda
 
 !
@@ -915,11 +909,11 @@ end program smooth_sem_pde
 !
 
   subroutine assemble_MPI_w_ord_smooth(NPROC,NGLOB_AB, &
-          array_val,buffer_recv_vector_ext_mesh_smooth,num_interfaces_ext_mesh, &
-          max_nibool_interfaces_ext_mesh, &
-          nibool_interfaces_ext_mesh,ibool_interfaces_ext_mesh, &
-          request_send_vector_ext_mesh,request_recv_vector_ext_mesh, &
-          my_neighbors_ext_mesh,myrank)
+                                       array_val,buffer_recv_vector_ext_mesh_smooth,num_interfaces_ext_mesh, &
+                                       max_nibool_interfaces_ext_mesh, &
+                                       nibool_interfaces_ext_mesh,ibool_interfaces_ext_mesh, &
+                                       request_send_vector_ext_mesh,request_recv_vector_ext_mesh, &
+                                       my_neighbors_ext_mesh,myrank)
 
 ! waits for data to receive and assembles
 
@@ -934,19 +928,17 @@ end program smooth_sem_pde
 
   integer :: num_interfaces_ext_mesh,max_nibool_interfaces_ext_mesh,myrank
 
-  real(kind=CUSTOM_REAL), &
-    dimension(max_nibool_interfaces_ext_mesh,num_interfaces_ext_mesh) :: &
+  real(kind=CUSTOM_REAL), dimension(max_nibool_interfaces_ext_mesh,num_interfaces_ext_mesh) :: &
        buffer_recv_vector_ext_mesh_smooth
 
   integer, dimension(num_interfaces_ext_mesh) :: nibool_interfaces_ext_mesh
-  integer, dimension(max_nibool_interfaces_ext_mesh,num_interfaces_ext_mesh)::&
+  integer, dimension(max_nibool_interfaces_ext_mesh,num_interfaces_ext_mesh):: &
     ibool_interfaces_ext_mesh
   integer, dimension(num_interfaces_ext_mesh) :: &
     request_send_vector_ext_mesh,request_recv_vector_ext_mesh
   integer, dimension(num_interfaces_ext_mesh) :: my_neighbors_ext_mesh
 
-  real(kind=CUSTOM_REAL), &
-    dimension(max_nibool_interfaces_ext_mesh,num_interfaces_ext_mesh) :: &
+  real(kind=CUSTOM_REAL), dimension(max_nibool_interfaces_ext_mesh,num_interfaces_ext_mesh) :: &
     mybuffer
   integer :: ipoin,iinterface,iglob
   logical :: need_add_my_contrib
@@ -1011,51 +1003,45 @@ end program smooth_sem_pde
   end subroutine assemble_MPI_w_ord_smooth
 
   subroutine assemble_MPI_write_smooth_cuda(NPROC,Mesh_pointer, &
-          Smooth_container, &
-          buffer_recv_vector_ext_mesh_smooth,num_interfaces_ext_mesh, &
-          max_nibool_interfaces_ext_mesh, &
-          nibool_interfaces_ext_mesh,ibool_interfaces_ext_mesh, &
-          request_send_vector_ext_mesh,request_recv_vector_ext_mesh, &
-          my_neighbors_ext_mesh)
- 
+                                            Smooth_container, &
+                                            buffer_recv_vector_ext_mesh_smooth,num_interfaces_ext_mesh, &
+                                            max_nibool_interfaces_ext_mesh, &
+                                            request_send_vector_ext_mesh,request_recv_vector_ext_mesh)
+
 ! waits for data to receive and assembles
- 
+
   use constants, only: CUSTOM_REAL
- 
+
   implicit none
- 
+
   integer :: NPROC
 
   integer(kind=8), intent(in) :: Mesh_pointer, Smooth_container
- 
+
   integer :: num_interfaces_ext_mesh,max_nibool_interfaces_ext_mesh
- 
+
   real(kind=CUSTOM_REAL), &
     dimension(max_nibool_interfaces_ext_mesh,num_interfaces_ext_mesh) :: &
        buffer_recv_vector_ext_mesh_smooth
- 
-  integer, dimension(num_interfaces_ext_mesh) :: nibool_interfaces_ext_mesh
-  integer, dimension(max_nibool_interfaces_ext_mesh,num_interfaces_ext_mesh)::&
-    ibool_interfaces_ext_mesh
+
   integer, dimension(num_interfaces_ext_mesh) :: &
     request_send_vector_ext_mesh,request_recv_vector_ext_mesh
-  integer, dimension(num_interfaces_ext_mesh) :: my_neighbors_ext_mesh
- 
+
   integer :: iinterface
 
 ! here we have to assemble all the contributions between partitions using MPI
- 
+
 ! assemble only if more than one partition
   if (NPROC == 1) return
- 
+
 ! wait for communications completion (recv)
   do iinterface = 1, num_interfaces_ext_mesh
     call wait_req(request_recv_vector_ext_mesh(iinterface))
   enddo
- 
+
   call transfer_asmbl_dat_smooth_pde_from_device(Mesh_pointer, &
                                            Smooth_container, &
-                                           buffer_recv_vector_ext_mesh_smooth) 
+                                           buffer_recv_vector_ext_mesh_smooth)
 ! wait for communications completion (send)
   do iinterface = 1, num_interfaces_ext_mesh
     call wait_req(request_send_vector_ext_mesh(iinterface))
