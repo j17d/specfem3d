@@ -100,7 +100,7 @@ roof_level_height = 1.5   # m
 ## globals
 transformer_to_utm = None
 utm_zone = None
-
+store_scene_file = False
 
 def download_buildings(mesh_area: np.array):
     """
@@ -1734,7 +1734,7 @@ def create_3d_buildings(gdf, topo_grid, mesh_area: np.array) -> None:
     """
     creates for each building a 3d mesh and stores all as .ply output file
     """
-    global building_height_min
+    global building_height_min,store_scene_file
 
     # mesh area min/max
     lon_min = mesh_area[0]
@@ -1817,6 +1817,20 @@ def create_3d_buildings(gdf, topo_grid, mesh_area: np.array) -> None:
         b_mesh.apply_transform(translation_matrix)
         # adds to all meshes
         meshes.append(b_mesh)
+
+    ## store meshes as geometries in a scene
+    if store_scene_file:
+        # Create a dictionary where keys are unique names and values are the meshes.
+        geometry_dict = {f'mesh_{i}': mesh for i, mesh in enumerate(meshes)}
+        # Create the trimesh.Scene object using the dictionary
+        scene = trimesh.Scene(geometry_dict)
+        # save scene file
+        filename = './output_buildings_utm.scene.obj'
+        scene.export(filename, file_type='obj')
+        print("scene:")
+        print(f"  contains {len(scene.geometry)} geometries (meshes).")
+        print(f"  written: ",filename)
+        print("")
 
     # combine all meshes into single mesh
     mesh = trimesh.util.concatenate(meshes)
@@ -1940,6 +1954,8 @@ if __name__ == '__main__':
             if abs(utm_zone) < 1 or utm_zone > 60:
                 print(f"Invalid UTM zone entered: {utm_zone} - Please use zones from +/- [1,60]")
                 sys.exit(1)
+        elif "--store-scene" in arg:
+            store_scene_file = True
         elif i >= 3:
             print("argument not recognized: ",arg)
 
