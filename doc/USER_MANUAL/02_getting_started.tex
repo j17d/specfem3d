@@ -1,6 +1,6 @@
 \chapter{Getting Started}\label{cha:Getting-Started}
 
-To download the SPECFEM3D\_Cartesian software package, type this:
+To download the SPECFEM3D Cartesian software package, type this:
 \begin{verbatim}
 git clone --recursive --branch devel https://github.com/SPECFEM/specfem3d.git
 \end{verbatim}
@@ -23,7 +23,7 @@ If you want to run in parallel, i.e., using more than one processor core, then y
     ./configure FC=gfortran CC=gcc MPIFC=mpif90 --with-mpi
 \end{verbatim}
 
-You can replace the GNU compilers above (gfortran and gcc) with other compilers if you want to; for instance for Intel ifort and icc use FC=ifort CC=icc instead. Note that MPI must be installed with MPI-IO enabled because parts of SPECFEM3D perform I/Os through MPI-IO.
+You can replace the GNU compilers above (gfortran and gcc) with other compilers if you want to; for instance for Intel ifort and icc use FC=ifort CC=icc instead. Note that MPI must be installed with MPI-IO enabled because parts of SPECFEM3D Cartesian perform I/Os through MPI-IO.
 
 Before running the \texttt{configure} script, you should probably
 edit file \texttt{flags.guess} to make sure that it contains the best
@@ -131,7 +131,7 @@ of \texttt{FAULT\_DISPL\_VELOC} and \texttt{FAULT\_SYNCHRONIZE\_ACCEL} as \textt
 %-----------------------------------------------------------------------------------------------------------------------------------%
 
 \noindent
-SPECFEM3D now supports CUDA and HIP GPU acceleration.
+SPECFEM3D Cartesian now supports CUDA and HIP GPU acceleration.
 When compiling for GPU cards, you can enable the CUDA version with:
 \begin{verbatim}
   ./configure --with-cuda ..
@@ -188,7 +188,7 @@ Additional compilation flags can be added by specifying \texttt{HIP\_FLAGS}, as 
 %-----------------------------------------------------------------------------------------------------------------------------------%
 
 Regular POSIX I/O can be problematic when dealing with large simulations on large
-clusters (typically more than $10,000$ MPI processes). SPECFEM3D can use the ADIOS library~\cite{Liu2013}
+clusters (typically more than $10,000$ MPI processes). SPECFEM3D Cartesian can use the ADIOS library~\cite{Liu2013}
 to take advantage of advanced parallel file system features. To enable
 ADIOS, the following steps should be done:
 \begin{enumerate}
@@ -205,7 +205,7 @@ with CUBIT). Additional control parameters are discussed in section~\ref{cha:Mai
 \section{Using HDF5 for file I/O}
 %-----------------------------------------------------------------------------------------------------------------------------------%
 
-As file I/O can be a bottleneck in large-scale simulations, SPECFEM3D supports file I/O using the HDF5 format
+As file I/O can be a bottleneck in large-scale simulations, SPECFEM3D Cartesian supports file I/O using the HDF5 format
 for movie snapshots and database files. To support this feature, you will need to compile the code with corresponding HDF5 flags.
 The configuration of the package could look for example like:
 {\small
@@ -452,7 +452,7 @@ The important entries in the Doxyfile are:
 \item [{\texttt{EXTRACT\_PRIVATE}}] Set to YES
 \item [{\texttt{EXTRACT\_STATIC}}] Set to YES
 \item [{\texttt{INPUT}}] From the directory \texttt{specfem3d/doc/Call\_trees}, it is \texttt{"../../src/"}
-\item [{\texttt{FILE\_PATTERNS}}] In SPECFEM case, it is \texttt{*.f90* *.F90* *.c* *.cu* *.h*}
+\item [{\texttt{FILE\_PATTERNS}}] In SPECFEM3D Cartesian case, it is \texttt{*.f90* *.F90* *.c* *.cu* *.h*}
 \item [{\texttt{HAVE\_DOT}}] Set to YES
 \item [{\texttt{CALL\_GRAPH}}] Set to YES
 \item [{\texttt{CALLER\_GRAPH}}] Set to YES
@@ -471,7 +471,7 @@ The important entries in the Doxyfile are:
 
 \item Run : \texttt{doxygen Doxyfile}, HTML and LaTeX files created by default in \texttt{html} and \texttt{latex} subdirectories.
 
-\item To see the call trees, you have to open the file \texttt{html/index.html} in your \underline{browser}. You will have many informations about each subroutines of SPECFEM (not only call graphs), you can click on every boxes / subroutines. It show you the call, and, the caller graph of each subroutine : the subroutines called by the concerned subroutine, and the previous subroutines who call this subroutine (the previous path), respectively. In the case of a truncated calling tree, the boxes with a red border indicates a node that has \underline{more} arrows than are shown (in other words: the graph is truncated with respect to this node).
+\item To see the call trees, you have to open the file \texttt{html/index.html} in your \underline{browser}. You will have many informations about each subroutines of SPECFEM3D Cartesian (not only call graphs), you can click on every boxes / subroutines. It show you the call, and, the caller graph of each subroutine : the subroutines called by the concerned subroutine, and the previous subroutines who call this subroutine (the previous path), respectively. In the case of a truncated calling tree, the boxes with a red border indicates a node that has \underline{more} arrows than are shown (in other words: the graph is truncated with respect to this node).
 
 \end{enumerate}
 

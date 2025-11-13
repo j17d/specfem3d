@@ -1,6 +1,6 @@
 \chapter{Kinematic and dynamic fault sources}\label{cha:Fault-Kinematics-Dynamics}
 
-SPECFEM3D can handle finite fault sources of two kinds:
+SPECFEM3D Cartesian can handle finite fault sources of two kinds:
 \begin{enumerate}
 \item \emph{Kinematic}: the spatio-temporal distribution of slip rate is
 prescribed along the fault surface
@@ -31,7 +31,7 @@ of the mesh also affect numerical roundoffs, and therefore the split nodes
 should also be at least \texttt{10.d-10 * (Xmax-Xmin)} apart). Note that only the interior
 of the fault must be opened, its edges must remain closed (except
 the edge on the free surface). The fault is automatically closed later
-by SPECFEM3D.\newline
+by SPECFEM3D Cartesian.\newline
 
 \noindent
 Here is an example CUBIT script to generate a mesh with split nodes
@@ -88,7 +88,7 @@ offset by a small distance on either side of the fault}
 The CUBIT scripts ({*}.jou and {*}.py) in the directory \texttt{EXAMPLES}
 generate more complicated meshes. The {*}.py files are Python scripts
 that execute CUBIT commands and use the CUBIT-python interface for
-SPECFEM3D (see next section). The Python language allows to define
+SPECFEM3D Cartesian (see next section). The Python language allows to define
 and manipulate variables to parameterize the mesh. Alternatively,
 the Python script can call a CUBIT journal file ({*}.jou), which looks
 like the example above. Variables can be defined and manipulated there
@@ -111,7 +111,7 @@ compress ids hex face edge node
 \section{CUBIT-Python Scripts for Faults}
 
 The mesh generated in CUBIT needs to be processed and exported in
-a format compatible with SPECFEM3D. This is achieved in the Python
+a format compatible with SPECFEM3D Cartesian. This is achieved in the Python
 scripts by calling the Python-CUBIT interface functions defined in
 the CUBIT directory:
 \begin{enumerate}
@@ -120,7 +120,7 @@ must be called to set up the absorbing boundaries database
 \item Function $\mathtt{fault\_input}$ must be called once for each fault
 to set up the fault database
 \item Function $\mathtt{cubit2specfem3d.export2SPECFEM3D}$ must be called
-at the very end of the script to export the mesh in a SPECFEM3D format.
+at the very end of the script to export the mesh in a SPECFEM3D Cartesian format.
 \end{enumerate}
 The functions in \#1 and \#3 are for the bulk and are documented in
 Section \ref{subsec:Exporting-the-Mesh}. We focus here on \#2:

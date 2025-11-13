@@ -14,7 +14,7 @@ dnl
 ############################################################
 
 AC_PREREQ(2.61)
-AC_INIT([Specfem3D], m4_normalize(m4_include([VERSION])), [see the wiki], [Specfem3D])
+AC_INIT([SPECFEM3D Cartesian], m4_normalize(m4_include([VERSION])), [see the wiki], [Specfem3D])
 AC_CONFIG_SRCDIR([src/specfem3D/specfem3D.F90])
 
 AC_CONFIG_HEADERS([setup/config.h])

@@ -1,19 +1,19 @@
-# Specfem3D
+# SPECFEM3D Cartesian
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.10823181.svg)](https://doi.org/10.5281/zenodo.10823181)
 
-SPECFEM3D_Cartesian simulates acoustic (fluid), elastic (solid), coupled acoustic/elastic, poroelastic or seismic wave propagation in any type of conforming mesh of hexahedra (structured or not.)
+SPECFEM3D Cartesian simulates acoustic (fluid), elastic (solid), coupled acoustic/elastic, poroelastic or seismic wave propagation in any type of conforming mesh of hexahedra (structured or not.)
 
 It can, for instance, model seismic waves propagating in sedimentary basins or any other regional geological model following earthquakes. It can also be used for non-destructive testing or for ocean acoustics
 
 
-SPECFEM3D was founded by Dimitri Komatitsch and Jeroen Tromp, and is now being developed by a large, collaborative, and inclusive community. A complete list of authors can be found at
+SPECFEM3D Cartesian was founded by Dimitri Komatitsch and Jeroen Tromp, and is now being developed by a large, collaborative, and inclusive community. A complete list of authors can be found at
 https://specfem3d.readthedocs.io/en/latest/authors/
 
 
 ## Installation
 
-Instructions on how to install and use SPECFEM3D are
+Instructions on how to install and use SPECFEM3D Cartesian are
 available in the
 
 - PDF manual located in directory: [doc/USER_MANUAL](doc/USER_MANUAL)
@@ -51,7 +51,7 @@ and check the output files in `./OUTPUT_FILES/`
 Development is hosted on GitHub in the
 [SPECFEM/specfem3d repository](https://github.com/SPECFEM/specfem3d).
 
-SPECFEM3D is a community project that lives by the participation of its
+SPECFEM3D Cartesian is a community project that lives by the participation of its
 members — i.e., including you! It is our goal to build an inclusive and
 participatory community so we are happy that you are interested in
 participating! We have collected a set of guidelines and advice on how to get
@@ -61,10 +61,10 @@ involved in the community and keep them in the specfem3d github wiki:
 
 ## Our contributors :sparkles:
 
-[![SPECFEM3D contributors](https://contrib.rocks/image?repo=SPECFEM/specfem3d)](https://github.com/SPECFEM/specfem3d/graphs/contributors)
+[![SPECFEM3D Cartesian contributors](https://contrib.rocks/image?repo=SPECFEM/specfem3d)](https://github.com/SPECFEM/specfem3d/graphs/contributors)
 
 
 ## Computational Infrastructure for Geodynamics (CIG)
 
-SPECFEM3D is part of the software that is hosted by the Computational Infrastructure for Geodynamics (CIG). It is available on the CIG website [here (SPECFEM3D)](https://geodynamics.org/resources/specfem3dcartesian).
+SPECFEM3D Cartesian is part of the software that is hosted by the Computational Infrastructure for Geodynamics (CIG). It is available on the CIG website [here (SPECFEM3D Cartesian)](https://geodynamics.org/resources/specfem3dcartesian).
 
