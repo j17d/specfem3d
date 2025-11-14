@@ -915,7 +915,7 @@
   ysize = ymax - ymin
   zsize = zmax - zmin
 
-  ! estimanted element size
+  ! estimated element size
   elem_size_x = xsize / NEX_XI
   elem_size_y = ysize / NEX_ETA
   elem_size_z = ysize / NER

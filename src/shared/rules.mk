@@ -46,6 +46,7 @@ shared_OBJECTS = \
 	$O/define_mass_matrices.shared.o \
 	$O/detect_surface.shared.o \
 	$O/exit_mpi.shared.o \
+	$O/fft.shared.o \
 	$O/force_ftz.cc.o \
 	$O/get_attenuation_model.shared.o \
 	$O/get_element_face.shared.o \

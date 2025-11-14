@@ -264,6 +264,17 @@
       write(*,*)
     endif
 
+    ! (optional) scattering perturbations
+    call read_value_logical(ADD_SCATTERING_PERTURBATIONS, 'SCATTERING_PERTURBATIONS', ier); ier = 0
+    if (ADD_SCATTERING_PERTURBATIONS) then
+      ! perturbation strength (e.g., 0.1 for 10% perturbations)
+      call read_value_double_precision(SCATTERING_STRENGTH, 'SCATTERING_STRENGTH', ier); ier = 0
+      ! correlation factor (e.g., 1.0 for k * a ~ 1.0)
+      call read_value_double_precision(SCATTERING_CORRELATION, 'SCATTERING_CORRELATION', ier); ier = 0
+      ! list of material ids (e.g., 0 for all, or "1,2" for materials 1 and 2)
+      call read_value_string(SCATTERING_MATERIAL_IDS, 'SCATTERING_MATERIAL_IDS', ier); ier = 0
+    endif
+
     !-------------------------------------------------------
     ! Absorbing boundary conditions
     !-------------------------------------------------------
@@ -1415,6 +1426,12 @@
 
   call bcast_all_singlel(USE_OLSEN_ATTENUATION)
   call bcast_all_singledp(OLSEN_ATTENUATION_RATIO)
+
+  ! (optional) scattering perturbations
+  call bcast_all_singlel(ADD_SCATTERING_PERTURBATIONS)
+  call bcast_all_singledp(SCATTERING_STRENGTH)
+  call bcast_all_singledp(SCATTERING_CORRELATION)
+  call bcast_all_string(SCATTERING_MATERIAL_IDS)
 
   ! absorbing boundaries
   call bcast_all_singlel(PML_CONDITIONS)
