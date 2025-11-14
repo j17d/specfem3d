@@ -3,13 +3,13 @@
 This example provides a simple guide for the simultaneous use of point-force and moment-tensor sources in SEM simulations.
 
 
-1. **Enable Hybrid `FORCESOLUTION` and `CMTSOLUTION`**  
-   In `DATA/Par_file`, set:  
+1. **Enable Hybrid `FORCESOLUTION` and `CMTSOLUTION`**
+   In `DATA/Par_file`, set:
    ```fortran
    USE_CMT_AND_FORCE_SOURCE = .true.`
 The program will then read both `FORCESOLUTION` and `CMTSOLUTION` from the `DATA` directory and run a simulation using both point force and CMT sources.
 
-2. **Use Binary Source Files**  
+2. **Use Binary Source Files**
 when
 ```fortran
 USE_BINARY_SOURCE_FILE  = .true.
@@ -18,7 +18,7 @@ is set in `DATA/Par_file`, all source attributes and source time functions must 
   ```fortran
   access='stream'
   ```
-  in the `write` statement.  
+  in the `write` statement.
 - When both options are enabled, the program ignores `FORCESOLUTION` and `CMTSOLUTION` and instead reads from SOLUTION.bin.
 - The format of SOLUTION.bin is illustrated in the Fortran snippet below:
 ```fortran
@@ -49,7 +49,7 @@ enddo
 ```
 you can also refer to `write_binary_source.f90` for a small example.
 
-3. **Use an External Source Time Function**  
+3. **Use an External Source Time Function**
 In `DATA/Par_file`, enable:
 ```fortran
 USE_EXTERNAL_SOURCE_FILE = .true.

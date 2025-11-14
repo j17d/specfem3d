@@ -15,7 +15,7 @@ decomposing mesh...
    using NGNOD =            8
    linear elements
 
- total number of nodes: 
+ total number of nodes:
    nnodes =        23273
  total number of spectral elements:
    nspec =        20736
@@ -83,7 +83,7 @@ decomposing mesh...
    load per partition: imbalance =    1.53374231     %
                        (0% being totally balanced, 100% being unbalanced)
 
- partitions: 
+ partitions:
    num         =            4
    ninterfaces =            6
 
@@ -105,7 +105,7 @@ forward simulation
 #########################################################
 (running forward simulation with saving forward wavefield)
 
-Changed simulation_type to 1 and save_forward = .true. in Par_file 
+Changed simulation_type to 1 and save_forward = .true. in Par_file
 
 running solver on  4 processors...
 
@@ -128,23 +128,23 @@ gfortran  -o xcreate_adjsrc_traveltime create_adjsrc_traveltime.o rw_ascfile_c.o
 running adjoint source creation
 
  xcreate_adjsrc_traveltime:
-   measurement window start/end =    9.0000000000000000      /   26.000000000000000     
+   measurement window start/end =    9.0000000000000000      /   26.000000000000000
    component ifile =            1   lrot =  F
-  
+
  reading asc file DB.X20.MXX.semp ...
  reading asc file DB.X20.MXY.semp ...
  reading asc file DB.X20.MXZ.semp ...
-  
- start time:  -6.0000000000000000     
- time step:  0.11359978000000037     
+
+ start time:  -6.0000000000000000
+ time step:  0.11359978000000037
  number of steps:         300
-  
- i =            1 norm =    51519175283406.109     
- i =            2 norm =    51519175283406.109     
+
+ i =            1 norm =    51519175283406.109
+ i =            2 norm =    51519175283406.109
    component set to zero
- i =            3 norm =    51519175283406.109     
+ i =            3 norm =    51519175283406.109
    component set to zero
-  
+
  write to asc file DB.X20.MXX.adj
  write to asc file DB.X20.MXY.adj
  write to asc file DB.X20.MXZ.adj
@@ -157,7 +157,7 @@ kernel simulation
 #########################################################
 (running kernel simulation: SIMULATION_TYPE == 3)
 
-Changed simulation_type to 3 in Par_file 
+Changed simulation_type to 3 in Par_file
 
 running solver (kernel run) on  4 processors...
 
