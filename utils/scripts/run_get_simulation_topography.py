@@ -146,6 +146,8 @@ gmt_country = ''  # for Switzerland: '-ECH'
 # globals
 utm_zone = 0
 gmt_region = ""
+projMerc = 'UTM'
+use_moon_ltm = False  # for moon topography outputs
 
 
 def get_topo_DEM(region,filename_path,res='low'):
@@ -267,6 +269,7 @@ def get_topo(lon_min,lat_min,lon_max,lat_max):
     global SRTM_type
     global gmt_region
     global utm_zone
+    global use_moon_ltm,projMerc
 
     # region format: #lon_min #lat_min #lon_max #lat_max (left bottom right top) in degrees
     # for example: region = (12.35, 41.8, 12.65, 42.0)
@@ -290,21 +293,25 @@ def get_topo(lon_min,lat_min,lon_max,lat_max):
     # define corner points
     corners = [ (lon_min,lat_min), (lon_min,lat_max), (lon_max,lat_min), (lon_max,lat_max) ]
     for lon,lat in corners:
-          # converts to UTM x/y
-          x,y = geo2utm(lon,lat,utm_zone,iway=2)   # iway==2 LONGLAT2UTM
+          if use_moon_ltm:
+              # converts to LTM x/y
+              x,y = geo2ltm(lon,lat,utm_zone,iway=2)   # iway==2 LONGLAT2UTM
+          else:
+              # converts to UTM x/y
+              x,y = geo2utm(lon,lat,utm_zone,iway=2)   # iway==2 LONGLAT2UTM
           # determines min/max
           if x < utm_xmin: utm_xmin = x
           if x > utm_xmax: utm_xmax = x
           if y < utm_ymin: utm_ymin = y
           if y > utm_ymax: utm_ymax = y
 
-    print(f"  corner UTM coordinates: X min/max = {utm_xmin} / {utm_xmax}")
+    print(f"  corner {projMerc} coordinates: X min/max = {utm_xmin} / {utm_xmax}")
     print(f"                          Y min/max = {utm_ymin} / {utm_ymax}")
     print("")
 
     # check
     if utm_xmin == float('inf') or utm_xmax == float('-inf') or utm_ymin == float('inf') or utm_ymax == float('-inf'):
-        print("Error: could not determine UTM min/max range")
+        print(f"Error: could not determine {projMerc} min/max range")
         sys.exit(1)
 
     # converts back to get extended region
@@ -315,8 +322,12 @@ def get_topo(lon_min,lat_min,lon_max,lat_max):
     # define corners
     utm_corners = [ (utm_xmin,utm_ymin), (utm_xmin,utm_ymax),(utm_xmax,utm_ymin),(utm_xmax,utm_ymax) ]
     for x,y in utm_corners:
-          # converts to lon/lat
-          lon,lat = geo2utm(x,y,utm_zone,iway=1)   # iway==1 UTM2LONGLAT
+          if use_moon_ltm:
+              # converts to LTM x/y
+              lon,lat = geo2ltm(x,y,utm_zone,iway=1)   # iway==1 UTM2LONGLAT
+          else:
+              # converts to lon/lat
+              lon,lat = geo2utm(x,y,utm_zone,iway=1)   # iway==1 UTM2LONGLAT
           # determines min/max
           if lon < ext_lon_min: ext_lon_min = lon
           if lon > ext_lon_max: ext_lon_max = lon
@@ -480,7 +491,38 @@ def get_topo(lon_min,lat_min,lon_max,lat_max):
         status = subprocess.call(cmd, shell=True)
         check_status(status)
         print("")
-
+    elif SRTM_type == 'moon' \
+      or SRTM_type == 'moon2m' \
+      or SRTM_type == 'moon15' \
+      or SRTM_type == 'moon15s':
+        # gmt grid
+        gridfile = 'ptopo-DEM.grd'
+        # new version uses grdcut and earth relief grids from server
+        # http://gmt.soest.hawaii.edu/doc/latest/datasets.html
+        if SRTM_type == 'moon' or SRTM_type == 'moon2m':
+            # Moon (2-arc minutes)
+            cmd = 'gmt grdcut @moon_relief_02m ' + gmt_region + ' -G' + gridfile
+            incr_dx = 0.05
+            gmt_interval = '-I' + str(incr_dx) + '/' + str(incr_dx)
+        elif SRTM_type == 'moon15' or SRTM_type == 'moon15s':
+            # Moon 15s (15-arc seconds)
+            cmd = 'gmt grdcut @moon_relief_15s ' + gmt_region + ' -G' + gridfile
+            incr_dx = 0.0045
+            gmt_interval = '-I' + str(incr_dx) + '/' + str(incr_dx)
+        else:
+            print("Error invalid SRTM_type " + SRTM_type)
+            sys.exit(1)
+        print("  > ",cmd)
+        status = subprocess.call(cmd, shell=True)
+        check_status(status)
+        print("")
+        # convert gmt grid-file to gdal GTiff for shading
+        # version > 5.4
+        cmd = 'gmt grdconvert ' + gridfile + ' -G' + filename + '=gd:Gtiff'
+        print("  > ",cmd)
+        status = subprocess.call(cmd, shell=True)
+        check_status(status)
+        print("")
     else:
         print("Error invalid SRTM_type " + SRTM_type)
         sys.exit(1)
@@ -633,6 +675,10 @@ def create_AVS_file():
     global datadir
     global utm_zone
     global gmt_region,gmt_country
+    global use_moon_ltm
+
+    # only output borders for Earth...
+    if use_moon_ltm: return
 
     print("*******************************")
     print("creating AVS border file ...")
@@ -1333,6 +1379,242 @@ def geo2utm(lon,lat,zone,iway=2):
         rlat = rlat_save
         return rx,ry
 
+#
+#----------------------------------------------------------------------------------------
+#
+
+def geo2ltm(lon, lat, zone=None, iway=2):
+    """
+    Lunar Transverse Mercator (LTM) and Lunar Polar Stereographic (LPS) projection for polar regions
+
+    this routine assumes a perfectly spherical Moon.
+    LTM implementation is a simplified Spherical Transverse Mercator, 8-degree zones.
+
+    note: by default, the LTM implementation in the python script LGRS_Coordinate_Conversion_mk7.2.py provided by USGS astrogeology site
+          https://astrogeology.usgs.gov/search/map/lunar-map-projections-and-grid-reference-system-for-artemis-astronaut-surface-navigation
+          uses a spherical Moon for their LTM projection.
+
+          However, they still use the formula for a Gauss-Schreiber projection,
+          that combines a projection of an ellipsoid to a sphere followed by a spherical transverse Mercator formula.
+          Assuming the ellipsoid is perfectly spherical, then the first projection is an identity transform and only the second,
+          spherical transverse Mercator formula is needed.
+          Here, we use this simplification of applying directly the spherical transverse Mercator projection, assuming a spherical Moon.
+
+    lon - longitude in degree range [-180,180]
+    lat - latitude in degree range [-90,90]
+
+    zone - LTM zones use 1 to 45, positive for Northern hemisphere, negative for Southern hemisphere
+           LPS zones use 46 for North pole, -46 for South pole
+
+    iway = 1  from LTM     to lon/lat
+    iway = 2  from lon/lat to LTM
+    """
+
+    PI = math.pi
+    degrad = PI / 180.0
+    raddeg = 180.0 / PI
+
+    # ---- Lunar spherical radius ----
+    R = 1737400.0   # mean lunar radius (meters)
+
+    # ---- Scale factor ----
+    # Lunar map projection scale factors
+    scfa = 0.999         # transverse Mercator (LTM)
+    scfa_polar = 0.994   # polar stereographic (LPS)
+
+    # ---- False origins ----
+    false_east  =  250000.0
+    false_north = 2500000.0
+
+    false_east_polar  =  500000.0
+    false_north_polar =  500000.0
+
+    ILTM2LONGLAT = 1
+    ILONGLAT2LTM = 2
+
+    #----- Set Zone parameters
+    # determine zone
+    # for convenience, if zone is unspecified in forward mode, this computes it for the given longitude/latitude position
+    # and returns only the zone number
+    if iway == ILONGLAT2LTM and (zone is None or zone == 0):
+        # checks latitute range for LTM [-82,82], beyond is polar region
+        if lat >= -82.0 and lat <= 82.0:
+            # LTM
+            # longitudinal zone
+            zone = int((lon + 180.0) // 8) + 1   # note: uses +1 because USGS's LGRS_Coordinate_Conversion_mk7.2.py has zone index starting at 1
+            # 180-degree values sometimes come up as 46. We assign it back to zone 1
+            if zone > 45:
+                zone -= 45
+            # we use negative values for Southern hemisphere
+            if lat < 0.0:
+                zone = -zone
+        else:
+            # LPS
+            # polar region
+            if lat >= 0.0:
+                zone = 46    # north pole
+            else:
+                zone = -46   # south pole
+        # just return zone
+        return zone
+
+    # zone is given as input, check if valid
+    if zone is None or zone == 0 or int(abs(zone)) > 46:
+        print(f"error: geo2ltm routine has as input zone {zone}, which is invalid. zone must be +/- 1-45 for LTM and +/- 46 for LPS")
+        sys.exit(1)
+
+    # zone index absolute
+    z = int(abs(zone))
+
+    # polar region
+    use_polar = False
+    # check if LPS or LTM
+    if z == 46: use_polar = True
+
+    # Lunar Polar Stereographic (LPS) projection
+    if use_polar:
+        if iway == ILONGLAT2LTM:
+            # Forward transformation: lon/lat to LPS
+            # Snyder (1987) spherical equations
+            rlon = lon * degrad
+            rlat = lat * degrad
+
+            # Calculate polar stereographic spherical scale error
+            A = 2.0 * R * scfa_polar
+
+            if zone < 0:
+                # South pole
+                t = math.tan(PI/4.0 + rlat/2.0)
+            else:
+                # North pole
+                t = math.tan(PI/4.0 - rlat/2.0)
+
+            # stereographic map projection, Snyder (1987)
+            # note: here, we use +cos(lon) as done in routine spherical_stereographic_map_y() of the USGS script LGRS_Coordinate_Conversion_mk7.2.py
+            #       for both, North and South poles. the standard polar stereographic projection defined by Snyder would use
+            #       North Pole: x = 2 R k0 tan(pi/4 - phi/2) sin(lambda - lambda0)
+            #                   y = - 2 R k0 tan(pi/4 - phi/2) cos(lambda - lambda0)
+            #       South Pole: x = 2 R k0 tan(pi/4 + phi/2) sin(lambda - lambda0)
+            #                   y = 2 R k0 tan(pi/4 + phi/2) cos(lambda - lambda0)
+            #       (see Snyder 1987, page 158, chapter 21 "Stereographic Projection", section "Formulas for the Sphere",
+            #        eqs. 21-5, 21-6 and 21-9,21-10.
+            #        https://pubs.usgs.gov/pp/1395/report.pdf ).
+            # we'll take the convention from the USGS implementation to use +cos for both poles.
+            #
+            # X coordinate for a s
+            x = A * t * math.sin(rlon)
+            # Y coordinate for a stereographic map projection
+            y = A * t * math.cos(rlon)
+
+            # Add false Eastings and Northings
+            x += false_east_polar
+            y += false_north_polar
+
+            # all done
+            return x, y
+
+        else:
+            # Inverse transformation: LPS t0 lon/lat
+            # remove false origins (must be same values used in forward)
+            x = lon - false_east_polar
+            y = lat - false_north_polar
+
+            # radial distance from projection origin
+            rho = math.hypot(x, y)
+
+            # at the pole: rho == 0
+            if rho == 0.0:
+                deglat = -90.0 if zone < 0 else 90.0
+                deglon = 0.0
+                return deglon, deglat
+
+            A = 2.0 * R * scfa_polar
+
+            # t = tan( PI/4 ± lat/2 )  where sign depends on hemisphere in forward
+            t = rho / A
+
+            if zone < 0:
+                # South pole
+                # forward used: tan(PI/4 + lat/2) = t  -> lat = 2*atan(t) - PI/2
+                latr = 2.0 * math.atan(t) - PI/2.0
+            else:
+                # North pole
+                # forward used: tan(PI/4 - lat/2) = t  -> lat = PI/2 - 2*atan(t)
+                latr = PI/2.0 - 2.0 * math.atan(t)
+
+            # longitude from sin/cos ordering used in forward: x = factor*sin(lon), y = factor*cos(lon)
+            lonr = math.atan2(x, y)
+
+            deglon = lonr * raddeg
+            deglat = latr * raddeg
+
+            # normalize lon to -180..180
+            if deglon > 180.0:
+                deglon -= 360.0
+            if deglon < -180.0:
+                deglon += 360.0
+
+            return deglon, deglat
+
+
+    # Lunar Transverse Mercator (LTM) Projection
+    # ---- Central meridian of 8-degree zone ----
+    # central meridian
+    cm = -180.0 + ((z - 1) + 0.5) * 8.0      # longitude of central meridian (note: z-1 because zones start at 1)
+    cmr = cm * degrad
+
+    # ----------------------------------------------------------------------
+    # Forward transformation: lon/lat to LTM
+    # ----------------------------------------------------------------------
+    if iway == ILONGLAT2LTM:
+        rlon = lon * degrad
+        rlat = lat * degrad
+
+        dlam = rlon - cmr
+
+        # ---- Spherical Transverse Mercator (forward) ----
+        B = math.cos(rlat) * math.sin(dlam)
+
+        x = 0.5 * R * scfa * math.log((1.0 + B) / (1.0 - B))
+        y = R * scfa * math.atan2(math.tan(rlat), math.cos(dlam))
+
+        # False origins
+        x += false_east
+        # only for South sections
+        if zone < 0:
+            y += false_north
+
+        return x, y
+
+    # ----------------------------------------------------------------------
+    # Inverse transformation: LTM to lon/lat
+    # ----------------------------------------------------------------------
+    else:
+        # remove false origins
+        x = lon - false_east
+        if zone < 0:
+            # only for South sections
+            y = lat - false_north
+        else:
+            y = lat
+
+        # ---- Spherical TM inverse ----
+        D = y / (R * scfa)
+        T = x / (R * scfa)
+
+        lonr = cmr + math.atan2(math.sinh(T), math.cos(D))
+        latr = math.asin(math.sin(D) / math.cosh(T))
+
+        deglon = lonr * raddeg
+        deglat = latr * raddeg
+
+        # normalize lon to -180..180
+        if deglon > 180.0:
+            deglon -= 360.0
+        if deglon < -180.0:
+            deglon += 360.0
+
+        return deglon, deglat
 
 #
 #----------------------------------------------------------------------------------------
@@ -1342,7 +1624,9 @@ def convert_lonlat2utm(file_in,zone,file_out):
     """
     converts file with lon/lat/elevation to output file utm_x/utm_y/elevation
     """
-    print("converting lon/lat to UTM: " + file_in + " ...")
+    global use_moon_ltm,projMerc
+
+    print(f"converting lon/lat to {projMerc}: " + file_in + " ...")
     print("  zone: %i " % zone)
 
     # checks argument
@@ -1367,8 +1651,13 @@ def convert_lonlat2utm(file_in,zone,file_out):
             lat = float(items[1])
             ele = float(items[2])
 
-            # converts to UTM x/y
-            x,y = geo2utm(lon,lat,zone)
+            if use_moon_ltm:
+                # converts to LTM x/y
+                x,y = geo2ltm(lon,lat,zone)
+            else:
+                # converts to UTM x/y
+                x,y = geo2utm(lon,lat,zone)
+
             #print("%18.8f\t%18.8f\t%18.8f" % (x,y,ele))
             f.write("%18.8f\t%18.8f\t%18.8f\n" % (x,y,ele))
 
@@ -1384,6 +1673,8 @@ def setup_simulation(lon_min,lat_min,lon_max,lat_max):
     global datadir
     global utm_zone
     global incr_dx,toposhift,toposcale
+    global SRTM_type
+    global use_moon_ltm,projMerc
 
     print("")
     print("*******************************")
@@ -1433,9 +1724,17 @@ def setup_simulation(lon_min,lat_min,lon_max,lat_max):
         lon_min -= 360.0
         lon_max -= 360.0
 
+    # check for moon
+    if 'moon' in SRTM_type:
+        print("")
+        print("  using moon topography and Lunar Transverse Mercator (LTM) projection")
+        print("")
+        use_moon_ltm = True
+        projMerc = 'LTM'  # Lunar Transverse Mercator (LTM) (or Lunar Polar system for pole regions)
+
     ## UTM zone
     print("*******************************")
-    print("determining UTM coordinates...")
+    print(f"determining {projMerc} coordinates...")
     print("*******************************")
     print(f"  region: lon min/max = {lon_min} / {lon_max}")
     print(f"          lat min/max = {lat_min} / {lat_max}")
@@ -1444,16 +1743,34 @@ def setup_simulation(lon_min,lat_min,lon_max,lat_max):
     midpoint_lat = (lat_min + lat_max)/2.0
     midpoint_lon = (lon_min + lon_max)/2.0
 
-    utm_zone_letter = utm.latitude_to_zone_letter(midpoint_lat)  # zone letters: XWVUTSRQPN north, MLKJHGFEDC south
-    hemisphere = 'N' if utm_zone_letter in "XWVUTSRQPN" else 'S'
+    # determine UTM zone
+    if use_moon_ltm:
+        # Moon LTM/LPS zone
+        zone = geo2ltm(midpoint_lon,midpoint_lat,zone=None,iway=2) # iway==2 LONGLAT2UTM, zone set to None to determine it
+        # LTM zones from 1 to 45, LPS is +/- 46
+        utm_zone = zone
+        utm_zone_letter = f"{utm_zone}"  # no particular lettering for LTM, just 1N, 1S, .., 45N, 45S
+        # hemisphere N for lat >= 0
+        if midpoint_lat >= 0.0:
+            hemisphere = 'N'
+        else:
+            hemisphere = 'S'
+        # check if LTM or LPS
+        if int(abs(utm_zone)) == 46: projMerc = 'LPS'  # Lunar Polar Stereographic (LPS)
 
-    utm_zone = utm.latlon_to_zone_number(midpoint_lat,midpoint_lon)
-    print("  region midpoint lat/lon: %f / %f " %(midpoint_lat,midpoint_lon))
-    print("  UTM zone: {}{}".format(utm_zone,hemisphere))
+    else:
+        # UTM zone
+        utm_zone_letter = utm.latitude_to_zone_letter(midpoint_lat)  # zone letters: XWVUTSRQPN north, MLKJHGFEDC south
+        hemisphere = 'N' if utm_zone_letter in "XWVUTSRQPN" else 'S'
+
+        utm_zone = utm.latlon_to_zone_number(midpoint_lat,midpoint_lon)
+
+    print(f"  region midpoint lat/lon: {midpoint_lat:.2f} / {midpoint_lon:.2f}")
+    print(f"  {projMerc} zone: {utm_zone}{hemisphere}")
     print("")
 
     # SPECFEM uses positive (+) zone numbers for Northern, negative (-) zone numbers for Southern hemisphere
-    if hemisphere == 'S':
+    if not use_moon_ltm and hemisphere == 'S':
         utm_zone = - utm_zone
         print("  Southern hemisphere")
         print("  using negative zone number: {} (for SPECFEM format)".format(utm_zone))
@@ -1463,7 +1780,11 @@ def setup_simulation(lon_min,lat_min,lon_max,lat_max):
     xyz_file = get_topo(lon_min,lat_min,lon_max,lat_max)
 
     # converting to utm
-    utm_file = 'ptopo.utm'
+    if use_moon_ltm:
+        utm_file = 'ptopo.ltm'
+    else:
+        utm_file = 'ptopo.utm'
+
     convert_lonlat2utm(xyz_file,utm_zone,utm_file)
     #script version
     #cmd = '../topo/convert_lonlat2utm.py ' + xyz_file + ' ' + str(utm_zone) + ' > ' + utm_file
@@ -1516,6 +1837,7 @@ def usage():
     print("                                          'topo15' / 'srtm15s' / 'srtm_500m' == SRTM topo 15s (15-arc seconds)")
     print("                                          'topo3' / 'srtm3s' / 'srtm_100m' == SRTM topo 3s (3-arc seconds)")
     print("                                          'topo1' / 'srtm1s' / 'srtm_30m' == SRTM topo 1s (1-arc seconds)")
+    print("                                          'moon' == Moon 2m (2-arc minutes) / 'moon15s' == Moon 15s (15-arc seconds)")
     print("       incr_dx                         - (optional) GMT grid sampling (in degrees)")
     print("                                         e.g., 0.01 == (~1.1km) [default %f degrees ~ %f km]" % (incr_dx,incr_dx_km))
     print("       toposhift                       - (optional) topography shift for 2nd interface (in m)")
