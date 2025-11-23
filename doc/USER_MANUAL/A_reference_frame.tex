@@ -1,4 +1,6 @@
+%-----------------------------------------------------------------------------------------------------------------------------------%
 \chapter{Reference Frame Convention}\label{cha:Coordinates}
+%-----------------------------------------------------------------------------------------------------------------------------------%
 
 The code uses the following convention for the Cartesian reference
 frame:
@@ -22,7 +24,9 @@ and the Global/Harvard CMT convention is
 \item the $z$ axis points up
 \end{itemize}
 
+%-----------------------------------------------------------------------------------------------------------------------------------%
 \subsection*{Source and receiver locations}
+%-----------------------------------------------------------------------------------------------------------------------------------%
 
 The SPECFEM3D Cartesian software code internally uses Cartesian coordinates.
 The given locations for sources and receiver locations thus may get
@@ -47,7 +51,9 @@ flag \texttt{USE\_SOURCES\_RECEIVERS\_Z} to \texttt{.true.} in
 \texttt{DATA/Par\_file}.\newline
 
 
+%-----------------------------------------------------------------------------------------------------------------------------------%
 \subsection*{Seismogram outputs}
+%-----------------------------------------------------------------------------------------------------------------------------------%
 
 The seismogram output directions are given in Cartesian $x$/$y$/$z$
 directions and not rotated any further. Changing flags in \texttt{setup/constants.h} only rotates the seismogram
