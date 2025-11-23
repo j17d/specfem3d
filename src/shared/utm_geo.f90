@@ -114,7 +114,7 @@
 ! 3 degrees away from both zone boundary.
 !
   use constants, only: PI,ILONGLAT2UTM,IUTM2LONGLAT
-  use shared_input_parameters, only: UTM_PROJECTION_ZONE,SUPPRESS_UTM_PROJECTION
+  use shared_input_parameters, only: UTM_PROJECTION_ZONE,SUPPRESS_UTM_PROJECTION,USE_LUNAR_PROJECTIONS
 
   implicit none
 
@@ -162,6 +162,14 @@
       rlon4 = rx4
       rlat4 = ry4
     endif
+    ! all done
+    return
+  endif
+
+  ! check if we need to use a lunar projection instead of UTM
+  if (USE_LUNAR_PROJECTIONS) then
+    ! convert using Lunar Transverse Mercator (LTM) and Lunar Polar Stereographic (LPS) projections
+    call ltm_geo(rlon4,rlat4,rx4,ry4,iway)
     ! all done
     return
   endif
@@ -347,3 +355,322 @@
 
   end subroutine utm_geo
 
+
+!=====================================================================
+!
+!  Lunar Transverse Mercator (LTM) and Lunar Polar Stereographic (LPS) projection
+!
+!=====================================================================
+
+  subroutine ltm_geo(rlon4,rlat4,rx4,ry4,iway)
+
+!     LTM_GEO performs LTM/LPS to geodetic (lon/lat) translation, and back.
+!
+!     This routine assumes a perfectly spherical Moon.
+!     LTM implementation is a simplified Spherical Transverse Mercator, 8-degree zones.
+!
+!     Note: by default, the LTM implementation in the python script
+!     LGRS_Coordinate_Conversion_mk7.2.py provided by USGS astrogeology site
+!https://astrogeology.usgs.gov/search/map/lunar-map-projections-and-grid-reference-system-for-artemis-astronaut-surface-navigation
+!     uses a spherical Moon for their LTM projection.
+!
+!     However, they still use the formula for a Gauss-Schreiber projection,
+!     that combines a projection of an ellipsoid to a sphere followed by a
+!     spherical transverse Mercator formula. Assuming the ellipsoid is perfectly
+!     spherical, then the first projection is an identity transform and only the
+!     second, spherical transverse Mercator formula is needed.
+!     Here, we use this simplification of applying directly the spherical
+!     Transverse Mercator projection, assuming a spherical Moon.
+!
+!     Input/Output arguments:
+!
+!        rlon4                 Longitude (degrees, range [-180,180])
+!        rlat4                 Latitude (degrees, range [-90,90])
+!        rx4                   LTM/LPS easting (meters)
+!        ry4                   LTM/LPS northing (meters)
+!        zone                  LTM/LPS zone
+!                              LTM zones use 1 to 45, positive for Northern hemisphere,
+!                              negative for Southern hemisphere
+!                              LPS zones use 46 for North pole, -46 for South pole
+!        iway                  Conversion type
+!                              ILONGLAT2LTM = ILONGLAT2UTM = geodetic to LTM/LPS
+!                              ILTM2LONGLAT = IUTM2LONGLAT = LTM/LPS to geodetic
+
+  use constants, only: PI,ILONGLAT2UTM
+  use shared_input_parameters, only: UTM_PROJECTION_ZONE,SUPPRESS_UTM_PROJECTION,USE_LUNAR_PROJECTIONS
+
+  implicit none
+
+  ! input/output parameters
+  double precision, intent(inout) :: rx4,ry4,rlon4,rlat4
+  integer, intent(in) :: iway
+
+  ! local parameters
+  double precision, parameter :: DEGREES_TO_RADIANS = PI/180.d0, RADIANS_TO_DEGREES = 180.d0/PI
+
+  ! Lunar spherical radius
+  double precision, parameter :: R = 1737400.0d0   ! mean lunar radius (meters)
+
+  ! Lunar map projection scale factors
+  double precision, parameter :: scfa = 0.999d0         ! transverse Mercator (LTM)
+  double precision, parameter :: scfa_polar = 0.994d0   ! polar stereographic (LPS)
+
+  ! False origins
+  double precision, parameter :: false_east  =  250000.0d0
+  double precision, parameter :: false_north = 2500000.0d0
+  double precision, parameter :: false_east_polar  =  500000.0d0
+  double precision, parameter :: false_north_polar =  500000.0d0
+
+  ! local variables
+  integer :: zone,z
+  double precision :: rlon,rlat
+  double precision :: cm,cmr,dlam
+  double precision :: xx,yy
+  double precision :: B,D,T,A,t_polar,rho
+  logical :: use_polar
+
+  ! checks if conversion to LTM/LPS has to be done
+  if (SUPPRESS_UTM_PROJECTION) then
+    if (iway == ILONGLAT2UTM) then
+      rx4 = rlon4
+      ry4 = rlat4
+    else
+      rlon4 = rx4
+      rlat4 = ry4
+    endif
+    ! all done
+    return
+  endif
+
+  ! check if lunar projection
+  if (.not. USE_LUNAR_PROJECTIONS) &
+    stop 'Error: USE_LUNAR_PROJECTIONS lunar projection flag is invalid in ltm_geo() routine'
+
+  ! check zone
+  if (UTM_PROJECTION_ZONE == 0 .or. abs(UTM_PROJECTION_ZONE) > 46) then
+    ! user info
+    print *,'Error: zone ',zone,'is invalid for Moon projections LTM/LPS; must be +/- 1-45 for LTM, +/- 46 for LPS'
+    print *
+    ! determine zone if it is unspecified in forward mode, compute from longitude/latitude position
+    if (iway == ILONGLAT2UTM) then
+      call get_ltm_zone(rlon4,rlat4,zone)
+      ! user info
+      print *,'       For the current lunar position lat/lon = ',sngl(rlat4),'/',sngl(rlon4)
+      print *,'       the correct LTM/LPS zone would be      = ',zone
+      print *
+    endif
+    print *,'       Please check the UTM_PROJECTION_ZONE setting in your Par_file.'
+    print *
+    ! returns error
+    stop 'Error: zone is invalid for Moon projections LTM/LPS; must be +/- 1-45 for LTM, +/- 46 for LPS'
+  endif
+
+  ! Initialize
+  use_polar = .false.
+
+  ! zone index absolute
+  zone = UTM_PROJECTION_ZONE
+  if (zone == 0) zone = 1
+  z = abs(zone)
+
+  ! check if LPS or LTM
+  if (z == 46) use_polar = .true.
+
+!
+!---- Lunar Polar Stereographic (LPS) projection
+!
+  if (use_polar) then
+
+    if (iway == ILONGLAT2UTM) then
+      ! Forward transformation: lon/lat to LPS
+      ! Snyder (1987) spherical equations
+      rlon = rlon4 * DEGREES_TO_RADIANS
+      rlat = rlat4 * DEGREES_TO_RADIANS
+
+      ! Calculate polar stereographic spherical scale factor
+      A = 2.0d0 * R * scfa_polar
+
+      if (zone < 0) then
+        ! South pole
+        t_polar = tan(PI/4.0d0 + rlat/2.0d0)
+      else
+        ! North pole
+        t_polar = tan(PI/4.0d0 - rlat/2.0d0)
+      endif
+
+      ! Stereographic map projection, Snyder (1987)
+      ! Note: here, we use +cos(lon) as done in routine spherical_stereographic_map_y()
+      ! of the USGS script LGRS_Coordinate_Conversion_mk7.2.py for both, North and South poles.
+      ! The standard polar stereographic projection defined by Snyder would use
+      ! North Pole: x = 2 R k0 tan(pi/4 - phi/2) sin(lambda - lambda0)
+      !             y = - 2 R k0 tan(pi/4 - phi/2) cos(lambda - lambda0)
+      ! South Pole: x = 2 R k0 tan(pi/4 + phi/2) sin(lambda - lambda0)
+      !             y = 2 R k0 tan(pi/4 + phi/2) cos(lambda - lambda0)
+      ! (see Snyder 1987, page 158, chapter 21 "Stereographic Projection",
+      !  section "Formulas for the Sphere", eqs. 21-5, 21-6 and 21-9,21-10.
+      !  https://pubs.usgs.gov/pp/1395/report.pdf ).
+      ! We take the convention from the USGS implementation to use +cos for both poles.
+
+      ! X coordinate for a stereographic map projection
+      xx = A * t_polar * sin(rlon)
+      ! Y coordinate for a stereographic map projection
+      yy = A * t_polar * cos(rlon)
+
+      ! Add false Eastings and Northings
+      xx = xx + false_east_polar
+      yy = yy + false_north_polar
+
+      ! Forward mode: set computed x,y values
+      rx4 = xx
+      ry4 = yy
+
+    else
+      ! Inverse transformation: LPS to lon/lat
+      ! remove false origins (must be same values used in forward)
+      xx = rx4 - false_east_polar
+      yy = ry4 - false_north_polar
+
+      ! radial distance from projection origin
+      rho = sqrt(xx**2 + yy**2)
+
+      ! at the pole: rho == 0
+      if (rho == 0.0d0) then
+        if (zone < 0) then
+          rlat4 = -90.0d0
+        else
+          rlat4 = 90.0d0
+        endif
+        rlon4 = 0.0d0
+        ! all done
+        return
+      endif
+
+      A = 2.0d0 * R * scfa_polar
+
+      ! t = tan( PI/4 ± lat/2 )  where sign depends on hemisphere in forward
+      t_polar = rho / A
+
+      if (zone < 0) then
+        ! South pole
+        ! forward used: tan(PI/4 + lat/2) = t  -> lat = 2*atan(t) - PI/2
+        rlat = 2.0d0 * atan(t_polar) - PI/2.0d0
+      else
+        ! North pole
+        ! forward used: tan(PI/4 - lat/2) = t  -> lat = PI/2 - 2*atan(t)
+        rlat = PI/2.0d0 - 2.0d0 * atan(t_polar)
+      endif
+
+      ! longitude from sin/cos ordering used in forward: x = factor*sin(lon), y = factor*cos(lon)
+      rlon = atan2(xx, yy)
+
+      ! Inverse mode: set computed lon,lat values
+      rlon4 = rlon * RADIANS_TO_DEGREES
+      rlat4 = rlat * RADIANS_TO_DEGREES
+
+      ! normalize lon to -180..180
+      if (rlon4 > 180.0d0) rlon4 = rlon4 - 360.0d0
+      if (rlon4 < -180.0d0) rlon4 = rlon4 + 360.0d0
+    endif
+
+  else
+
+!
+!---- Lunar Transverse Mercator (LTM) Projection
+!
+
+    ! Central meridian of 8-degree zone
+    cm = -180.0d0 + (dble(z - 1) + 0.5d0) * 8.0d0
+    cmr = cm * DEGREES_TO_RADIANS
+
+    if (iway == ILONGLAT2UTM) then
+      ! Forward transformation: lon/lat to LTM
+      rlon = rlon4 * DEGREES_TO_RADIANS
+      rlat = rlat4 * DEGREES_TO_RADIANS
+
+      dlam = rlon - cmr
+
+      ! Spherical Transverse Mercator (forward)
+      B = cos(rlat) * sin(dlam)
+
+      xx = 0.5d0 * R * scfa * log((1.0d0 + B) / (1.0d0 - B))
+      yy = R * scfa * atan2(tan(rlat), cos(dlam))
+
+      ! False origins
+      xx = xx + false_east
+      ! only for South sections
+      if (zone < 0) yy = yy + false_north
+
+      ! Forward mode: set computed x,y values
+      rx4 = xx
+      ry4 = yy
+
+    else
+      ! Inverse transformation: LTM to lon/lat
+      ! remove false origins
+      xx = rx4 - false_east
+      if (zone < 0) then
+        ! only for South sections
+        yy = ry4 - false_north
+      else
+        yy = ry4
+      endif
+
+      ! Spherical TM inverse
+      D = yy / (R * scfa)
+      T = xx / (R * scfa)
+
+      rlon = cmr + atan2(sinh(T), cos(D))
+      rlat = asin(sin(D) / cosh(T))
+
+      ! Inverse mode: set computed lon,lat values
+      rlon4 = rlon * RADIANS_TO_DEGREES
+      rlat4 = rlat * RADIANS_TO_DEGREES
+
+      ! normalize lon to -180..180
+      if (rlon4 > 180.0d0) rlon4 = rlon4 - 360.0d0
+      if (rlon4 < -180.0d0) rlon4 = rlon4 + 360.0d0
+    endif
+
+  endif
+
+  end subroutine ltm_geo
+
+!
+!------------------------------------------------------------------------------------------
+!
+
+  subroutine get_ltm_zone(lon,lat,zone)
+
+! gets lunar LTM/LPS zone for given lon/lat (in degrees)
+
+  implicit none
+
+  ! input/output parameters
+  double precision, intent(in) :: lon,lat
+  ! local variables
+  integer, intent(out) :: zone
+
+  ! initializes
+  zone = 0
+
+  ! LTM - latitude range for LTM [-82,82], beyond is polar region
+  if (lat >= -82.0d0 .and. lat <= 82.0d0) then
+    ! longitudinal zone
+    zone = int((lon + 180.0d0) / 8.0d0) + 1
+
+    ! 180-degree values sometimes come up as 46. We assign it back to zone 1
+    if (zone > 45) zone = zone - 45
+
+    ! we use negative values for Southern hemisphere
+    if (lat < 0.0d0) zone = -zone
+
+  else
+    ! LPS - polar region
+    if (lat >= 0.0d0) then
+      zone = 46    ! north pole
+    else
+      zone = -46   ! south pole
+    endif
+  endif
+
+  end subroutine get_ltm_zone

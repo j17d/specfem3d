@@ -223,6 +223,9 @@ end module constants
   double precision :: SCATTERING_CORRELATION = 1.d0
   character(len=MAX_STRING_LEN) :: SCATTERING_MATERIAL_IDS = ""
 
+  ! Moon's Lunar Projections (LTM/LPS) instead of UTM
+  logical :: USE_LUNAR_PROJECTIONS = .false.
+
   end module shared_input_parameters
 
 !

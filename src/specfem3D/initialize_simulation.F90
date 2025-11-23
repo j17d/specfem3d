@@ -116,10 +116,22 @@
                    tiny(1._CUSTOM_REAL),huge(1._CUSTOM_REAL)
     write(IMAIN,*)
 
-    write(IMAIN,'(a)',advance='no') ' velocity model: '
+    ! velocity model
+    if (USE_LUNAR_PROJECTIONS) then
+      ! Moon
+      write(IMAIN,*) 'Moon simulation model: ',trim(MODEL)
+      if (.not. SUPPRESS_UTM_PROJECTION) then
+        write(IMAIN,*) '  using lunar projections (LTM/LPS) instead of UTM'
+      endif
+      write(IMAIN,*)
+      write(IMAIN,'(a)',advance='no') ' velocity model type:'
+    else
+      write(IMAIN,'(a)',advance='no') ' velocity model:'
+    endif
+
     select case (IMODEL)
     case (IMODEL_DEFAULT)
-    write(IMAIN,'(a)',advance='yes') '  default '
+    write(IMAIN,'(a)',advance='yes') '  default'
     case (IMODEL_GLL)
     write(IMAIN,'(a)',advance='yes') '  gll'
     case (IMODEL_1D_PREM)

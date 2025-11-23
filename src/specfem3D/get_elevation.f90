@@ -34,7 +34,7 @@
 
 ! routine for an array of points
 
-  use constants
+  use constants, only: CUSTOM_REAL,HUGEVAL,ILONGLAT2UTM
   use specfem_par, only: ibool,myrank,NSPEC_AB,NGLOB_AB,USE_SOURCES_RECEIVERS_Z, &
                          xstore,ystore,zstore,NPROC,num_free_surface_faces,free_surface_ispec,free_surface_ijk
   implicit none

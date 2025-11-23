@@ -1268,8 +1268,8 @@
     NSOURCES = 0
   else
     ! gets number of sources
-    !NQDU call count_number_of_sources(NSOURCES,sources_filename)
     if (USE_CMT_AND_FORCE_SOURCE) then
+      ! combined forces and CMTs
       if (.not. USE_BINARY_SOURCE_FILE) then
         ! Force
         sources_filename = path_to_add(1:len_trim(path_to_add)) // &
@@ -1287,6 +1287,7 @@
       endif
       NSOURCES = NSOURCES_CMT + NSOURCES_FORCE
     else
+      ! single type of source
       NSOURCES_CMT = 0
       NSOURCES_FORCE = 0
       call count_number_of_sources_by_type(NSOURCES,sources_filename,USE_FORCE_POINT_SOURCE)
@@ -1350,6 +1351,13 @@
     !endif
   case ('coupled')
     IMODEL = IMODEL_COUPLED
+  ! for Moon simulations
+  case ('moon_default')
+    IMODEL = IMODEL_DEFAULT
+    USE_LUNAR_PROJECTIONS = .true.  ! uses Lunar projections LTM/LPS instead of UTM
+  case ('moon_tomo')
+    IMODEL = IMODEL_TOMO
+    USE_LUNAR_PROJECTIONS = .true.  ! uses Lunar projections LTM/LPS instead of UTM
   case default
     print *
     print *,'********** model not recognized: ',trim(MODEL),' **************'
@@ -1365,6 +1373,32 @@
   if (IMODEL == IMODEL_IPATI .or. IMODEL == IMODEL_IPATI_WATER) then
     if (USE_RICKER_TIME_FUNCTION .eqv. .false.) &
       stop 'Error for IPATI model, please set USE_RICKER_TIME_FUNCTION to .true. in Par_file and rerun solver'
+  endif
+
+  ! check UTM values
+  if (.not. SUPPRESS_UTM_PROJECTION) then
+    ! projection number range
+    if (USE_LUNAR_PROJECTIONS) then
+      ! check Moon LTM/LPS zone range from +/- [1-46]
+      if (UTM_PROJECTION_ZONE == 0 .or. abs(UTM_PROJECTION_ZONE) > 46) then
+        ! user info
+        print *,'Error: UTM_PROJECTION_ZONE ',UTM_PROJECTION_ZONE,' is invalid for Moon projections LTM/LPS'
+        print *,'       For lunar systems, the zone number must be +/- 1-45 for LTM, +/- 46 for LPS'
+        print *,'       Please check the UTM_PROJECTION_ZONE setting in your Par_file.'
+        print *
+        stop 'Error: UTM_PROJECTION_ZONE for Lunar LTM/LPS projections must be in range +/- 1-45 and +/- 46 (polar regions)'
+      endif
+    else
+      ! UTM uses zone range from +/- [1-60]
+      if (UTM_PROJECTION_ZONE == 0 .or. abs(UTM_PROJECTION_ZONE) > 60) then
+        ! user info
+        print *,'Error: UTM_PROJECTION_ZONE ',UTM_PROJECTION_ZONE,' is invalid for UTM projection'
+        print *,'       For UTM, the zone number must be +/- 1-60, with positive/negative number for northern/southern hemisphere'
+        print *,'       Please check the UTM_PROJECTION_ZONE setting in your Mesh_Par_file.'
+        print *
+        stop 'Error: UTM_PROJECTION_ZONE must be in range +/- 1-60'
+      endif
+    endif
   endif
 
   end subroutine read_compute_parameters
@@ -1468,7 +1502,7 @@
   call bcast_all_singlel(USE_EXTERNAL_SOURCE_FILE)
   call bcast_all_singlel(PRINT_SOURCE_TIME_FUNCTION)
 
-  !NQDU bcast cmt + force parameters
+  ! bcast cmt + force parameters
   call bcast_all_singlel(USE_CMT_AND_FORCE_SOURCE)
   call bcast_all_singlel(USE_BINARY_SOURCE_FILE)
 
@@ -1546,9 +1580,13 @@
   call bcast_all_singlei(NSOURCES)
   call bcast_all_singlel(HAS_FINITE_FAULT_SOURCE)
 
-  !NQDU
+  ! CMTs/Forces
   call bcast_all_singlei(NSOURCES_CMT)
   call bcast_all_singlei(NSOURCES_FORCE)
+
+  ! Moon
+  call bcast_all_singlel(USE_LUNAR_PROJECTIONS)
+
 
   end subroutine broadcast_computed_parameters
 

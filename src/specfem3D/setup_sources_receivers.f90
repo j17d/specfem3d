@@ -216,7 +216,7 @@
            hdur_Gaussian(NSOURCES), &
            utm_x_source(NSOURCES), &
            utm_y_source(NSOURCES), &
-           isource_glob2loc(NSOURCES), &  ! nqdu add
+           isource_glob2loc(NSOURCES), &
            nu_source(NDIM,NDIM,NSOURCES),stat=ier)
   if (ier /= 0) call exit_MPI_without_rank('error allocating array 2049')
   if (ier /= 0) stop 'error allocating arrays for sources'
@@ -268,13 +268,9 @@
     NSTEP_STF = 1
     NSOURCES_STF = 1
   endif
+
   ! allocate array that contains the user defined source time function
-  ! allocate(user_source_time_function(NSTEP_STF, NSOURCES_STF),stat=ier)
-  ! if (ier /= 0) call exit_MPI_without_rank('error allocating array 2058')
-  ! if (ier /= 0) stop 'error allocating arrays for user sources time function'
-  ! user_source_time_function(:,:) = 0.0_CUSTOM_REAL
-  ! allocate array that contains the user defined source time function
-  if (.not. USE_BINARY_SOURCE_FILE) then  !nqdu added
+  if (.not. USE_BINARY_SOURCE_FILE) then
     allocate(user_source_time_function(NSTEP_STF, NSOURCES_STF),stat=ier)
     if (ier /= 0) call exit_MPI_without_rank('error allocating array 2058')
     if (ier /= 0) stop 'error allocating arrays for user sources time function'
@@ -422,8 +418,6 @@
   ! local parameters
   double precision :: t0_acoustic
   integer :: isource,ispec
-
-  !nqdu
   double precision :: t0_cmt
   character(len=MAX_STRING_LEN) :: path_to_add,filename
 

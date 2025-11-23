@@ -105,13 +105,24 @@
   BROADCAST_AFTER_READ = .true.
   call read_parameter_file(BROADCAST_AFTER_READ)
 
+  ! Moon
+  if (USE_LUNAR_PROJECTIONS) then
+    ! user info
+    if (myrank == 0) then
+      write(IMAIN,*) 'Moon simulation model: ',trim(MODEL)
+      if (.not. SUPPRESS_UTM_PROJECTION) then
+        write(IMAIN,*) '  using lunar projections (LTM/LPS) instead of UTM'
+      endif
+      write(IMAIN,*)
+    endif
+  endif
+
   ! make sure everybody is synchronized
   call synchronize_all()
 
   ! if meshing a chunk of the Earth, call a specific internal mesher designed specifically for that
   ! CD CD change this to have also the possibility to use a chunk without coupling
   if (MESH_A_CHUNK_OF_THE_EARTH) then
-
     ! user output
     if (myrank == 0) then
       write(IMAIN,*)
@@ -120,7 +131,7 @@
       call flush_IMAIN()
     endif
 
-    !! VM VM : new way to mesh and store mesh in geocubit format
+    ! new way to mesh and store mesh in geocubit format
     if (myrank == 0) then  !! serial mesh and use decompose_mesh after
        call mesh_chunk_earth()
        write(*,*) 'Done creating a chunk of the earth Mesh (HEX8 elements), see directory MESH/'
@@ -136,22 +147,18 @@
     !call bcast_input_param_to_all()
     !call read_mesh_parameter_file()
 
-
-    !! VM VM old way to create  MESH_A_CHUNK_OF_THE_EARTH, but still some routines that will
-    !! move in the new way thus not remove for now
+    ! old way to create  MESH_A_CHUNK_OF_THE_EARTH, but still some routines that will
+    ! move in the new way thus not remove for now
     if (NGNOD == 8) then
       ! creates mesh in MESH/
       call earth_chunk_HEX8_Mesher(NGNOD)
       ! done with mesher
       stop 'Done creating a chunk of the earth Mesh (HEX8 elements), see directory MESH/'
-
     else if (NGNOD == 27) then
-
       ! creates mesh in MESH/
       call earth_chunk_HEX27_Mesher(NGNOD)
       ! done with mesher
       stop 'Done creating a chunk of the earth Mesh (HEX27 elements), see directory MESH/'
-
     else
       stop 'Bad number of nodes per hexahedron: NGNOD must be equal to 8 or 27'
     endif
@@ -388,19 +395,42 @@
     write(IMAIN,*) 'longitude max = ',LONGITUDE_MAX
     write(IMAIN,*)
     if (SUPPRESS_UTM_PROJECTION) then
-      write(IMAIN,*) 'this is given directly as UTM'
+      ! Moon
+      if (USE_LUNAR_PROJECTIONS) then
+        write(IMAIN,*) 'this is given directly as LTM/LPS'
+      else
+        write(IMAIN,*) 'this is given directly as UTM'
+      endif
     else
-      write(IMAIN,*) 'this is mapped to UTM in region ',UTM_PROJECTION_ZONE
+      ! Moon
+      if (USE_LUNAR_PROJECTIONS) then
+        write(IMAIN,*) 'this is mapped to LTM/LPS in region ',UTM_PROJECTION_ZONE
+      else
+        write(IMAIN,*) 'this is mapped to UTM in region ',UTM_PROJECTION_ZONE
+      endif
     endif
     write(IMAIN,*)
-    write(IMAIN,*) 'UTM X min = ',UTM_X_MIN
-    write(IMAIN,*) 'UTM X max = ',UTM_X_MAX
-    write(IMAIN,*)
-    write(IMAIN,*) 'UTM Y min = ',UTM_Y_MIN
-    write(IMAIN,*) 'UTM Y max = ',UTM_Y_MAX
-    write(IMAIN,*)
-    write(IMAIN,*) 'UTM size of model along X is ',(UTM_X_MAX-UTM_X_MIN)/1000.,' km'
-    write(IMAIN,*) 'UTM size of model along Y is ',(UTM_Y_MAX-UTM_Y_MIN)/1000.,' km'
+
+    ! Moon
+    if (USE_LUNAR_PROJECTIONS) then
+      write(IMAIN,*) 'LTM/LPS X min = ',UTM_X_MIN
+      write(IMAIN,*) 'LTM/LPS X max = ',UTM_X_MAX
+      write(IMAIN,*)
+      write(IMAIN,*) 'LTM/LPS Y min = ',UTM_Y_MIN
+      write(IMAIN,*) 'LTM/LPS Y max = ',UTM_Y_MAX
+      write(IMAIN,*)
+      write(IMAIN,*) 'LTM/LPS size of model along X is ',(UTM_X_MAX-UTM_X_MIN)/1000.,' km'
+      write(IMAIN,*) 'LTM/LPS size of model along Y is ',(UTM_Y_MAX-UTM_Y_MIN)/1000.,' km'
+    else
+      write(IMAIN,*) 'UTM X min = ',UTM_X_MIN
+      write(IMAIN,*) 'UTM X max = ',UTM_X_MAX
+      write(IMAIN,*)
+      write(IMAIN,*) 'UTM Y min = ',UTM_Y_MIN
+      write(IMAIN,*) 'UTM Y max = ',UTM_Y_MAX
+      write(IMAIN,*)
+      write(IMAIN,*) 'UTM size of model along X is ',(UTM_X_MAX-UTM_X_MIN)/1000.,' km'
+      write(IMAIN,*) 'UTM size of model along Y is ',(UTM_Y_MAX-UTM_Y_MIN)/1000.,' km'
+    endif
     write(IMAIN,*)
     write(IMAIN,*) 'Bottom of the mesh is at a depth of ',dabs(Z_DEPTH_BLOCK)/1000.,' km'
     write(IMAIN,*)
@@ -408,7 +438,12 @@
     if (SUPPRESS_UTM_PROJECTION) then
       write(IMAIN,*) 'suppressing UTM projection'
     else
-      write(IMAIN,*) 'using UTM projection in region ',UTM_PROJECTION_ZONE
+      ! Moon
+      if (USE_LUNAR_PROJECTIONS) then
+        write(IMAIN,*) 'using LTM/LPS projection in region ',UTM_PROJECTION_ZONE
+      else
+        write(IMAIN,*) 'using UTM projection in region ',UTM_PROJECTION_ZONE
+      endif
     endif
     if (PML_CONDITIONS) then
       if (SUPPRESS_UTM_PROJECTION) then

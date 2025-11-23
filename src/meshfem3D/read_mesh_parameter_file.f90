@@ -30,7 +30,7 @@
   use meshfem_par, only: LATITUDE_MIN,LATITUDE_MAX,LONGITUDE_MIN,LONGITUDE_MAX, &
     UTM_X_MIN,UTM_X_MAX,UTM_Y_MIN,UTM_Y_MAX,Z_DEPTH_BLOCK, &
     NEX_XI,NEX_ETA,NPROC_XI,NPROC_ETA,UTM_PROJECTION_ZONE, &
-    LOCAL_PATH,SUPPRESS_UTM_PROJECTION, &
+    LOCAL_PATH,SUPPRESS_UTM_PROJECTION,USE_LUNAR_PROJECTIONS, &
     INTERFACES_FILE,CAVITY_FILE,NSUBREGIONS,subregions, &
     NMATERIALS,material_properties,material_properties_undef, &
     CREATE_ABAQUS_FILES,CREATE_DX_FILES,CREATE_VTK_FILES, &
@@ -64,6 +64,11 @@
   logical :: found
   character(len=MAX_STRING_LEN) :: filename
 
+  integer :: UTM_PROJECTION_ZONE_mesh
+  logical :: SUPPRESS_UTM_PROJECTION_mesh
+  double precision :: midpoint_lon, midpoint_lat
+  integer :: zone
+
   ! Mesh Parameter file
   filename = MF_IN_DATA_FILES(1:len_trim(MF_IN_DATA_FILES)) // 'Mesh_Par_file'
 
@@ -84,6 +89,7 @@
     call flush_IMAIN()
   endif
 
+  ! mesh dimensions
   call read_value_dble_precision_mesh(IIN,IGNORE_JUNK,LATITUDE_MIN, 'LATITUDE_MIN', ier)
   if (ier /= 0) stop 'Error reading Mesh parameter LATITUDE_MIN'
   call read_value_dble_precision_mesh(IIN,IGNORE_JUNK,LATITUDE_MAX, 'LATITUDE_MAX', ier)
@@ -94,15 +100,25 @@
   if (ier /= 0) stop 'Error reading Mesh parameter LONGITUDE_MAX'
   call read_value_dble_precision_mesh(IIN,IGNORE_JUNK,DEPTH_BLOCK_KM, 'DEPTH_BLOCK_KM', ier)
   if (ier /= 0) stop 'Error reading Mesh parameter DEPTH_BLOCK_KM'
-  call read_value_integer_mesh(IIN,IGNORE_JUNK,UTM_PROJECTION_ZONE, 'UTM_PROJECTION_ZONE', ier)
+
+  ! UTM
+  ! note: both parameter files, Par_file and Mesh_Par_file, allow to specifiy UTM zone and suppress flags.
+  !       this provides additional flexibility if one wants to create a mesh with xmeshfem3D by suppressing UTM projections
+  !       and use UTM coordinates directly, but then specifies source/station positions in degrees and convert to UTM
+  !       in the solver.
+  ! here, we re-read and update UTM setting for the mesher
+  call read_value_integer_mesh(IIN,IGNORE_JUNK,UTM_PROJECTION_ZONE_mesh, 'UTM_PROJECTION_ZONE', ier)
   if (ier /= 0) stop 'Error reading Mesh parameter UTM_PROJECTION_ZONE'
-  call read_value_logical_mesh(IIN,IGNORE_JUNK,SUPPRESS_UTM_PROJECTION, 'SUPPRESS_UTM_PROJECTION', ier)
+  call read_value_logical_mesh(IIN,IGNORE_JUNK,SUPPRESS_UTM_PROJECTION_mesh, 'SUPPRESS_UTM_PROJECTION', ier)
   if (ier /= 0) stop 'Error reading Mesh parameter SUPPRESS_UTM_PROJECTION'
+
+  ! interfaces / cavities files
   call read_value_string_mesh(IIN,IGNORE_JUNK,INTERFACES_FILE, 'INTERFACES_FILE', ier)
   if (ier /= 0) stop 'Error reading Mesh parameter INTERFACES_FILE'
   call read_value_string_mesh(IIN,IGNORE_JUNK,CAVITY_FILE, 'CAVITY_FILE', ier)
   if (ier /= 0) stop 'Error reading Mesh parameter CAVITY_FILE'
 
+  ! number of elements & number of processes for "french fries" partitioning
   call read_value_integer_mesh(IIN,IGNORE_JUNK,NEX_XI, 'NEX_XI', ier)
   if (ier /= 0) stop 'Error reading Mesh parameter NEX_XI'
   call read_value_integer_mesh(IIN,IGNORE_JUNK,NEX_ETA, 'NEX_ETA', ier)
@@ -304,6 +320,66 @@
     write(IMAIN,*) '  checking mesh setup...'
     call flush_IMAIN()
   endif
+
+  ! warning for different UTM zone settings
+  if (myrank == 0) then
+    if ((SUPPRESS_UTM_PROJECTION_mesh .eqv. .false.) .and. (SUPPRESS_UTM_PROJECTION .eqv. .false.)) then
+      ! warning if not in same zone
+      if (UTM_PROJECTION_ZONE_mesh /= UTM_PROJECTION_ZONE) then
+        print *
+        print *,'********************************************************************'
+        print *,'Warning: UTM_PROJECTION_ZONE is different in Par_file and Mesh_Par_file!'
+        print *,'         Par_file      uses zone: ',UTM_PROJECTION_ZONE
+        print *,'         Mesh_Par_file uses zone: ',UTM_PROJECTION_ZONE_mesh
+        print *
+        print *,'         This might lead to mislocating source/receivers for your simulation.'
+        print *,'         Please double-check your setup, will continue for now ...'
+        print *,'********************************************************************'
+        print *
+      endif
+    endif
+  endif
+
+  ! impose Mesh_Par_file values from here on
+  SUPPRESS_UTM_PROJECTION = SUPPRESS_UTM_PROJECTION_mesh
+  UTM_PROJECTION_ZONE = UTM_PROJECTION_ZONE_mesh
+
+  ! checks UTM values
+  if (myrank == 0) then
+    if (.not. SUPPRESS_UTM_PROJECTION) then
+      ! projection number range
+      if (USE_LUNAR_PROJECTIONS) then
+        ! check Moon LTM/LPS zone range from +/- [1-46]
+        if (UTM_PROJECTION_ZONE == 0 .or. abs(UTM_PROJECTION_ZONE) > 46) then
+          ! user info
+          print *,'Error: UTM_PROJECTION_ZONE ',UTM_PROJECTION_ZONE,' is invalid for Moon projections LTM/LPS'
+          print *,'       For lunar systems, the zone number must be +/- 1-45 for LTM, +/- 46 for LPS'
+          print *,'       Please check the UTM_PROJECTION_ZONE setting in your Par_file.'
+          print *
+          ! provide zone estimate
+          midpoint_lon = 0.5d0 * (LONGITUDE_MIN + LONGITUDE_MAX)
+          midpoint_lat = 0.5d0 * (LATITUDE_MIN + LATITUDE_MAX)
+          call get_ltm_zone(midpoint_lon,midpoint_lat,zone)
+          ! user info
+          print *,'       For the current mesh midpoint lat/lon = ',sngl(midpoint_lat),'/',sngl(midpoint_lon)
+          print *,'       the correct LTM/LPS zone would be      = ',zone
+          print *
+          stop 'Error: UTM_PROJECTION_ZONE for Lunar LTM/LPS projections must be in range +/- 1-45 and +/- 46 (polar regions)'
+        endif
+      else
+        ! UTM zone range from +/- [1-60]
+        if (UTM_PROJECTION_ZONE == 0 .or. abs(UTM_PROJECTION_ZONE) > 60) then
+          ! user info
+          print *,'Error: UTM_PROJECTION_ZONE ',UTM_PROJECTION_ZONE,' is invalid for UTM projection'
+          print *,'       For UTM, the zone number must be +/- 1-60, with positive/negative number for northern/southern hemisphere'
+          print *,'       Please check the UTM_PROJECTION_ZONE setting in your Mesh_Par_file.'
+          print *
+          stop 'Error: UTM_PROJECTION_ZONE must be in range +/- 1-60'
+        endif
+      endif
+    endif
+  endif
+  call synchronize_all()
 
   ! convert model size to UTM coordinates and depth of mesh to meters
   call utm_geo(LONGITUDE_MIN,LATITUDE_MIN,UTM_X_MIN,UTM_Y_MIN,ILONGLAT2UTM)

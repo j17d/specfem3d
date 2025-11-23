@@ -87,11 +87,22 @@
        stop 'elements should have 8 or 27 control nodes, please modify NGNOD in Par_file'
     endif
 
-    write(IMAIN,'(a)',advance='no') ' velocity model: '
+    ! velocity model
+    if (USE_LUNAR_PROJECTIONS) then
+      ! Moon
+      write(IMAIN,*) 'Moon simulation model: ',trim(MODEL)
+      if (.not. SUPPRESS_UTM_PROJECTION) then
+        write(IMAIN,*) '  using lunar projections (LTM/LPS) instead of UTM'
+      endif
+      write(IMAIN,*)
+      write(IMAIN,'(a)',advance='no') ' velocity model type:'
+    else
+      write(IMAIN,'(a)',advance='no') ' velocity model:'
+    endif
 
     select case (IMODEL)
     case (IMODEL_DEFAULT )
-    write(IMAIN,'(a)',advance='yes') '  default '
+    write(IMAIN,'(a)',advance='yes') '  default'
     case (IMODEL_GLL )
     write(IMAIN,'(a)',advance='yes') '  gll'
     case (IMODEL_1D_PREM )
@@ -148,7 +159,12 @@
     if (SUPPRESS_UTM_PROJECTION) then
       write(IMAIN,*) 'suppressing UTM projection'
     else
-      write(IMAIN,*) 'using UTM projection in region ',UTM_PROJECTION_ZONE
+      ! Moon
+      if (USE_LUNAR_PROJECTIONS) then
+        write(IMAIN,*) 'using LTM/LPS projection in region ',UTM_PROJECTION_ZONE
+      else
+        write(IMAIN,*) 'using UTM projection in region ',UTM_PROJECTION_ZONE
+      endif
     endif
     write(IMAIN,*)
 
@@ -190,12 +206,7 @@
     endif
     write(IMAIN,*)
 
-    !NQDU
-    ! if (USE_FORCE_POINT_SOURCE) then
-    !    write(IMAIN,*) 'using a FORCESOLUTION source instead of a CMTSOLUTION source'
-    ! else
-    !    write(IMAIN,*) 'using a CMTSOLUTION source'
-    ! endif
+    ! sources
     if (.not. USE_CMT_AND_FORCE_SOURCE) then
       if (USE_FORCE_POINT_SOURCE) then
         write(IMAIN,*) 'using a FORCESOLUTION source instead of a CMTSOLUTION source'
@@ -203,28 +214,11 @@
         write(IMAIN,*) 'using a CMTSOLUTION source'
       endif
     else
+      ! combined forces and CMTs
       write(IMAIN,*) 'using both a FORCESOLUTION and a CMTSOLUTION source'
     endif
-
     if (USE_RICKER_TIME_FUNCTION) then
        write(IMAIN,*) '  with a Ricker source time function'
-    else
-      ! NQDU add
-      !  if (USE_FORCE_POINT_SOURCE) then
-      !     write(IMAIN,*) '  with a quasi-Heaviside source time function'
-      !  else
-      !     write(IMAIN,*) '  with a Gaussian source time function'
-      !  endif
-      if (USE_CMT_AND_FORCE_SOURCE) then
-       write(IMAIN,*) ' CMTSOLUTION with a quasi-Heaviside source time function'
-       write(IMAIN,*) ' FORCESOLUTION with a Gaussian source time function'
-      else
-        if (USE_FORCE_POINT_SOURCE) then
-          write(IMAIN,*) ' with a quasi-Heaviside source time function'
-        else
-          write(IMAIN,*) ' with a Gaussian source time function'
-        endif
-      endif
     endif
     write(IMAIN,*)
 

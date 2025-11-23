@@ -428,7 +428,6 @@ void FC_FUNC_(prepare_constants_device,
   // prescribed wavefield discontinuity
   mp->is_wavefield_discontinuity = *IS_WAVEFIELD_DISCONTINUITY;
 
-  // nqdu added
   // couple with injection
   mp->is_couple_with_injection = *IS_COUPLE_WITH_INJECTION;
   if (mp->is_couple_with_injection) {

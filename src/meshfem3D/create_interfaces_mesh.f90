@@ -29,7 +29,7 @@
 
   use meshfem_par, only: myrank,INTERFACES_FILE, &
     number_of_interfaces, &
-    SUPPRESS_UTM_PROJECTION, &
+    SUPPRESS_UTM_PROJECTION,USE_LUNAR_PROJECTIONS, &
     UTM_X_MIN,UTM_X_MAX,UTM_Y_MIN,UTM_Y_MAX,Z_DEPTH_BLOCK, &
     max_npx_interface,max_npy_interface, &
     npx_element_steps,npy_element_steps, &
@@ -146,13 +146,23 @@
   ! user output
   if (myrank == 0) then
     write(IMAIN,*) 'mesh:'
-    write(IMAIN,*) '  origin UTM minimum x/y        (m) = ',sngl(min_x_all),sngl(min_y_all)
+    if (USE_LUNAR_PROJECTIONS) then
+      ! Moon
+      write(IMAIN,*) '  origin LTM/LPS minimum x/y    (m) = ',sngl(min_x_all),sngl(min_y_all)
+    else
+      write(IMAIN,*) '  origin UTM minimum x/y        (m) = ',sngl(min_x_all),sngl(min_y_all)
+    endif
     if (.not. SUPPRESS_UTM_PROJECTION) then
       ! project x and y in UTM back to long/lat since topo file is in long/lat
       call utm_geo(long,lat,min_x_all,min_y_all,IUTM2LONGLAT)
       write(IMAIN,*) '                     lat/lon  (deg) = ',sngl(lat),sngl(long)
     endif
-    write(IMAIN,*) '  origin UTM maximum x/y        (m) = ',sngl(max_x_all),sngl(max_y_all)
+    if (USE_LUNAR_PROJECTIONS) then
+      ! Moon
+      write(IMAIN,*) '  origin LTM/LPS maximum x/y    (m) = ',sngl(max_x_all),sngl(max_y_all)
+    else
+      write(IMAIN,*) '  origin UTM maximum x/y        (m) = ',sngl(max_x_all),sngl(max_y_all)
+    endif
     if (.not. SUPPRESS_UTM_PROJECTION) then
       call utm_geo(long,lat,max_x_all,max_y_all,IUTM2LONGLAT)
       write(IMAIN,*) '                     lat/lon  (deg) = ',sngl(lat),sngl(long)
@@ -422,8 +432,14 @@
         write(IMAIN,*) '  interpolated mesh latitude  min/max ',trim(str_unit_deg),' = ',sngl(min_lat_all),'/',sngl(max_lat_all)
         write(IMAIN,*)
       endif
-      write(IMAIN,*) '  interpolated mesh UTM minimum x/y ',trim(str_unit_m),' = ',sngl(min_x_all),sngl(min_y_all)
-      write(IMAIN,*) '  interpolated mesh UTM maximum x/y ',trim(str_unit_m),' = ',sngl(max_x_all),sngl(max_y_all)
+      if (USE_LUNAR_PROJECTIONS) then
+        ! Moon
+        write(IMAIN,*) '  interpolated mesh LTM/LPS minimum x/y ',trim(str_unit_m),' = ',sngl(min_x_all),sngl(min_y_all)
+        write(IMAIN,*) '  interpolated mesh LTM/LPS maximum x/y ',trim(str_unit_m),' = ',sngl(max_x_all),sngl(max_y_all)
+      else
+        write(IMAIN,*) '  interpolated mesh UTM minimum x/y ',trim(str_unit_m),' = ',sngl(min_x_all),sngl(min_y_all)
+        write(IMAIN,*) '  interpolated mesh UTM maximum x/y ',trim(str_unit_m),' = ',sngl(max_x_all),sngl(max_y_all)
+      endif
       write(IMAIN,*)
       call flush_IMAIN()
     endif

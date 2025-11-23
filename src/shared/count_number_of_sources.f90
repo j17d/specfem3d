@@ -258,20 +258,24 @@
 
   end subroutine count_number_of_sources_by_type
 
+!
+!-------------------------------------------------------------------------------------------------
+!
 
-  ! NQDU for binary source file
+  ! for binary source file
   subroutine count_number_of_sources_binary(ns_cmt,ns_force,sources_filename)
-    use constants, only: MAX_STRING_LEN
-    implicit none
-    integer,intent(inout) :: ns_cmt,ns_force
-    character(len=MAX_STRING_LEN),intent(in) :: sources_filename
 
-    ! local
-    integer,parameter :: IO_SOURCE = 12341
+  use constants, only: MAX_STRING_LEN
+  implicit none
+  integer,intent(inout) :: ns_cmt,ns_force
+  character(len=MAX_STRING_LEN),intent(in) :: sources_filename
+  ! local
+  integer,parameter :: IO_SOURCE = 12341
 
-    open(IO_SOURCE,file=trim(sources_filename),form='unformatted', &
-              action='read',access='stream')
-    read(IO_SOURCE) ns_cmt
-    read(IO_SOURCE) ns_force
-    close(IO_SOURCE)
+  open(IO_SOURCE,file=trim(sources_filename),form='unformatted', &
+            action='read',access='stream')
+  read(IO_SOURCE) ns_cmt
+  read(IO_SOURCE) ns_force
+  close(IO_SOURCE)
+
   end subroutine count_number_of_sources_binary

@@ -763,10 +763,7 @@
 !-------------------------------------------------------------------------------------------------
 !
 
-!
-!-------------------------------------------------------------------------------------------------
-!
-  ! nqdu  FK elastic + acoustic
+  ! FK elastic + acoustic
   subroutine FK(vp,vs,rho, H, nlayer, &
                   Tg, ray_p, phi, x0, y0, z0, &
                   t0, dt, npts,npt, &
@@ -820,8 +817,8 @@
 
   ! spline work array
   double precision, dimension(:), allocatable                :: tmp_c
-!
-  ! nqdu matrices for computation
+
+  ! matrices for computation
   complex(kind=CUSTOM_CMPLX)                                :: eta_alpha(nlayer),eta_beta(nlayer),gamma0(nlayer),gamma1(nlayer)
   complex(kind=CUSTOM_CMPLX)                                :: E_mat(4,4),Qmat(2,2),Pmat(4,4),Qmat_I(2,2)
   logical                                                   :: have_fluid_layer
@@ -1293,6 +1290,7 @@
 
       !! store undersampled version of velocity  FK solution
       if (ispec_is_elastic(ispec)) then
+        ! elastic element
         tmp_t1(:) = field(:,1) * cos(phi)
         call compute_spline_coef_to_store(tmp_t1, npts2, tmp_t2, tmp_c)
         Veloc_FK(1,ipt,1:NF_FOR_STORING) = tmp_t2(1:NF_FOR_STORING)
@@ -1304,9 +1302,11 @@
         tmp_t1(:) = field(:,2)
         call compute_spline_coef_to_store(tmp_t1, npts2, tmp_t2, tmp_c)
         Veloc_FK(3,ipt,1:NF_FOR_STORING) = tmp_t2(1:NF_FOR_STORING)
-      else if (ispec_is_acoustic(ispec)) then ! nqdu
-        !note, veloc_FK now saves displ instead of velocity
-        ! and tract_FK saves chi_dot instead of traction
+
+      else if (ispec_is_acoustic(ispec)) then
+        ! acoustic element
+        ! nqdu comment: veloc_FK now saves displ instead of velocity
+        !               and tract_FK saves chi_dot instead of traction
         tmp_t1(:) = field(:,1) * cos(phi)
         call compute_spline_coef_to_store(tmp_t1, npts2, tmp_t2, tmp_c)
         veloc_FK(1,ipt,1:NF_FOR_STORING) = tmp_t2(1:NF_FOR_STORING)
@@ -3990,15 +3990,16 @@ contains
 
   end subroutine couple_with_injection_cleanup
 
-!------------------------------------------------------
-! NQDU added
-! read injection file
+!
+!-------------------------------------------------------------------------------------------------
+!
 
   subroutine fetch_injection_wavefield()
+
+! read injection file
+
   use constants
-
   use specfem_par, only: SIMULATION_TYPE,GPU_MODE,Mesh_pointer
-
   use specfem_par, only: num_abs_boundary_faces,it
 
   ! boundary coupling
@@ -4007,13 +4008,11 @@ contains
     Veloc_dsm_boundary, Tract_dsm_boundary, Veloc_axisem, Tract_axisem, Tract_axisem_time, &
     Veloc_specfem, Tract_specfem
   use specfem_par_coupling, only: NP_RESAMP, Veloc_FK, Tract_FK
+
   implicit none
-
-
   integer :: ii, kk, iim1, iip1, iip2,npts
   real(kind=CUSTOM_REAL) :: cs1,cs2,cs3,cs4,w
-
-  !! NQDU temporary arrays coupling
+  ! temporary arrays coupling
   real(kind=CUSTOM_REAL), dimension(:,:),allocatable :: veloc_inj,tract_inj
 
   ! safety checks
@@ -4055,10 +4054,11 @@ contains
   ! copy injection field to GPU
   ! allcoate space
   allocate(veloc_inj(NDIM,num_abs_boundary_faces*NGLLSQUARE), &
-            tract_inj(NDIM,num_abs_boundary_faces*NGLLSQUARE))
+           tract_inj(NDIM,num_abs_boundary_faces*NGLLSQUARE))
 
   select case(INJECTION_TECHNIQUE_TYPE)
   case (INJECTION_TECHNIQUE_IS_DSM)
+    ! DSM
     veloc_inj(:,:) = reshape(Veloc_dsm_boundary(:,it_dsm,:,:),(/NDIM,num_abs_boundary_faces*NGLLSQUARE/))
     tract_inj(:,:) = reshape(Tract_dsm_boundary(:,it_dsm,:,:),(/NDIM,num_abs_boundary_faces*NGLLSQUARE/))
     it_dsm = it_dsm + 1
@@ -4114,6 +4114,7 @@ contains
   veloc_inj = -veloc_inj
   tract_inj = -tract_inj
   npts = num_abs_boundary_faces * NGLLSQUARE * NDIM
+
   call transfer_injection_field_to_device(npts,veloc_inj,tract_inj,Mesh_pointer)
 
   ! free memory
@@ -4121,82 +4122,87 @@ contains
 
   end subroutine fetch_injection_wavefield
 
-
-!=============================================================================
+!
+!-------------------------------------------------------------------------------------------------
+!
 
   subroutine read_dsm_file(Veloc_dsm_boundary,Tract_dsm_boundary,num_abs_boundary_faces,it_dsm)
 
-    use constants
+  use constants
 
-    implicit none
+  implicit none
 
-    integer igll,it_dsm
-    integer iface,num_abs_boundary_faces,i,j
-    real(kind=CUSTOM_REAL) :: Veloc_dsm_boundary(3,Ntime_step_dsm,NGLLSQUARE,num_abs_boundary_faces)
-    real(kind=CUSTOM_REAL) :: Tract_dsm_boundary(3,Ntime_step_dsm,NGLLSQUARE,num_abs_boundary_faces)
+  integer igll,it_dsm
+  integer iface,num_abs_boundary_faces,i,j
+  real(kind=CUSTOM_REAL) :: Veloc_dsm_boundary(3,Ntime_step_dsm,NGLLSQUARE,num_abs_boundary_faces)
+  real(kind=CUSTOM_REAL) :: Tract_dsm_boundary(3,Ntime_step_dsm,NGLLSQUARE,num_abs_boundary_faces)
 
-    real(kind=CUSTOM_REAL) :: dsm_boundary_tmp(3,Ntime_step_dsm,NGLLX,NGLLY)
+  real(kind=CUSTOM_REAL) :: dsm_boundary_tmp(3,Ntime_step_dsm,NGLLX,NGLLY)
 
-    it_dsm = 1
+  it_dsm = 1
 
-    do iface = 1,num_abs_boundary_faces
-      igll = 0
-      do j = 1,NGLLY
-        do i = 1,NGLLX
-          igll = igll + 1
-          read(IIN_veloc_dsm) dsm_boundary_tmp(:,:,i,j)
-          Veloc_dsm_boundary(:,:,igll,iface) = dsm_boundary_tmp(:,:,i,j)
-          read(IIN_tract_dsm) dsm_boundary_tmp(:,:,i,j)
-          Tract_dsm_boundary(:,:,igll,iface) = dsm_boundary_tmp(:,:,i,j)
-        enddo
+  do iface = 1,num_abs_boundary_faces
+    igll = 0
+    do j = 1,NGLLY
+      do i = 1,NGLLX
+        igll = igll + 1
+        read(IIN_veloc_dsm) dsm_boundary_tmp(:,:,i,j)
+        Veloc_dsm_boundary(:,:,igll,iface) = dsm_boundary_tmp(:,:,i,j)
+        read(IIN_tract_dsm) dsm_boundary_tmp(:,:,i,j)
+        Tract_dsm_boundary(:,:,igll,iface) = dsm_boundary_tmp(:,:,i,j)
       enddo
     enddo
+  enddo
 
-    end subroutine read_dsm_file
+  end subroutine read_dsm_file
 
-  !=============================================================================
+!
+!-------------------------------------------------------------------------------------------------
+!
 
-    subroutine read_axisem_file(Veloc_axisem,Tract_axisem,nb)
+  subroutine read_axisem_file(Veloc_axisem,Tract_axisem,nb)
 
-    use constants
+  use constants
 
-    implicit none
+  implicit none
 
-    integer :: nb
-    real(kind=CUSTOM_REAL) :: Veloc_axisem(3,nb)
-    real(kind=CUSTOM_REAL) :: Tract_axisem(3,nb)
+  integer :: nb
+  real(kind=CUSTOM_REAL) :: Veloc_axisem(3,nb)
+  real(kind=CUSTOM_REAL) :: Tract_axisem(3,nb)
 
-    read(IIN_veloc_dsm) Veloc_axisem, Tract_axisem
+  read(IIN_veloc_dsm) Veloc_axisem, Tract_axisem
 
-    end subroutine read_axisem_file
+  end subroutine read_axisem_file
 
-  !=============================================================================
+!
+!-------------------------------------------------------------------------------------------------
+!
 
-    subroutine read_specfem_file(Veloc_specfem,Tract_specfem,nb,it)
+  subroutine read_specfem_file(Veloc_specfem,Tract_specfem,nb,it)
 
-    use constants, only: myrank,CUSTOM_REAL,NDIM,IIN_veloc_dsm
+  use constants, only: myrank,CUSTOM_REAL,NDIM,IIN_veloc_dsm
 
-    implicit none
+  implicit none
 
-    integer, intent(in) :: nb
-    real(kind=CUSTOM_REAL), intent(out) :: Veloc_specfem(NDIM,nb)
-    real(kind=CUSTOM_REAL), intent(out) :: Tract_specfem(NDIM,nb)
-    integer,intent(in) :: it
+  integer, intent(in) :: nb
+  real(kind=CUSTOM_REAL), intent(out) :: Veloc_specfem(NDIM,nb)
+  real(kind=CUSTOM_REAL), intent(out) :: Tract_specfem(NDIM,nb)
+  integer,intent(in) :: it
 
-    ! local parameters
-    integer :: ier
+  ! local parameters
+  integer :: ier
 
-    ! reads velocity & traction
-    !read(IIN_veloc_dsm,iostat=ier) Veloc_specfem, Tract_specfem
-    ! w/ direct access
-    read(IIN_veloc_dsm,rec=it,iostat=ier) Veloc_specfem, Tract_specfem
+  ! reads velocity & traction
+  !read(IIN_veloc_dsm,iostat=ier) Veloc_specfem, Tract_specfem
+  ! w/ direct access
+  read(IIN_veloc_dsm,rec=it,iostat=ier) Veloc_specfem, Tract_specfem
 
-    ! check
-    if (ier /= 0) then
-      print *,'Error: rank ',myrank,'failed to read in wavefield (veloc & traction) at time step it = ',it
-      print *,'       Please check that the wavefield injection files proc***_sol_specfem.bin exists.'
-      call exit_MPI(myrank,'Error reading injection wavefield file')
-    endif
+  ! check
+  if (ier /= 0) then
+    print *,'Error: rank ',myrank,'failed to read in wavefield (veloc & traction) at time step it = ',it
+    print *,'       Please check that the wavefield injection files proc***_sol_specfem.bin exists.'
+    call exit_MPI(myrank,'Error reading injection wavefield file')
+  endif
 
-    end subroutine read_specfem_file
+  end subroutine read_specfem_file
 

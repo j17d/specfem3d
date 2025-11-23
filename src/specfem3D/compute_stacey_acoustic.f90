@@ -364,6 +364,8 @@
 
     ! ! transfers updated potential field back to the GPU
     ! call transfer_dot_dot_to_device(NGLOB_AB, potential_dot_dot_acoustic, Mesh_pointer)
+
+    ! now handled on GPU
     call compute_coupled_injection_contribution_ac_GPU(iphase,Mesh_pointer)
   endif
 
@@ -555,10 +557,13 @@
         ! gets injected velocity & stress
         ! velocity and stresses would be subtracted from total, therefore we add a minus sign when getting the values
         select case(INJECTION_TECHNIQUE_TYPE)
-        case (INJECTION_TECHNIQUE_IS_DSM)                 !! To verify for NOBU version
+        case (INJECTION_TECHNIQUE_IS_DSM)                 !TODO: To verify for NOBU version
           ! ! not implemented yet
           ! return
-        case (INJECTION_TECHNIQUE_IS_AXISEM)              !! VM VM add AxiSEM
+        case (INJECTION_TECHNIQUE_IS_AXISEM)              !TODO: add AxiSEM format
+          ! not implemented yet
+          return
+        case (INJECTION_TECHNIQUE_IS_SPECFEM)             !TODO: add SPECFEM format
           ! not implemented yet
           return
         case (INJECTION_TECHNIQUE_IS_FK)
@@ -567,7 +572,7 @@
           ipt = ipt_table(igll,iface)
 
           ! interpolates velocity/stress
-          ! nqdu NOT CORRECT!!!
+          ! nqdu comment: NOT CORRECT!!!
           ! vx_FK = cs1 * Veloc_FK(1,ipt,iim1) + cs2 * Veloc_FK(1,ipt,ii) + cs3 * Veloc_FK(1,ipt,iip1) + cs4 * Veloc_FK(1,ipt,iip2)
           ! vy_FK = cs1 * Veloc_FK(2,ipt,iim1) + cs2 * Veloc_FK(2,ipt,ii) + cs3 * Veloc_FK(2,ipt,iip1) + cs4 * Veloc_FK(2,ipt,iip2)
           ! vz_FK = cs1 * Veloc_FK(3,ipt,iim1) + cs2 * Veloc_FK(3,ipt,ii) + cs3 * Veloc_FK(3,ipt,iip1) + cs4 * Veloc_FK(3,ipt,iip2)
@@ -662,35 +667,27 @@
   end subroutine compute_coupled_injection_contribution_ac
 
 
-
 !=============================================================================
 !
-! NQDU added
 ! For coupling with external code, GPU version
 !
 !=============================================================================
 
   subroutine compute_coupled_injection_contribution_ac_GPU(iphase,Mesh_pointer)
 
-    use constants
+  use constants
+  use specfem_par, only: SAVE_STACEY,SIMULATION_TYPE
+  use specfem_par, only: num_abs_boundary_faces
+  ! boundary coupling
+  use shared_parameters, only: COUPLE_WITH_INJECTION_TECHNIQUE
+  ! boundary injection wavefield parts for saving together with b_absorb_field
+  use specfem_par_coupling, only: b_boundary_injection_potential
 
-    use specfem_par, only: SAVE_STACEY,SIMULATION_TYPE
-
-    use specfem_par, only: num_abs_boundary_faces
-
-    ! boundary coupling
-    use shared_parameters, only: COUPLE_WITH_INJECTION_TECHNIQUE
-    ! boundary injection wavefield parts for saving together with b_absorb_field
-    use specfem_par_coupling, only: b_boundary_injection_potential
-
-    implicit none
-
-    ! communication overlap
-    integer,intent(in) :: iphase
-
-    ! GPU_MODE variables
-    integer(kind=8),intent(in) :: Mesh_pointer
-
+  implicit none
+  ! communication overlap
+  integer,intent(in) :: iphase
+  ! GPU_MODE variables
+  integer(kind=8),intent(in) :: Mesh_pointer
 
   ! safety checks
   if (.not. COUPLE_WITH_INJECTION_TECHNIQUE) return
@@ -704,12 +701,9 @@
   ! only for forward wavefield
   if (SIMULATION_TYPE /= 1) return
 
+  ! compute contribution in device
+  call compute_coupled_injection_contribution_ac_device(Mesh_pointer,b_boundary_injection_potential, &
+                                                        SAVE_STACEY)
 
-    ! compute contribution in device
-    call compute_coupled_injection_contribution_ac_device(Mesh_pointer, &
-                                                          b_boundary_injection_potential, &
-                                                          SAVE_STACEY)
-
-
-    end subroutine compute_coupled_injection_contribution_ac_GPU
+  end subroutine compute_coupled_injection_contribution_ac_GPU
 

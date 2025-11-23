@@ -32,7 +32,7 @@
 
   use constants
 
-  use specfem_par, only: USE_SOURCES_RECEIVERS_Z,SUPPRESS_UTM_PROJECTION,INVERSE_FWI_FULL_PROBLEM, &
+  use specfem_par, only: USE_SOURCES_RECEIVERS_Z,SUPPRESS_UTM_PROJECTION,USE_LUNAR_PROJECTIONS,INVERSE_FWI_FULL_PROBLEM, &
                          ibool,myrank,NSPEC_AB,NGLOB_AB, &
                          xstore,ystore,zstore, &
                          nrec,islice_selected_rec,ispec_selected_rec, &
@@ -49,7 +49,7 @@
   ! input receiver file name
   character(len=*), intent(in) :: rec_filename
 
-  ! receivers
+  ! source position for distances
   double precision,intent(in) :: utm_x_source,utm_y_source
 
   ! local parameters
@@ -309,8 +309,14 @@
           print *,'  original x: ',sngl(stutm_x(irec))
           print *,'  original y: ',sngl(stutm_y(irec))
         else
-          print *,'  original UTM x: ',sngl(stutm_x(irec))
-          print *,'  original UTM y: ',sngl(stutm_y(irec))
+          if (USE_LUNAR_PROJECTIONS) then
+            ! Moon
+            print *,'  original LTM/LPS x: ',sngl(stutm_x(irec))
+            print *,'  original LTM/LPS y: ',sngl(stutm_y(irec))
+          else
+            print *,'  original UTM x: ',sngl(stutm_x(irec))
+            print *,'  original UTM y: ',sngl(stutm_y(irec))
+          endif
         endif
         if (USE_SOURCES_RECEIVERS_Z) then
           print *,'  original z: ',sngl(stbur(irec))
@@ -323,7 +329,7 @@
         print *,'                               xi/eta/gamma  :',xi_receiver(irec),eta_receiver(irec),gamma_receiver(irec)
         print *,'                               final_distance:',final_distance(irec)
         print *
-        print *,'Please check your receiver position in file DATA/STATIONS, and move it closer the mesh geometry - exiting...'
+        print *,'Please check your receiver position in file DATA/STATIONS, and move it closer to the mesh geometry - exiting...'
         print *
         call exit_MPI(myrank,'Error locating receiver')
       endif
@@ -376,23 +382,29 @@
         write(IMAIN,*) 'station # ',irec,'    ',trim(network_name(irec)),'    ',trim(station_name(irec))
 
         ! location info
-        write(IMAIN,*) '     original latitude: ',sngl(stlat(irec))
-        write(IMAIN,*) '     original longitude: ',sngl(stlon(irec))
+        write(IMAIN,*) '     original latitude     : ',sngl(stlat(irec))
+        write(IMAIN,*) '              longitude    : ',sngl(stlon(irec))
         if (SUPPRESS_UTM_PROJECTION) then
-          write(IMAIN,*) '     original x: ',sngl(stutm_x(irec))
-          write(IMAIN,*) '     original y: ',sngl(stutm_y(irec))
+          write(IMAIN,*) '              x            : ',sngl(stutm_x(irec))
+          write(IMAIN,*) '              y            : ',sngl(stutm_y(irec))
         else
-          write(IMAIN,*) '     original UTM x: ',sngl(stutm_x(irec))
-          write(IMAIN,*) '     original UTM y: ',sngl(stutm_y(irec))
+          if (USE_LUNAR_PROJECTIONS) then
+            ! Moon
+            write(IMAIN,*) '              LTM/LPS x    : ',sngl(stutm_x(irec))
+            write(IMAIN,*) '              LTM/LPS y    : ',sngl(stutm_y(irec))
+          else
+            write(IMAIN,*) '              UTM x        : ',sngl(stutm_x(irec))
+            write(IMAIN,*) '              UTM y        : ',sngl(stutm_y(irec))
+          endif
         endif
         if (USE_SOURCES_RECEIVERS_Z) then
-          write(IMAIN,*) '     original z: ',sngl(stbur(irec))
+          write(IMAIN,*) '              z            : ',sngl(stbur(irec))
         else
-          write(IMAIN,*) '     original depth: ',sngl(stbur(irec)),' m'
+          write(IMAIN,*) '              depth        : ',sngl(stbur(irec)),' m'
         endif
-        write(IMAIN,*) '     horizontal distance: ',sngl(dsqrt((stutm_y(irec)-utm_y_source)**2 &
+        write(IMAIN,*) '     horizontal distance   : ',sngl(dsqrt((stutm_y(irec)-utm_y_source)**2 &
                                                              + (stutm_x(irec)-utm_x_source)**2) / 1000.d0),' km'
-        write(IMAIN,*) '     target x, y, z: ',sngl(x_target(irec)),sngl(y_target(irec)),sngl(z_target(irec))
+        write(IMAIN,*) '     target x, y, z        : ',sngl(x_target(irec)),sngl(y_target(irec)),sngl(z_target(irec))
 
         write(IMAIN,*) '     closest estimate found: ',sngl(final_distance(irec)),' m away'
         write(IMAIN,*)
@@ -410,27 +422,33 @@
         endif
 
         write(IMAIN,*) '     at coordinates: '
-        write(IMAIN,*) '     xi    = ',xi_receiver(irec)
-        write(IMAIN,*) '     eta   = ',eta_receiver(irec)
-        write(IMAIN,*) '     gamma = ',gamma_receiver(irec)
+        write(IMAIN,*) '       xi    = ',xi_receiver(irec)
+        write(IMAIN,*) '       eta   = ',eta_receiver(irec)
+        write(IMAIN,*) '       gamma = ',gamma_receiver(irec)
 
         write(IMAIN,*) '     rotation matrix: '
-        write(IMAIN,*) '     nu1 = ',sngl(nu_rec(1,1,irec)),sngl(nu_rec(1,2,irec)),sngl(nu_rec(1,3,irec))
-        write(IMAIN,*) '     nu2 = ',sngl(nu_rec(2,1,irec)),sngl(nu_rec(2,2,irec)),sngl(nu_rec(2,3,irec))
-        write(IMAIN,*) '     nu3 = ',sngl(nu_rec(3,1,irec)),sngl(nu_rec(3,2,irec)),sngl(nu_rec(3,3,irec))
+        write(IMAIN,*) '       nu1 = ',sngl(nu_rec(1,1,irec)),sngl(nu_rec(1,2,irec)),sngl(nu_rec(1,3,irec))
+        write(IMAIN,*) '       nu2 = ',sngl(nu_rec(2,1,irec)),sngl(nu_rec(2,2,irec)),sngl(nu_rec(2,3,irec))
+        write(IMAIN,*) '       nu3 = ',sngl(nu_rec(3,1,irec)),sngl(nu_rec(3,2,irec)),sngl(nu_rec(3,3,irec))
 
         if (SUPPRESS_UTM_PROJECTION) then
-          write(IMAIN,*) '     x: ',x_found(irec)
-          write(IMAIN,*) '     y: ',y_found(irec)
+          write(IMAIN,*) '     found x: ',x_found(irec)
+          write(IMAIN,*) '           y: ',y_found(irec)
         else
-          write(IMAIN,*) '     UTM x: ',x_found(irec)
-          write(IMAIN,*) '     UTM y: ',y_found(irec)
+          if (USE_LUNAR_PROJECTIONS) then
+            ! Moon
+            write(IMAIN,*) '     found LTM/LPS x: ',x_found(irec)
+            write(IMAIN,*) '           LTM/LPS y: ',y_found(irec)
+          else
+            write(IMAIN,*) '     found UTM x: ',x_found(irec)
+            write(IMAIN,*) '           UTM y: ',y_found(irec)
+          endif
         endif
         if (USE_SOURCES_RECEIVERS_Z) then
-          write(IMAIN,*) '     z: ',z_found(irec)
+          write(IMAIN,*) '           z: ',z_found(irec)
         else
-          write(IMAIN,*) '     depth: ',dabs(z_found(irec) - elevation(irec)),' m'
-          write(IMAIN,*) '     z: ',z_found(irec)
+          write(IMAIN,*) '           z: ',z_found(irec)
+          write(IMAIN,*) '           depth: ',dabs(z_found(irec) - elevation(irec)),' m'
         endif
         write(IMAIN,*)
 
