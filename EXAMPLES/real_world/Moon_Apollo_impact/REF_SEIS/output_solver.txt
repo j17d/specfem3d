@@ -1,0 +1,3398 @@
+ **********************************************
+ **** Specfem 3-D Solver - MPI version f90 ****
+ **********************************************
+
+ Running Git package version of the code: 4.1.1
+ which is Git unknown
+ dating unknown
+
+
+
+
+ There are            8  MPI processes
+ Processes are numbered from 0 to            7
+
+ There is a total of            8  slices
+
+  NDIM =            3
+
+  NGLLX =            5
+  NGLLY =            5
+  NGLLZ =            5
+
+ using single precision for the calculations
+ using force vectorization
+
+ smallest and largest possible floating-point numbers are:    1.17549435E-38   3.40282347E+38
+
+ Moon simulation model: moon_default
+   using lunar projections (LTM/LPS) instead of UTM
+
+ velocity model type:  default
+
+ Reading mesh databases...
+   reads binary mesh files: proc***_external_mesh.bin
+   from directory         : ./DATABASES_MPI
+
+   simulation w/ acoustic    domain:  F
+   simulation w/ elastic     domain:  T
+   simulation w/ poroelastic domain:  F
+
+   slice 0 has:
+   number of elements acoustic   :           0
+   number of elements elastic    :        8016
+   number of elements poroelastic:           0
+   done
+
+   total acoustic elements    :           0
+   total elastic elements     :       64128
+   total poroelastic elements :           0
+
+ Mesh resolution:
+
+ ********
+ minimum and maximum number of elements
+ and points in the CUBIT + SCOTCH mesh:
+
+ NSPEC_global_min =         8016
+ NSPEC_global_max =         8016
+ NSPEC_global_max / NSPEC_global_min imbalance =    1.00000000      =    0.00000000      %
+ NSPEC_global_sum =        64128
+
+ NGLOB_global_min =       538761
+ NGLOB_global_max =       538761
+ NGLOB_global_max / NGLOB_global_min imbalance =    1.00000000      =    0.00000000      %
+ NGLOB_global_sum =      4310088
+
+ If you have elements of a single type (all acoustic, all elastic, all poroelastic, and without CPML)
+ in the whole mesh, then there should be no significant imbalance in the above numbers.
+ Otherwise, it is normal to have imbalance in elements and points because the domain decomposer
+ compensates for the different cost of different elements by partitioning them unevenly among processes.
+ ********
+
+
+ ********
+ Model: P   velocity min,max =    785.721313       7540.00000    
+ Model: S   velocity min,max =    392.860657       4340.00000    
+
+ Model: Poisson's ratio min,max =   0.252267480      0.333333403    
+ ********
+
+ *********************************************
+ *** Verification of simulation parameters ***
+ *********************************************
+
+ *** Xmin and Xmax of the model =    68606.7031       370807.688    
+ *** Ymin and Ymax of the model =   -152295.188       151833.109    
+ *** Zmin and Zmax of the model =   -100000.000       127.551094    
+
+ *** Max GLL point distance =    12443.6797    
+ *** Min GLL point distance =    115.335205    
+ *** Max/min ratio =    107.891426    
+
+ *** Max element size =    38016.0391    
+ *** Min element size =    667.939697    
+ *** Max/min ratio =    56.9153748    
+
+ *** Minimum period resolved =    15.9580746     (s)
+ ***          (as frequency) =    6.26642033E-02 (Hz)
+ *** Maximum suggested time step =    2.40000002E-02
+
+ *** for DT :    2.4000000000000000E-002
+ *** Max stability for wave velocities =   0.495897502    
+
+ Elapsed time for checking mesh resolution in seconds =    8.8449999999999918E-003
+ saving VTK files for Courant number and minimum period
+
+
+ ******************************************
+ There is a total of            8  slices
+ ******************************************
+
+ movie simulation:
+   surface movie
+
+ mesh surfaces:
+   high-resolution  =  T
+   nfaces per slice =         2620        2244        2244        2620        2620        2244        2244        2620
+
+   total number of surface faces is        19456
+
+ surface movies:
+   saving: particle velocities
+   number of steps between frames =           50
+
+
+ kd-tree:
+   total data points:       216432
+   theoretical   number of nodes:       432855
+                tree memory size:    13.2096863     MB
+   actual        number of nodes:       432863
+                tree memory size:    13.2099304     MB
+   maximum depth   :           24
+   creation timing :    5.06969988E-02 (s)
+
+
+ sources:            1
+
+ ********************
+  locating sources
+ ********************
+
+ reading source information from ./DATA/FORCESOLUTION file
+
+ LTM/LPS projection:
+   LTM zone:           20
+
+
+ source #            1
+   source located in slice            6
+                  in element         6741
+                  in elastic domain
+
+   using force point source: 
+     xi coordinate of source in that element:   0.68297156683000759     
+     eta coordinate of source in that element:   0.18124516938923099     
+     gamma coordinate of source in that element:    1.0003732327276826     
+
+     component of direction vector in East direction:  -0.184563398    
+     component of direction vector in North direction:   -4.84193005E-02
+     component of direction vector in Vertical direction:  -0.981627226    
+
+     nu1 =    1.00000000       0.00000000       0.00000000    
+     nu2 =    0.00000000       1.00000000       0.00000000    
+     nu3 =    0.00000000       0.00000000       1.00000000    
+
+     at (x,y,z) coordinates =    231137.67971678133        58196.342698734406       -1091.2490234375000     
+
+   source time function:
+     using Gaussian source time function
+              half duration:   0.12000000000000000       seconds
+     Gaussian half duration:    7.3710073710073709E-002  seconds
+
+     time shift:    0.0000000000000000       seconds
+
+   magnitude of the source:
+     factor =    360000000.00000000     
+
+   original (requested) position of the source:
+
+         latitude:    1.9210000000000000     
+        longitude:    335.37700000000001     
+
+        LTM/LPS x:    231137.67971678133     
+        LTM/LPS y:    58196.342698734406     
+            depth:    0.0000000000000000       km
+   topo elevation:   -1091.2490234375000     
+
+   position of the source that will be used:
+
+        LTM/LPS x:    231137.67971678133     
+        LTM/LPS y:    58196.342698734406     
+            depth:    0.0000000000000000       km
+                z:   -1091.2490234375000     
+
+   error in location of the source:    0.00000000      m
+
+
+
+ maximum error in location of the sources:    0.00000000      m
+
+
+ Elapsed time for detection of sources in seconds =    7.27899978E-03
+
+ End of source detection - done
+
+
+ Each source is being convolved with HDUR_MOVIE =    5.0000000000000000     
+
+
+ printing the source-time function
+
+ receivers:
+
+   there are            2  stations in file ./DATA/STATIONS
+   saving            2  stations inside the model in file ./DATA/STATIONS_FILTERED
+   excluding            0  stations located outside the model
+
+   Total number of receivers =            2
+
+
+ ********************
+  locating receivers
+ ********************
+
+ reading receiver information from ./DATA/STATIONS_FILTERED file
+
+
+ station #            1     AP16    S-IVB
+      original latitude     :    1.92100000    
+               longitude    :    335.377014    
+               LTM/LPS x    :    231137.688    
+               LTM/LPS y    :    58196.3438    
+               depth        :    0.00000000      m
+      horizontal distance   :    0.00000000      km
+      target x, y, z        :    231137.688       58196.3438      -1091.24902    
+      closest estimate found:    0.00000000      m away
+
+      receiver located in slice            6
+                       in element         6741
+                       in elastic domain
+      at coordinates: 
+        xi    =   0.68297156683000759     
+        eta   =   0.18124516938923099     
+        gamma =    1.0003732327276826     
+      rotation matrix: 
+        nu1 =    1.00000000       0.00000000       0.00000000    
+        nu2 =    0.00000000       1.00000000       0.00000000    
+        nu3 =    0.00000000       0.00000000       1.00000000    
+      found LTM/LPS x:    231137.67971678133     
+            LTM/LPS y:    58196.342698734406     
+            z:   -1091.2490234375000     
+            depth:    0.0000000000000000       m
+
+
+
+ station #            2     XA    S12
+      original latitude     :   -3.01083994    
+               longitude    :   -23.4245605    
+               LTM/LPS x    :    267408.062    
+               LTM/LPS y    :   -91212.0469    
+               depth        :    0.00000000      m
+      horizontal distance   :    153.747864      km
+      target x, y, z        :    267408.062      -91212.0469      -1427.14099    
+      closest estimate found:    2.27373675E-13  m away
+
+      receiver located in slice            2
+                       in element         6789
+                       in elastic domain
+      at coordinates: 
+        xi    =  -0.59173184942647639     
+        eta   =   0.41673035742772752     
+        gamma =   0.99811349519314385     
+      rotation matrix: 
+        nu1 =    1.00000000       0.00000000       0.00000000    
+        nu2 =    0.00000000       1.00000000       0.00000000    
+        nu3 =    0.00000000       0.00000000       1.00000000    
+      found LTM/LPS x:    267408.04792256223     
+            LTM/LPS y:   -91212.049335375865     
+            z:   -1427.1409912109377     
+            depth:    2.2737367544323206E-013  m
+
+
+
+ maximum error in location of all the receivers:    2.27373675E-13  m
+
+ Elapsed time for receiver detection in seconds =    1.01260003E-02
+
+ End of receiver detection - done
+
+ found a total of            2  receivers in all the slices
+
+ source arrays:
+   number of sources is            1
+   size of source array                 =    1.43051147E-03 MB
+                                        =    1.39698386E-06 GB
+
+ seismograms:
+   seismograms written by all processes
+
+   Total number of simulation steps (NSTEP)                       =        20000
+   writing out seismograms at every NTSTEP_BETWEEN_OUTPUT_SEISMOS =        20000
+   number of subsampling steps for seismograms                    =            1
+   Total number of samples for seismograms                        =        20000
+
+
+   maximum number of local receivers is            1  in slice            2
+   size of maximum seismogram array       =   0.228881836     MB
+                                          =    2.23517418E-04 GB
+
+
+ Total number of samples for seismograms =        20000
+
+
+ Simulation setup:
+
+   no acoustic simulation
+ incorporating elastic simulation
+   no poroelastic simulation
+
+   no attenuation
+   no anisotropy
+   no oceans
+   no gravity
+ incorporating movie simulation
+
+
+ preparing mass matrices
+ preparing constants
+ preparing wavefields
+ preparing fault simulation
+   no dynamic faults
+   no kinematic faults
+   no fault simulation
+ preparing gravity
+   no gravity simulation
+ preparing Stacey absorbing boundaries
+ preparing optimized arrays
+   number of regular shaped elements  :            0
+   number of irregular shaped elements:         8016
+   fused array done
+   bandwidth test (STREAM TRIAD): 
+      memory accesses =    18.4968910     MB
+      timing  min/max =    1.55699998E-03 s /    1.61200005E-03 s
+      timing      avg =    1.58859999E-03 s
+      bandwidth       =    11.3706217     GB/s
+      with force_vectorization:
+      timing  min/max =    1.19400001E-03 s /    1.53899996E-03 s
+      timing      avg =    1.25690002E-03 s
+      bandwidth       =    14.3713665     GB/s
+
+
+ Elapsed time for preparing timerun in seconds =    5.7289000000000034E-002
+
+ ************
+  time loop
+ ************
+               scheme:         Newmark
+
+            time step:    2.40000002E-02  s
+ number of time steps:        20000
+ total simulated time:    480.000000      seconds
+ start time:  -7.50215960      seconds
+
+ All processes are synchronized before the time loop
+
+ Starting time iteration loop...
+
+ Time step #            5
+ Time:   -7.40615988      seconds
+ Elapsed time in seconds =   0.10808000000000006     
+ Elapsed time in hh:mm:ss =      0 h 00 m 00 s
+ Mean elapsed time per time step in seconds =    2.16160007E-02
+ Max norm displacement vector U in all slices (m) =    7.36582839E-09
+ Time steps done =            5  out of        20000
+ Time steps remaining =        19995
+ Estimated remaining time in seconds =    432.211914    
+ Estimated remaining time in hh:mm:ss =      0 h 07 m 12 s
+ Estimated total run time in seconds =    432.320007    
+ Estimated total run time in hh:mm:ss =      0 h 07 m 12 s
+ We have done    2.50000004E-02 % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:12
+ ************************************************************
+ **** BEWARE: the above time estimates are not very reliable
+ **** because fewer than 100 iterations have been performed
+ ************************************************************
+
+ Time step #          100
+ Time:   -5.12615967      seconds
+ Elapsed time in seconds =    2.6418309999999998     
+ Elapsed time in hh:mm:ss =      0 h 00 m 02 s
+ Mean elapsed time per time step in seconds =    2.64183097E-02
+ Max norm displacement vector U in all slices (m) =    1.39837800E-06
+ Time steps done =          100  out of        20000
+ Time steps remaining =        19900
+ Estimated remaining time in seconds =    525.724365    
+ Estimated remaining time in hh:mm:ss =      0 h 08 m 45 s
+ Estimated total run time in seconds =    528.366211    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 48 s
+ We have done   0.500000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #          200
+ Time:   -2.72615957      seconds
+ Elapsed time in seconds =    5.2675799999999997     
+ Elapsed time in hh:mm:ss =      0 h 00 m 05 s
+ Mean elapsed time per time step in seconds =    2.63378993E-02
+ Max norm displacement vector U in all slices (m) =    1.25927991E-05
+ Time steps done =          200  out of        20000
+ Time steps remaining =        19800
+ Estimated remaining time in seconds =    521.490417    
+ Estimated remaining time in hh:mm:ss =      0 h 08 m 41 s
+ Estimated total run time in seconds =    526.757996    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 46 s
+ We have done    1.00000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #          300
+ Time:  -0.326159686      seconds
+ Elapsed time in seconds =    7.9128979999999993     
+ Elapsed time in hh:mm:ss =      0 h 00 m 07 s
+ Mean elapsed time per time step in seconds =    2.63763275E-02
+ Max norm displacement vector U in all slices (m) =    3.21234402E-05
+ Time steps done =          300  out of        20000
+ Time steps remaining =        19700
+ Estimated remaining time in seconds =    519.613647    
+ Estimated remaining time in hh:mm:ss =      0 h 08 m 39 s
+ Estimated total run time in seconds =    527.526550    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 47 s
+ We have done    1.50000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #          400
+ Time:    2.07384038      seconds
+ Elapsed time in seconds =    10.491976000000001     
+ Elapsed time in hh:mm:ss =      0 h 00 m 10 s
+ Mean elapsed time per time step in seconds =    2.62299404E-02
+ Max norm displacement vector U in all slices (m) =    1.98975467E-05
+ Time steps done =          400  out of        20000
+ Time steps remaining =        19600
+ Estimated remaining time in seconds =    514.106812    
+ Estimated remaining time in hh:mm:ss =      0 h 08 m 34 s
+ Estimated total run time in seconds =    524.598816    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 44 s
+ We have done    2.00000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #          500
+ Time:    4.47384024      seconds
+ Elapsed time in seconds =    13.106984000000001     
+ Elapsed time in hh:mm:ss =      0 h 00 m 13 s
+ Mean elapsed time per time step in seconds =    2.62139682E-02
+ Max norm displacement vector U in all slices (m) =    2.94906658E-06
+ Time steps done =          500  out of        20000
+ Time steps remaining =        19500
+ Estimated remaining time in seconds =    511.172363    
+ Estimated remaining time in hh:mm:ss =      0 h 08 m 31 s
+ Estimated total run time in seconds =    524.279358    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 44 s
+ We have done    2.50000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #          600
+ Time:    6.87384033      seconds
+ Elapsed time in seconds =    15.680914999999999     
+ Elapsed time in hh:mm:ss =      0 h 00 m 15 s
+ Mean elapsed time per time step in seconds =    2.61348579E-02
+ Max norm displacement vector U in all slices (m) =    3.98965426E-07
+ Time steps done =          600  out of        20000
+ Time steps remaining =        19400
+ Estimated remaining time in seconds =    507.016266    
+ Estimated remaining time in hh:mm:ss =      0 h 08 m 27 s
+ Estimated total run time in seconds =    522.697144    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 42 s
+ We have done    3.00000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #          700
+ Time:    9.27383995      seconds
+ Elapsed time in seconds =    18.259467999999998     
+ Elapsed time in hh:mm:ss =      0 h 00 m 18 s
+ Mean elapsed time per time step in seconds =    2.60849539E-02
+ Max norm displacement vector U in all slices (m) =    3.22688805E-07
+ Time steps done =          700  out of        20000
+ Time steps remaining =        19300
+ Estimated remaining time in seconds =    503.439606    
+ Estimated remaining time in hh:mm:ss =      0 h 08 m 23 s
+ Estimated total run time in seconds =    521.699097    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 41 s
+ We have done    3.50000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #          800
+ Time:    11.6738405      seconds
+ Elapsed time in seconds =    20.846719000000000     
+ Elapsed time in hh:mm:ss =      0 h 00 m 20 s
+ Mean elapsed time per time step in seconds =    2.60583982E-02
+ Max norm displacement vector U in all slices (m) =    2.84205555E-07
+ Time steps done =          800  out of        20000
+ Time steps remaining =        19200
+ Estimated remaining time in seconds =    500.321259    
+ Estimated remaining time in hh:mm:ss =      0 h 08 m 20 s
+ Estimated total run time in seconds =    521.167969    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 41 s
+ We have done    4.00000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #          900
+ Time:    14.0738401      seconds
+ Elapsed time in seconds =    23.432064999999998     
+ Elapsed time in hh:mm:ss =      0 h 00 m 23 s
+ Mean elapsed time per time step in seconds =    2.60356274E-02
+ Max norm displacement vector U in all slices (m) =    2.74263215E-07
+ Time steps done =          900  out of        20000
+ Time steps remaining =        19100
+ Estimated remaining time in seconds =    497.280487    
+ Estimated remaining time in hh:mm:ss =      0 h 08 m 17 s
+ Estimated total run time in seconds =    520.712585    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 40 s
+ We have done    4.50000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #         1000
+ Time:    16.4738407      seconds
+ Elapsed time in seconds =    26.017167999999998     
+ Elapsed time in hh:mm:ss =      0 h 00 m 26 s
+ Mean elapsed time per time step in seconds =    2.60171685E-02
+ Max norm displacement vector U in all slices (m) =    2.33396406E-07
+ Time steps done =         1000  out of        20000
+ Time steps remaining =        19000
+ Estimated remaining time in seconds =    494.326202    
+ Estimated remaining time in hh:mm:ss =      0 h 08 m 14 s
+ Estimated total run time in seconds =    520.343384    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 40 s
+ We have done    5.00000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #         1100
+ Time:    18.8738403      seconds
+ Elapsed time in seconds =    28.871119000000000     
+ Elapsed time in hh:mm:ss =      0 h 00 m 28 s
+ Mean elapsed time per time step in seconds =    2.62464713E-02
+ Max norm displacement vector U in all slices (m) =    2.35459041E-07
+ Time steps done =         1100  out of        20000
+ Time steps remaining =        18900
+ Estimated remaining time in seconds =    496.058319    
+ Estimated remaining time in hh:mm:ss =      0 h 08 m 16 s
+ Estimated total run time in seconds =    524.929443    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 44 s
+ We have done    5.50000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #         1200
+ Time:    21.2738400      seconds
+ Elapsed time in seconds =    31.458452999999999     
+ Elapsed time in hh:mm:ss =      0 h 00 m 31 s
+ Mean elapsed time per time step in seconds =    2.62153782E-02
+ Max norm displacement vector U in all slices (m) =    2.03214142E-07
+ Time steps done =         1200  out of        20000
+ Time steps remaining =        18800
+ Estimated remaining time in seconds =    492.849091    
+ Estimated remaining time in hh:mm:ss =      0 h 08 m 12 s
+ Estimated total run time in seconds =    524.307556    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 44 s
+ We have done    6.00000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #         1300
+ Time:    23.6738396      seconds
+ Elapsed time in seconds =    34.085656000000000     
+ Elapsed time in hh:mm:ss =      0 h 00 m 34 s
+ Mean elapsed time per time step in seconds =    2.62197349E-02
+ Max norm displacement vector U in all slices (m) =    1.95489875E-07
+ Time steps done =         1300  out of        20000
+ Time steps remaining =        18700
+ Estimated remaining time in seconds =    490.309052    
+ Estimated remaining time in hh:mm:ss =      0 h 08 m 10 s
+ Estimated total run time in seconds =    524.394714    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 44 s
+ We have done    6.50000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #         1400
+ Time:    26.0738411      seconds
+ Elapsed time in seconds =    36.653286000000001     
+ Elapsed time in hh:mm:ss =      0 h 00 m 36 s
+ Mean elapsed time per time step in seconds =    2.61809193E-02
+ Max norm displacement vector U in all slices (m) =    1.80826007E-07
+ Time steps done =         1400  out of        20000
+ Time steps remaining =        18600
+ Estimated remaining time in seconds =    486.965088    
+ Estimated remaining time in hh:mm:ss =      0 h 08 m 06 s
+ Estimated total run time in seconds =    523.618347    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 43 s
+ We have done    7.00000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #         1500
+ Time:    28.4738407      seconds
+ Elapsed time in seconds =    39.212463999999997     
+ Elapsed time in hh:mm:ss =      0 h 00 m 39 s
+ Mean elapsed time per time step in seconds =    2.61416435E-02
+ Max norm displacement vector U in all slices (m) =    1.74682086E-07
+ Time steps done =         1500  out of        20000
+ Time steps remaining =        18500
+ Estimated remaining time in seconds =    483.620392    
+ Estimated remaining time in hh:mm:ss =      0 h 08 m 03 s
+ Estimated total run time in seconds =    522.832825    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 42 s
+ We have done    7.50000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #         1600
+ Time:    30.8738403      seconds
+ Elapsed time in seconds =    41.868823999999996     
+ Elapsed time in hh:mm:ss =      0 h 00 m 41 s
+ Mean elapsed time per time step in seconds =    2.61680149E-02
+ Max norm displacement vector U in all slices (m) =    1.73091763E-07
+ Time steps done =         1600  out of        20000
+ Time steps remaining =        18400
+ Estimated remaining time in seconds =    481.491486    
+ Estimated remaining time in hh:mm:ss =      0 h 08 m 01 s
+ Estimated total run time in seconds =    523.360291    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 43 s
+ We have done    8.00000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #         1700
+ Time:    33.2738419      seconds
+ Elapsed time in seconds =    44.457529999999998     
+ Elapsed time in hh:mm:ss =      0 h 00 m 44 s
+ Mean elapsed time per time step in seconds =    2.61514876E-02
+ Max norm displacement vector U in all slices (m) =    1.67199374E-07
+ Time steps done =         1700  out of        20000
+ Time steps remaining =        18300
+ Estimated remaining time in seconds =    478.572235    
+ Estimated remaining time in hh:mm:ss =      0 h 07 m 58 s
+ Estimated total run time in seconds =    523.029785    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 43 s
+ We have done    8.50000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #         1800
+ Time:    35.6738396      seconds
+ Elapsed time in seconds =    47.096835999999996     
+ Elapsed time in hh:mm:ss =      0 h 00 m 47 s
+ Mean elapsed time per time step in seconds =    2.61649080E-02
+ Max norm displacement vector U in all slices (m) =    1.53656231E-07
+ Time steps done =         1800  out of        20000
+ Time steps remaining =        18200
+ Estimated remaining time in seconds =    476.201355    
+ Estimated remaining time in hh:mm:ss =      0 h 07 m 56 s
+ Estimated total run time in seconds =    523.298157    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 43 s
+ We have done    9.00000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #         1900
+ Time:    38.0738411      seconds
+ Elapsed time in seconds =    49.734062000000002     
+ Elapsed time in hh:mm:ss =      0 h 00 m 49 s
+ Mean elapsed time per time step in seconds =    2.61758212E-02
+ Max norm displacement vector U in all slices (m) =    1.52005811E-07
+ Time steps done =         1900  out of        20000
+ Time steps remaining =        18100
+ Estimated remaining time in seconds =    473.782379    
+ Estimated remaining time in hh:mm:ss =      0 h 07 m 53 s
+ Estimated total run time in seconds =    523.516418    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 43 s
+ We have done    9.50000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #         2000
+ Time:    40.4738388      seconds
+ Elapsed time in seconds =    52.325761999999997     
+ Elapsed time in hh:mm:ss =      0 h 00 m 52 s
+ Mean elapsed time per time step in seconds =    2.61628814E-02
+ Max norm displacement vector U in all slices (m) =    1.60400120E-07
+ Time steps done =         2000  out of        20000
+ Time steps remaining =        18000
+ Estimated remaining time in seconds =    470.931854    
+ Estimated remaining time in hh:mm:ss =      0 h 07 m 50 s
+ Estimated total run time in seconds =    523.257629    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 43 s
+ We have done    10.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #         2100
+ Time:    42.8738403      seconds
+ Elapsed time in seconds =    54.880836000000002     
+ Elapsed time in hh:mm:ss =      0 h 00 m 54 s
+ Mean elapsed time per time step in seconds =    2.61337310E-02
+ Max norm displacement vector U in all slices (m) =    1.34357904E-07
+ Time steps done =         2100  out of        20000
+ Time steps remaining =        17900
+ Estimated remaining time in seconds =    467.793793    
+ Estimated remaining time in hh:mm:ss =      0 h 07 m 47 s
+ Estimated total run time in seconds =    522.674622    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 42 s
+ We have done    10.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #         2200
+ Time:    45.2738419      seconds
+ Elapsed time in seconds =    57.468826999999997     
+ Elapsed time in hh:mm:ss =      0 h 00 m 57 s
+ Mean elapsed time per time step in seconds =    2.61221938E-02
+ Max norm displacement vector U in all slices (m) =    1.48273656E-07
+ Time steps done =         2200  out of        20000
+ Time steps remaining =        17800
+ Estimated remaining time in seconds =    464.975067    
+ Estimated remaining time in hh:mm:ss =      0 h 07 m 44 s
+ Estimated total run time in seconds =    522.443909    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 42 s
+ We have done    11.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #         2300
+ Time:    47.6738396      seconds
+ Elapsed time in seconds =    60.125157000000002     
+ Elapsed time in hh:mm:ss =      0 h 01 m 00 s
+ Mean elapsed time per time step in seconds =    2.61413734E-02
+ Max norm displacement vector U in all slices (m) =    1.21949299E-07
+ Time steps done =         2300  out of        20000
+ Time steps remaining =        17700
+ Estimated remaining time in seconds =    462.702301    
+ Estimated remaining time in hh:mm:ss =      0 h 07 m 42 s
+ Estimated total run time in seconds =    522.827454    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 42 s
+ We have done    11.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #         2400
+ Time:    50.0738411      seconds
+ Elapsed time in seconds =    62.714238000000002     
+ Elapsed time in hh:mm:ss =      0 h 01 m 02 s
+ Mean elapsed time per time step in seconds =    2.61309333E-02
+ Max norm displacement vector U in all slices (m) =    1.37969622E-07
+ Time steps done =         2400  out of        20000
+ Time steps remaining =        17600
+ Estimated remaining time in seconds =    459.904419    
+ Estimated remaining time in hh:mm:ss =      0 h 07 m 39 s
+ Estimated total run time in seconds =    522.618652    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 42 s
+ We have done    12.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #         2500
+ Time:    52.4738388      seconds
+ Elapsed time in seconds =    65.293501000000006     
+ Elapsed time in hh:mm:ss =      0 h 01 m 05 s
+ Mean elapsed time per time step in seconds =    2.61174012E-02
+ Max norm displacement vector U in all slices (m) =    1.36237006E-07
+ Time steps done =         2500  out of        20000
+ Time steps remaining =        17500
+ Estimated remaining time in seconds =    457.054504    
+ Estimated remaining time in hh:mm:ss =      0 h 07 m 37 s
+ Estimated total run time in seconds =    522.348022    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 42 s
+ We have done    12.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #         2600
+ Time:    54.8738403      seconds
+ Elapsed time in seconds =    67.932327999999998     
+ Elapsed time in hh:mm:ss =      0 h 01 m 07 s
+ Mean elapsed time per time step in seconds =    2.61278190E-02
+ Max norm displacement vector U in all slices (m) =    1.23988556E-07
+ Time steps done =         2600  out of        20000
+ Time steps remaining =        17400
+ Estimated remaining time in seconds =    454.624054    
+ Estimated remaining time in hh:mm:ss =      0 h 07 m 34 s
+ Estimated total run time in seconds =    522.556396    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 42 s
+ We have done    13.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #         2700
+ Time:    57.2738419      seconds
+ Elapsed time in seconds =    70.527417999999997     
+ Elapsed time in hh:mm:ss =      0 h 01 m 10 s
+ Mean elapsed time per time step in seconds =    2.61212662E-02
+ Max norm displacement vector U in all slices (m) =    1.34854801E-07
+ Time steps done =         2700  out of        20000
+ Time steps remaining =        17300
+ Estimated remaining time in seconds =    451.897888    
+ Estimated remaining time in hh:mm:ss =      0 h 07 m 31 s
+ Estimated total run time in seconds =    522.425293    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 42 s
+ We have done    13.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #         2800
+ Time:    59.6738396      seconds
+ Elapsed time in seconds =    73.133836000000002     
+ Elapsed time in hh:mm:ss =      0 h 01 m 13 s
+ Mean elapsed time per time step in seconds =    2.61192266E-02
+ Max norm displacement vector U in all slices (m) =    1.33351108E-07
+ Time steps done =         2800  out of        20000
+ Time steps remaining =        17200
+ Estimated remaining time in seconds =    449.250702    
+ Estimated remaining time in hh:mm:ss =      0 h 07 m 29 s
+ Estimated total run time in seconds =    522.384521    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 42 s
+ We have done    14.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #         2900
+ Time:    62.0738411      seconds
+ Elapsed time in seconds =    75.681708000000000     
+ Elapsed time in hh:mm:ss =      0 h 01 m 15 s
+ Mean elapsed time per time step in seconds =    2.60971412E-02
+ Max norm displacement vector U in all slices (m) =    1.19497400E-07
+ Time steps done =         2900  out of        20000
+ Time steps remaining =        17100
+ Estimated remaining time in seconds =    446.261108    
+ Estimated remaining time in hh:mm:ss =      0 h 07 m 26 s
+ Estimated total run time in seconds =    521.942810    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 41 s
+ We have done    14.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #         3000
+ Time:    64.4738388      seconds
+ Elapsed time in seconds =    78.232979999999998     
+ Elapsed time in hh:mm:ss =      0 h 01 m 18 s
+ Mean elapsed time per time step in seconds =    2.60776598E-02
+ Max norm displacement vector U in all slices (m) =    1.25884171E-07
+ Time steps done =         3000  out of        20000
+ Time steps remaining =        17000
+ Estimated remaining time in seconds =    443.320221    
+ Estimated remaining time in hh:mm:ss =      0 h 07 m 23 s
+ Estimated total run time in seconds =    521.553223    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 41 s
+ We have done    15.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #         3100
+ Time:    66.8738403      seconds
+ Elapsed time in seconds =    80.784903000000000     
+ Elapsed time in hh:mm:ss =      0 h 01 m 20 s
+ Mean elapsed time per time step in seconds =    2.60596462E-02
+ Max norm displacement vector U in all slices (m) =    1.21121090E-07
+ Time steps done =         3100  out of        20000
+ Time steps remaining =        16900
+ Estimated remaining time in seconds =    440.408020    
+ Estimated remaining time in hh:mm:ss =      0 h 07 m 20 s
+ Estimated total run time in seconds =    521.192932    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 41 s
+ We have done    15.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #         3200
+ Time:    69.2738419      seconds
+ Elapsed time in seconds =    83.342596000000000     
+ Elapsed time in hh:mm:ss =      0 h 01 m 23 s
+ Mean elapsed time per time step in seconds =    2.60445606E-02
+ Max norm displacement vector U in all slices (m) =    1.15054519E-07
+ Time steps done =         3200  out of        20000
+ Time steps remaining =        16800
+ Estimated remaining time in seconds =    437.548615    
+ Estimated remaining time in hh:mm:ss =      0 h 07 m 17 s
+ Estimated total run time in seconds =    520.891235    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 40 s
+ We have done    16.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #         3300
+ Time:    71.6738434      seconds
+ Elapsed time in seconds =    85.897513000000004     
+ Elapsed time in hh:mm:ss =      0 h 01 m 25 s
+ Mean elapsed time per time step in seconds =    2.60295495E-02
+ Max norm displacement vector U in all slices (m) =    1.31112287E-07
+ Time steps done =         3300  out of        20000
+ Time steps remaining =        16700
+ Estimated remaining time in seconds =    434.693481    
+ Estimated remaining time in hh:mm:ss =      0 h 07 m 14 s
+ Estimated total run time in seconds =    520.591003    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 40 s
+ We have done    16.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #         3400
+ Time:    74.0738373      seconds
+ Elapsed time in seconds =    88.478707999999997     
+ Elapsed time in hh:mm:ss =      0 h 01 m 28 s
+ Mean elapsed time per time step in seconds =    2.60231495E-02
+ Max norm displacement vector U in all slices (m) =    1.05490813E-07
+ Time steps done =         3400  out of        20000
+ Time steps remaining =        16600
+ Estimated remaining time in seconds =    431.984283    
+ Estimated remaining time in hh:mm:ss =      0 h 07 m 11 s
+ Estimated total run time in seconds =    520.463013    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 40 s
+ We have done    17.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #         3500
+ Time:    76.4738388      seconds
+ Elapsed time in seconds =    91.034325999999993     
+ Elapsed time in hh:mm:ss =      0 h 01 m 31 s
+ Mean elapsed time per time step in seconds =    2.60098074E-02
+ Max norm displacement vector U in all slices (m) =    1.16725772E-07
+ Time steps done =         3500  out of        20000
+ Time steps remaining =        16500
+ Estimated remaining time in seconds =    429.161835    
+ Estimated remaining time in hh:mm:ss =      0 h 07 m 09 s
+ Estimated total run time in seconds =    520.196167    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 40 s
+ We have done    17.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #         3600
+ Time:    78.8738403      seconds
+ Elapsed time in seconds =    93.588399999999993     
+ Elapsed time in hh:mm:ss =      0 h 01 m 33 s
+ Mean elapsed time per time step in seconds =    2.59967782E-02
+ Max norm displacement vector U in all slices (m) =    1.05839547E-07
+ Time steps done =         3600  out of        20000
+ Time steps remaining =        16400
+ Estimated remaining time in seconds =    426.347168    
+ Estimated remaining time in hh:mm:ss =      0 h 07 m 06 s
+ Estimated total run time in seconds =    519.935547    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 39 s
+ We have done    18.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #         3700
+ Time:    81.2738419      seconds
+ Elapsed time in seconds =    96.138096000000004     
+ Elapsed time in hh:mm:ss =      0 h 01 m 36 s
+ Mean elapsed time per time step in seconds =    2.59832684E-02
+ Max norm displacement vector U in all slices (m) =    1.05222192E-07
+ Time steps done =         3700  out of        20000
+ Time steps remaining =        16300
+ Estimated remaining time in seconds =    423.527283    
+ Estimated remaining time in hh:mm:ss =      0 h 07 m 03 s
+ Estimated total run time in seconds =    519.665405    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 39 s
+ We have done    18.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #         3800
+ Time:    83.6738434      seconds
+ Elapsed time in seconds =    98.688675000000003     
+ Elapsed time in hh:mm:ss =      0 h 01 m 38 s
+ Mean elapsed time per time step in seconds =    2.59707049E-02
+ Max norm displacement vector U in all slices (m) =    1.14637750E-07
+ Time steps done =         3800  out of        20000
+ Time steps remaining =        16200
+ Estimated remaining time in seconds =    420.725403    
+ Estimated remaining time in hh:mm:ss =      0 h 07 m 00 s
+ Estimated total run time in seconds =    519.414062    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 39 s
+ We have done    19.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #         3900
+ Time:    86.0738373      seconds
+ Elapsed time in seconds =    101.23933099999999     
+ Elapsed time in hh:mm:ss =      0 h 01 m 41 s
+ Mean elapsed time per time step in seconds =    2.59588026E-02
+ Max norm displacement vector U in all slices (m) =    1.12196609E-07
+ Time steps done =         3900  out of        20000
+ Time steps remaining =        16100
+ Estimated remaining time in seconds =    417.936737    
+ Estimated remaining time in hh:mm:ss =      0 h 06 m 57 s
+ Estimated total run time in seconds =    519.176086    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 39 s
+ We have done    19.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #         4000
+ Time:    88.4738388      seconds
+ Elapsed time in seconds =    103.78875100000000     
+ Elapsed time in hh:mm:ss =      0 h 01 m 43 s
+ Mean elapsed time per time step in seconds =    2.59471871E-02
+ Max norm displacement vector U in all slices (m) =    1.09467045E-07
+ Time steps done =         4000  out of        20000
+ Time steps remaining =        16000
+ Estimated remaining time in seconds =    415.154999    
+ Estimated remaining time in hh:mm:ss =      0 h 06 m 55 s
+ Estimated total run time in seconds =    518.943726    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 38 s
+ We have done    20.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #         4100
+ Time:    90.8738403      seconds
+ Elapsed time in seconds =    106.34054900000000     
+ Elapsed time in hh:mm:ss =      0 h 01 m 46 s
+ Mean elapsed time per time step in seconds =    2.59367190E-02
+ Max norm displacement vector U in all slices (m) =    1.07232417E-07
+ Time steps done =         4100  out of        20000
+ Time steps remaining =        15900
+ Estimated remaining time in seconds =    412.393829    
+ Estimated remaining time in hh:mm:ss =      0 h 06 m 52 s
+ Estimated total run time in seconds =    518.734375    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 38 s
+ We have done    20.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #         4200
+ Time:    93.2738419      seconds
+ Elapsed time in seconds =    108.88742100000000     
+ Elapsed time in hh:mm:ss =      0 h 01 m 48 s
+ Mean elapsed time per time step in seconds =    2.59255767E-02
+ Max norm displacement vector U in all slices (m) =    1.02225627E-07
+ Time steps done =         4200  out of        20000
+ Time steps remaining =        15800
+ Estimated remaining time in seconds =    409.624115    
+ Estimated remaining time in hh:mm:ss =      0 h 06 m 49 s
+ Estimated total run time in seconds =    518.511536    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 38 s
+ We have done    21.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #         4300
+ Time:    95.6738434      seconds
+ Elapsed time in seconds =    111.43027400000000     
+ Elapsed time in hh:mm:ss =      0 h 01 m 51 s
+ Mean elapsed time per time step in seconds =    2.59140171E-02
+ Max norm displacement vector U in all slices (m) =    1.04876442E-07
+ Time steps done =         4300  out of        20000
+ Time steps remaining =        15700
+ Estimated remaining time in seconds =    406.850067    
+ Estimated remaining time in hh:mm:ss =      0 h 06 m 46 s
+ Estimated total run time in seconds =    518.280334    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 38 s
+ We have done    21.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #         4400
+ Time:    98.0738373      seconds
+ Elapsed time in seconds =    113.97872099999999     
+ Elapsed time in hh:mm:ss =      0 h 01 m 53 s
+ Mean elapsed time per time step in seconds =    2.59042550E-02
+ Max norm displacement vector U in all slices (m) =    9.82382744E-08
+ Time steps done =         4400  out of        20000
+ Time steps remaining =        15600
+ Estimated remaining time in seconds =    404.106384    
+ Estimated remaining time in hh:mm:ss =      0 h 06 m 44 s
+ Estimated total run time in seconds =    518.085083    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 38 s
+ We have done    22.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #         4500
+ Time:    100.473839      seconds
+ Elapsed time in seconds =    116.52673600000000     
+ Elapsed time in hh:mm:ss =      0 h 01 m 56 s
+ Mean elapsed time per time step in seconds =    2.58948300E-02
+ Max norm displacement vector U in all slices (m) =    9.18799614E-08
+ Time steps done =         4500  out of        20000
+ Time steps remaining =        15500
+ Estimated remaining time in seconds =    401.369873    
+ Estimated remaining time in hh:mm:ss =      0 h 06 m 41 s
+ Estimated total run time in seconds =    517.896606    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    22.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #         4600
+ Time:    102.873840      seconds
+ Elapsed time in seconds =    119.07279500000000     
+ Elapsed time in hh:mm:ss =      0 h 01 m 59 s
+ Mean elapsed time per time step in seconds =    2.58853901E-02
+ Max norm displacement vector U in all slices (m) =    9.49894243E-08
+ Time steps done =         4600  out of        20000
+ Time steps remaining =        15400
+ Estimated remaining time in seconds =    398.635010    
+ Estimated remaining time in hh:mm:ss =      0 h 06 m 38 s
+ Estimated total run time in seconds =    517.707825    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    23.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #         4700
+ Time:    105.273842      seconds
+ Elapsed time in seconds =    121.67120100000000     
+ Elapsed time in hh:mm:ss =      0 h 02 m 01 s
+ Mean elapsed time per time step in seconds =    2.58874893E-02
+ Max norm displacement vector U in all slices (m) =    8.75929587E-08
+ Time steps done =         4700  out of        20000
+ Time steps remaining =        15300
+ Estimated remaining time in seconds =    396.078583    
+ Estimated remaining time in hh:mm:ss =      0 h 06 m 36 s
+ Estimated total run time in seconds =    517.749817    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    23.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #         4800
+ Time:    107.673843      seconds
+ Elapsed time in seconds =    124.23307500000000     
+ Elapsed time in hh:mm:ss =      0 h 02 m 04 s
+ Mean elapsed time per time step in seconds =    2.58818902E-02
+ Max norm displacement vector U in all slices (m) =    8.80152271E-08
+ Time steps done =         4800  out of        20000
+ Time steps remaining =        15200
+ Estimated remaining time in seconds =    393.404724    
+ Estimated remaining time in hh:mm:ss =      0 h 06 m 33 s
+ Estimated total run time in seconds =    517.637817    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    24.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #         4900
+ Time:    110.073837      seconds
+ Elapsed time in seconds =    126.85147200000000     
+ Elapsed time in hh:mm:ss =      0 h 02 m 06 s
+ Mean elapsed time per time step in seconds =    2.58880556E-02
+ Max norm displacement vector U in all slices (m) =    9.41584162E-08
+ Time steps done =         4900  out of        20000
+ Time steps remaining =        15100
+ Estimated remaining time in seconds =    390.909637    
+ Estimated remaining time in hh:mm:ss =      0 h 06 m 30 s
+ Estimated total run time in seconds =    517.761108    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    24.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #         5000
+ Time:    112.473839      seconds
+ Elapsed time in seconds =    129.50851400000002     
+ Elapsed time in hh:mm:ss =      0 h 02 m 09 s
+ Mean elapsed time per time step in seconds =    2.59017032E-02
+ Max norm displacement vector U in all slices (m) =    9.08188156E-08
+ Time steps done =         5000  out of        20000
+ Time steps remaining =        15000
+ Estimated remaining time in seconds =    388.525543    
+ Estimated remaining time in hh:mm:ss =      0 h 06 m 28 s
+ Estimated total run time in seconds =    518.034058    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 38 s
+ We have done    25.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #         5100
+ Time:    114.873840      seconds
+ Elapsed time in seconds =    132.17735000000002     
+ Elapsed time in hh:mm:ss =      0 h 02 m 12 s
+ Mean elapsed time per time step in seconds =    2.59171277E-02
+ Max norm displacement vector U in all slices (m) =    9.16217857E-08
+ Time steps done =         5100  out of        20000
+ Time steps remaining =        14900
+ Estimated remaining time in seconds =    386.165192    
+ Estimated remaining time in hh:mm:ss =      0 h 06 m 26 s
+ Estimated total run time in seconds =    518.342529    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 38 s
+ We have done    25.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #         5200
+ Time:    117.273842      seconds
+ Elapsed time in seconds =    134.76923000000002     
+ Elapsed time in hh:mm:ss =      0 h 02 m 14 s
+ Mean elapsed time per time step in seconds =    2.59171594E-02
+ Max norm displacement vector U in all slices (m) =    8.24908355E-08
+ Time steps done =         5200  out of        20000
+ Time steps remaining =        14800
+ Estimated remaining time in seconds =    383.573975    
+ Estimated remaining time in hh:mm:ss =      0 h 06 m 23 s
+ Estimated total run time in seconds =    518.343201    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 38 s
+ We have done    26.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #         5300
+ Time:    119.673843      seconds
+ Elapsed time in seconds =    137.39066100000002     
+ Elapsed time in hh:mm:ss =      0 h 02 m 17 s
+ Mean elapsed time per time step in seconds =    2.59227660E-02
+ Max norm displacement vector U in all slices (m) =    9.20936216E-08
+ Time steps done =         5300  out of        20000
+ Time steps remaining =        14700
+ Estimated remaining time in seconds =    381.064667    
+ Estimated remaining time in hh:mm:ss =      0 h 06 m 21 s
+ Estimated total run time in seconds =    518.455322    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 38 s
+ We have done    26.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #         5400
+ Time:    122.073837      seconds
+ Elapsed time in seconds =    140.02201500000001     
+ Elapsed time in hh:mm:ss =      0 h 02 m 20 s
+ Mean elapsed time per time step in seconds =    2.59300023E-02
+ Max norm displacement vector U in all slices (m) =    7.85642200E-08
+ Time steps done =         5400  out of        20000
+ Time steps remaining =        14600
+ Estimated remaining time in seconds =    378.578033    
+ Estimated remaining time in hh:mm:ss =      0 h 06 m 18 s
+ Estimated total run time in seconds =    518.600037    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 38 s
+ We have done    27.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #         5500
+ Time:    124.473839      seconds
+ Elapsed time in seconds =    142.60818600000002     
+ Elapsed time in hh:mm:ss =      0 h 02 m 22 s
+ Mean elapsed time per time step in seconds =    2.59287618E-02
+ Max norm displacement vector U in all slices (m) =    8.09889755E-08
+ Time steps done =         5500  out of        20000
+ Time steps remaining =        14500
+ Estimated remaining time in seconds =    375.967041    
+ Estimated remaining time in hh:mm:ss =      0 h 06 m 15 s
+ Estimated total run time in seconds =    518.575195    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 38 s
+ We have done    27.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #         5600
+ Time:    126.873840      seconds
+ Elapsed time in seconds =    145.25535300000001     
+ Elapsed time in hh:mm:ss =      0 h 02 m 25 s
+ Mean elapsed time per time step in seconds =    2.59384550E-02
+ Max norm displacement vector U in all slices (m) =    8.53797744E-08
+ Time steps done =         5600  out of        20000
+ Time steps remaining =        14400
+ Estimated remaining time in seconds =    373.513763    
+ Estimated remaining time in hh:mm:ss =      0 h 06 m 13 s
+ Estimated total run time in seconds =    518.769104    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 38 s
+ We have done    28.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #         5700
+ Time:    129.273834      seconds
+ Elapsed time in seconds =    147.86394100000001     
+ Elapsed time in hh:mm:ss =      0 h 02 m 27 s
+ Mean elapsed time per time step in seconds =    2.59410422E-02
+ Max norm displacement vector U in all slices (m) =    8.16524306E-08
+ Time steps done =         5700  out of        20000
+ Time steps remaining =        14300
+ Estimated remaining time in seconds =    370.956909    
+ Estimated remaining time in hh:mm:ss =      0 h 06 m 10 s
+ Estimated total run time in seconds =    518.820862    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 38 s
+ We have done    28.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #         5800
+ Time:    131.673843      seconds
+ Elapsed time in seconds =    150.41512800000001     
+ Elapsed time in hh:mm:ss =      0 h 02 m 30 s
+ Mean elapsed time per time step in seconds =    2.59336419E-02
+ Max norm displacement vector U in all slices (m) =    8.63678977E-08
+ Time steps done =         5800  out of        20000
+ Time steps remaining =        14200
+ Estimated remaining time in seconds =    368.257721    
+ Estimated remaining time in hh:mm:ss =      0 h 06 m 08 s
+ Estimated total run time in seconds =    518.672852    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 38 s
+ We have done    29.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #         5900
+ Time:    134.073837      seconds
+ Elapsed time in seconds =    152.96724100000000     
+ Elapsed time in hh:mm:ss =      0 h 02 m 32 s
+ Mean elapsed time per time step in seconds =    2.59266514E-02
+ Max norm displacement vector U in all slices (m) =    8.38258600E-08
+ Time steps done =         5900  out of        20000
+ Time steps remaining =        14100
+ Estimated remaining time in seconds =    365.565765    
+ Estimated remaining time in hh:mm:ss =      0 h 06 m 05 s
+ Estimated total run time in seconds =    518.533020    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 38 s
+ We have done    29.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #         6000
+ Time:    136.473846      seconds
+ Elapsed time in seconds =    155.52591500000003     
+ Elapsed time in hh:mm:ss =      0 h 02 m 35 s
+ Mean elapsed time per time step in seconds =    2.59209853E-02
+ Max norm displacement vector U in all slices (m) =    8.09242593E-08
+ Time steps done =         6000  out of        20000
+ Time steps remaining =        14000
+ Estimated remaining time in seconds =    362.893799    
+ Estimated remaining time in hh:mm:ss =      0 h 06 m 02 s
+ Estimated total run time in seconds =    518.419739    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 38 s
+ We have done    30.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #         6100
+ Time:    138.873840      seconds
+ Elapsed time in seconds =    158.07979500000002     
+ Elapsed time in hh:mm:ss =      0 h 02 m 38 s
+ Mean elapsed time per time step in seconds =    2.59147212E-02
+ Max norm displacement vector U in all slices (m) =    7.28871896E-08
+ Time steps done =         6100  out of        20000
+ Time steps remaining =        13900
+ Estimated remaining time in seconds =    360.214600    
+ Estimated remaining time in hh:mm:ss =      0 h 06 m 00 s
+ Estimated total run time in seconds =    518.294434    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 38 s
+ We have done    30.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #         6200
+ Time:    141.273834      seconds
+ Elapsed time in seconds =    160.65146900000002     
+ Elapsed time in hh:mm:ss =      0 h 02 m 40 s
+ Mean elapsed time per time step in seconds =    2.59115268E-02
+ Max norm displacement vector U in all slices (m) =    6.93663509E-08
+ Time steps done =         6200  out of        20000
+ Time steps remaining =        13800
+ Estimated remaining time in seconds =    357.579071    
+ Estimated remaining time in hh:mm:ss =      0 h 05 m 57 s
+ Estimated total run time in seconds =    518.230530    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 38 s
+ We have done    31.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #         6300
+ Time:    143.673843      seconds
+ Elapsed time in seconds =    163.20201800000001     
+ Elapsed time in hh:mm:ss =      0 h 02 m 43 s
+ Mean elapsed time per time step in seconds =    2.59050820E-02
+ Max norm displacement vector U in all slices (m) =    6.86617128E-08
+ Time steps done =         6300  out of        20000
+ Time steps remaining =        13700
+ Estimated remaining time in seconds =    354.899628    
+ Estimated remaining time in hh:mm:ss =      0 h 05 m 54 s
+ Estimated total run time in seconds =    518.101624    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 38 s
+ We have done    31.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #         6400
+ Time:    146.073837      seconds
+ Elapsed time in seconds =    165.74631500000001     
+ Elapsed time in hh:mm:ss =      0 h 02 m 45 s
+ Mean elapsed time per time step in seconds =    2.58978624E-02
+ Max norm displacement vector U in all slices (m) =    6.62197408E-08
+ Time steps done =         6400  out of        20000
+ Time steps remaining =        13600
+ Estimated remaining time in seconds =    352.210907    
+ Estimated remaining time in hh:mm:ss =      0 h 05 m 52 s
+ Estimated total run time in seconds =    517.957214    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    32.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #         6500
+ Time:    148.473846      seconds
+ Elapsed time in seconds =    168.29232000000002     
+ Elapsed time in hh:mm:ss =      0 h 02 m 48 s
+ Mean elapsed time per time step in seconds =    2.58911271E-02
+ Max norm displacement vector U in all slices (m) =    6.47728982E-08
+ Time steps done =         6500  out of        20000
+ Time steps remaining =        13500
+ Estimated remaining time in seconds =    349.530212    
+ Estimated remaining time in hh:mm:ss =      0 h 05 m 49 s
+ Estimated total run time in seconds =    517.822510    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    32.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #         6600
+ Time:    150.873840      seconds
+ Elapsed time in seconds =    170.84842800000001     
+ Elapsed time in hh:mm:ss =      0 h 02 m 50 s
+ Mean elapsed time per time step in seconds =    2.58861259E-02
+ Max norm displacement vector U in all slices (m) =    6.91623967E-08
+ Time steps done =         6600  out of        20000
+ Time steps remaining =        13400
+ Estimated remaining time in seconds =    346.874084    
+ Estimated remaining time in hh:mm:ss =      0 h 05 m 46 s
+ Estimated total run time in seconds =    517.722534    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    33.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #         6700
+ Time:    153.273834      seconds
+ Elapsed time in seconds =    173.41305200000002     
+ Elapsed time in hh:mm:ss =      0 h 02 m 53 s
+ Mean elapsed time per time step in seconds =    2.58825459E-02
+ Max norm displacement vector U in all slices (m) =    7.55299610E-08
+ Time steps done =         6700  out of        20000
+ Time steps remaining =        13300
+ Estimated remaining time in seconds =    344.237854    
+ Estimated remaining time in hh:mm:ss =      0 h 05 m 44 s
+ Estimated total run time in seconds =    517.650879    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    33.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #         6800
+ Time:    155.673843      seconds
+ Elapsed time in seconds =    176.03204000000002     
+ Elapsed time in hh:mm:ss =      0 h 02 m 56 s
+ Mean elapsed time per time step in seconds =    2.58870646E-02
+ Max norm displacement vector U in all slices (m) =    7.02037255E-08
+ Time steps done =         6800  out of        20000
+ Time steps remaining =        13200
+ Estimated remaining time in seconds =    341.709259    
+ Estimated remaining time in hh:mm:ss =      0 h 05 m 41 s
+ Estimated total run time in seconds =    517.741272    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    34.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #         6900
+ Time:    158.073837      seconds
+ Elapsed time in seconds =    178.66133500000001     
+ Elapsed time in hh:mm:ss =      0 h 02 m 58 s
+ Mean elapsed time per time step in seconds =    2.58929469E-02
+ Max norm displacement vector U in all slices (m) =    8.42725996E-08
+ Time steps done =         6900  out of        20000
+ Time steps remaining =        13100
+ Estimated remaining time in seconds =    339.197601    
+ Estimated remaining time in hh:mm:ss =      0 h 05 m 39 s
+ Estimated total run time in seconds =    517.858948    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    34.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #         7000
+ Time:    160.473846      seconds
+ Elapsed time in seconds =    181.28066200000001     
+ Elapsed time in hh:mm:ss =      0 h 03 m 01 s
+ Mean elapsed time per time step in seconds =    2.58972365E-02
+ Max norm displacement vector U in all slices (m) =    7.54183134E-08
+ Time steps done =         7000  out of        20000
+ Time steps remaining =        13000
+ Estimated remaining time in seconds =    336.664093    
+ Estimated remaining time in hh:mm:ss =      0 h 05 m 36 s
+ Estimated total run time in seconds =    517.944763    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    35.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #         7100
+ Time:    162.873840      seconds
+ Elapsed time in seconds =    183.91835200000003     
+ Elapsed time in hh:mm:ss =      0 h 03 m 03 s
+ Mean elapsed time per time step in seconds =    2.59039924E-02
+ Max norm displacement vector U in all slices (m) =    6.89743800E-08
+ Time steps done =         7100  out of        20000
+ Time steps remaining =        12900
+ Estimated remaining time in seconds =    334.161499    
+ Estimated remaining time in hh:mm:ss =      0 h 05 m 34 s
+ Estimated total run time in seconds =    518.079895    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 38 s
+ We have done    35.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #         7200
+ Time:    165.273834      seconds
+ Elapsed time in seconds =    186.53488800000002     
+ Elapsed time in hh:mm:ss =      0 h 03 m 06 s
+ Mean elapsed time per time step in seconds =    2.59076227E-02
+ Max norm displacement vector U in all slices (m) =    6.81451553E-08
+ Time steps done =         7200  out of        20000
+ Time steps remaining =        12800
+ Estimated remaining time in seconds =    331.617584    
+ Estimated remaining time in hh:mm:ss =      0 h 05 m 31 s
+ Estimated total run time in seconds =    518.152466    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 38 s
+ We have done    36.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #         7300
+ Time:    167.673843      seconds
+ Elapsed time in seconds =    189.16800000000001     
+ Elapsed time in hh:mm:ss =      0 h 03 m 09 s
+ Mean elapsed time per time step in seconds =    2.59134248E-02
+ Max norm displacement vector U in all slices (m) =    6.55642083E-08
+ Time steps done =         7300  out of        20000
+ Time steps remaining =        12700
+ Estimated remaining time in seconds =    329.100494    
+ Estimated remaining time in hh:mm:ss =      0 h 05 m 29 s
+ Estimated total run time in seconds =    518.268494    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 38 s
+ We have done    36.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #         7400
+ Time:    170.073837      seconds
+ Elapsed time in seconds =    191.71773200000001     
+ Elapsed time in hh:mm:ss =      0 h 03 m 11 s
+ Mean elapsed time per time step in seconds =    2.59078015E-02
+ Max norm displacement vector U in all slices (m) =    7.68607649E-08
+ Time steps done =         7400  out of        20000
+ Time steps remaining =        12600
+ Estimated remaining time in seconds =    326.438293    
+ Estimated remaining time in hh:mm:ss =      0 h 05 m 26 s
+ Estimated total run time in seconds =    518.156006    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 38 s
+ We have done    37.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #         7500
+ Time:    172.473846      seconds
+ Elapsed time in seconds =    194.26932900000003     
+ Elapsed time in hh:mm:ss =      0 h 03 m 14 s
+ Mean elapsed time per time step in seconds =    2.59025767E-02
+ Max norm displacement vector U in all slices (m) =    6.34502797E-08
+ Time steps done =         7500  out of        20000
+ Time steps remaining =        12500
+ Estimated remaining time in seconds =    323.782227    
+ Estimated remaining time in hh:mm:ss =      0 h 05 m 23 s
+ Estimated total run time in seconds =    518.051514    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 38 s
+ We have done    37.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #         7600
+ Time:    174.873840      seconds
+ Elapsed time in seconds =    196.81715600000001     
+ Elapsed time in hh:mm:ss =      0 h 03 m 16 s
+ Mean elapsed time per time step in seconds =    2.58969944E-02
+ Max norm displacement vector U in all slices (m) =    7.99375073E-08
+ Time steps done =         7600  out of        20000
+ Time steps remaining =        12400
+ Estimated remaining time in seconds =    321.122742    
+ Estimated remaining time in hh:mm:ss =      0 h 05 m 21 s
+ Estimated total run time in seconds =    517.939880    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    38.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #         7700
+ Time:    177.273834      seconds
+ Elapsed time in seconds =    199.36909600000001     
+ Elapsed time in hh:mm:ss =      0 h 03 m 19 s
+ Mean elapsed time per time step in seconds =    2.58920901E-02
+ Max norm displacement vector U in all slices (m) =    7.47895896E-08
+ Time steps done =         7700  out of        20000
+ Time steps remaining =        12300
+ Estimated remaining time in seconds =    318.472717    
+ Estimated remaining time in hh:mm:ss =      0 h 05 m 18 s
+ Estimated total run time in seconds =    517.841797    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    38.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #         7800
+ Time:    179.673843      seconds
+ Elapsed time in seconds =    201.94027500000001     
+ Elapsed time in hh:mm:ss =      0 h 03 m 21 s
+ Mean elapsed time per time step in seconds =    2.58897785E-02
+ Max norm displacement vector U in all slices (m) =    7.04375651E-08
+ Time steps done =         7800  out of        20000
+ Time steps remaining =        12200
+ Estimated remaining time in seconds =    315.855316    
+ Estimated remaining time in hh:mm:ss =      0 h 05 m 15 s
+ Estimated total run time in seconds =    517.795593    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    39.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #         7900
+ Time:    182.073837      seconds
+ Elapsed time in seconds =    204.58985800000002     
+ Elapsed time in hh:mm:ss =      0 h 03 m 24 s
+ Mean elapsed time per time step in seconds =    2.58974507E-02
+ Max norm displacement vector U in all slices (m) =    7.27229974E-08
+ Time steps done =         7900  out of        20000
+ Time steps remaining =        12100
+ Estimated remaining time in seconds =    313.359161    
+ Estimated remaining time in hh:mm:ss =      0 h 05 m 13 s
+ Estimated total run time in seconds =    517.949036    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    39.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #         8000
+ Time:    184.473846      seconds
+ Elapsed time in seconds =    207.21463600000001     
+ Elapsed time in hh:mm:ss =      0 h 03 m 27 s
+ Mean elapsed time per time step in seconds =    2.59018298E-02
+ Max norm displacement vector U in all slices (m) =    6.81816275E-08
+ Time steps done =         8000  out of        20000
+ Time steps remaining =        12000
+ Estimated remaining time in seconds =    310.821960    
+ Estimated remaining time in hh:mm:ss =      0 h 05 m 10 s
+ Estimated total run time in seconds =    518.036560    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 38 s
+ We have done    40.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #         8100
+ Time:    186.873840      seconds
+ Elapsed time in seconds =    209.76940000000002     
+ Elapsed time in hh:mm:ss =      0 h 03 m 29 s
+ Mean elapsed time per time step in seconds =    2.58974563E-02
+ Max norm displacement vector U in all slices (m) =    7.72528637E-08
+ Time steps done =         8100  out of        20000
+ Time steps remaining =        11900
+ Estimated remaining time in seconds =    308.179749    
+ Estimated remaining time in hh:mm:ss =      0 h 05 m 08 s
+ Estimated total run time in seconds =    517.949158    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    40.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #         8200
+ Time:    189.273834      seconds
+ Elapsed time in seconds =    212.31092700000002     
+ Elapsed time in hh:mm:ss =      0 h 03 m 32 s
+ Mean elapsed time per time step in seconds =    2.58915760E-02
+ Max norm displacement vector U in all slices (m) =    7.24596774E-08
+ Time steps done =         8200  out of        20000
+ Time steps remaining =        11800
+ Estimated remaining time in seconds =    305.520599    
+ Estimated remaining time in hh:mm:ss =      0 h 05 m 05 s
+ Estimated total run time in seconds =    517.831543    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    41.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #         8300
+ Time:    191.673843      seconds
+ Elapsed time in seconds =    214.86589500000002     
+ Elapsed time in hh:mm:ss =      0 h 03 m 34 s
+ Mean elapsed time per time step in seconds =    2.58874577E-02
+ Max norm displacement vector U in all slices (m) =    6.72151472E-08
+ Time steps done =         8300  out of        20000
+ Time steps remaining =        11700
+ Estimated remaining time in seconds =    302.883240    
+ Estimated remaining time in hh:mm:ss =      0 h 05 m 02 s
+ Estimated total run time in seconds =    517.749146    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    41.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #         8400
+ Time:    194.073837      seconds
+ Elapsed time in seconds =    217.41346900000002     
+ Elapsed time in hh:mm:ss =      0 h 03 m 37 s
+ Mean elapsed time per time step in seconds =    2.58825552E-02
+ Max norm displacement vector U in all slices (m) =    6.23748164E-08
+ Time steps done =         8400  out of        20000
+ Time steps remaining =        11600
+ Estimated remaining time in seconds =    300.237640    
+ Estimated remaining time in hh:mm:ss =      0 h 05 m 00 s
+ Estimated total run time in seconds =    517.651123    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    42.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #         8500
+ Time:    196.473846      seconds
+ Elapsed time in seconds =    219.95816900000003     
+ Elapsed time in hh:mm:ss =      0 h 03 m 39 s
+ Mean elapsed time per time step in seconds =    2.58774310E-02
+ Max norm displacement vector U in all slices (m) =    5.92761396E-08
+ Time steps done =         8500  out of        20000
+ Time steps remaining =        11500
+ Estimated remaining time in seconds =    297.590454    
+ Estimated remaining time in hh:mm:ss =      0 h 04 m 57 s
+ Estimated total run time in seconds =    517.548645    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    42.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #         8600
+ Time:    198.873840      seconds
+ Elapsed time in seconds =    222.51210600000002     
+ Elapsed time in hh:mm:ss =      0 h 03 m 42 s
+ Mean elapsed time per time step in seconds =    2.58735009E-02
+ Max norm displacement vector U in all slices (m) =    5.84338409E-08
+ Time steps done =         8600  out of        20000
+ Time steps remaining =        11400
+ Estimated remaining time in seconds =    294.957916    
+ Estimated remaining time in hh:mm:ss =      0 h 04 m 54 s
+ Estimated total run time in seconds =    517.470032    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    43.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #         8700
+ Time:    201.273834      seconds
+ Elapsed time in seconds =    225.16081200000002     
+ Elapsed time in hh:mm:ss =      0 h 03 m 45 s
+ Mean elapsed time per time step in seconds =    2.58805528E-02
+ Max norm displacement vector U in all slices (m) =    6.22766763E-08
+ Time steps done =         8700  out of        20000
+ Time steps remaining =        11300
+ Estimated remaining time in seconds =    292.450256    
+ Estimated remaining time in hh:mm:ss =      0 h 04 m 52 s
+ Estimated total run time in seconds =    517.611084    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    43.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #         8800
+ Time:    203.673843      seconds
+ Elapsed time in seconds =    227.80718300000001     
+ Elapsed time in hh:mm:ss =      0 h 03 m 47 s
+ Mean elapsed time per time step in seconds =    2.58871801E-02
+ Max norm displacement vector U in all slices (m) =    5.61667761E-08
+ Time steps done =         8800  out of        20000
+ Time steps remaining =        11200
+ Estimated remaining time in seconds =    289.936401    
+ Estimated remaining time in hh:mm:ss =      0 h 04 m 49 s
+ Estimated total run time in seconds =    517.743591    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    44.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #         8900
+ Time:    206.073837      seconds
+ Elapsed time in seconds =    230.45924400000001     
+ Elapsed time in hh:mm:ss =      0 h 03 m 50 s
+ Mean elapsed time per time step in seconds =    2.58942973E-02
+ Max norm displacement vector U in all slices (m) =    6.29004262E-08
+ Time steps done =         8900  out of        20000
+ Time steps remaining =        11100
+ Estimated remaining time in seconds =    287.426697    
+ Estimated remaining time in hh:mm:ss =      0 h 04 m 47 s
+ Estimated total run time in seconds =    517.885925    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    44.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #         9000
+ Time:    208.473846      seconds
+ Elapsed time in seconds =    233.02032600000001     
+ Elapsed time in hh:mm:ss =      0 h 03 m 53 s
+ Mean elapsed time per time step in seconds =    2.58911476E-02
+ Max norm displacement vector U in all slices (m) =    6.25375449E-08
+ Time steps done =         9000  out of        20000
+ Time steps remaining =        11000
+ Estimated remaining time in seconds =    284.802612    
+ Estimated remaining time in hh:mm:ss =      0 h 04 m 44 s
+ Estimated total run time in seconds =    517.822937    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    45.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #         9100
+ Time:    210.873840      seconds
+ Elapsed time in seconds =    235.70091300000001     
+ Elapsed time in hh:mm:ss =      0 h 03 m 55 s
+ Mean elapsed time per time step in seconds =    2.59011984E-02
+ Max norm displacement vector U in all slices (m) =    5.50438592E-08
+ Time steps done =         9100  out of        20000
+ Time steps remaining =        10900
+ Estimated remaining time in seconds =    282.323059    
+ Estimated remaining time in hh:mm:ss =      0 h 04 m 42 s
+ Estimated total run time in seconds =    518.023987    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 38 s
+ We have done    45.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #         9200
+ Time:    213.273834      seconds
+ Elapsed time in seconds =    238.27172000000002     
+ Elapsed time in hh:mm:ss =      0 h 03 m 58 s
+ Mean elapsed time per time step in seconds =    2.58990992E-02
+ Max norm displacement vector U in all slices (m) =    5.86423532E-08
+ Time steps done =         9200  out of        20000
+ Time steps remaining =        10800
+ Estimated remaining time in seconds =    279.710266    
+ Estimated remaining time in hh:mm:ss =      0 h 04 m 39 s
+ Estimated total run time in seconds =    517.981995    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    46.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #         9300
+ Time:    215.673843      seconds
+ Elapsed time in seconds =    240.84383500000001     
+ Elapsed time in hh:mm:ss =      0 h 04 m 00 s
+ Mean elapsed time per time step in seconds =    2.58971862E-02
+ Max norm displacement vector U in all slices (m) =    6.00368679E-08
+ Time steps done =         9300  out of        20000
+ Time steps remaining =        10700
+ Estimated remaining time in seconds =    277.099884    
+ Estimated remaining time in hh:mm:ss =      0 h 04 m 37 s
+ Estimated total run time in seconds =    517.943726    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    46.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #         9400
+ Time:    218.073837      seconds
+ Elapsed time in seconds =    243.41717100000002     
+ Elapsed time in hh:mm:ss =      0 h 04 m 03 s
+ Mean elapsed time per time step in seconds =    2.58954428E-02
+ Max norm displacement vector U in all slices (m) =    5.61895810E-08
+ Time steps done =         9400  out of        20000
+ Time steps remaining =        10600
+ Estimated remaining time in seconds =    274.491699    
+ Estimated remaining time in hh:mm:ss =      0 h 04 m 34 s
+ Estimated total run time in seconds =    517.908875    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    47.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #         9500
+ Time:    220.473846      seconds
+ Elapsed time in seconds =    245.96535300000002     
+ Elapsed time in hh:mm:ss =      0 h 04 m 05 s
+ Mean elapsed time per time step in seconds =    2.58910898E-02
+ Max norm displacement vector U in all slices (m) =    5.16568122E-08
+ Time steps done =         9500  out of        20000
+ Time steps remaining =        10500
+ Estimated remaining time in seconds =    271.856445    
+ Estimated remaining time in hh:mm:ss =      0 h 04 m 31 s
+ Estimated total run time in seconds =    517.821777    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    47.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #         9600
+ Time:    222.873840      seconds
+ Elapsed time in seconds =    248.51945600000002     
+ Elapsed time in hh:mm:ss =      0 h 04 m 08 s
+ Mean elapsed time per time step in seconds =    2.58874428E-02
+ Max norm displacement vector U in all slices (m) =    4.84500120E-08
+ Time steps done =         9600  out of        20000
+ Time steps remaining =        10400
+ Estimated remaining time in seconds =    269.229401    
+ Estimated remaining time in hh:mm:ss =      0 h 04 m 29 s
+ Estimated total run time in seconds =    517.748840    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    48.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #         9700
+ Time:    225.273834      seconds
+ Elapsed time in seconds =    251.06402700000001     
+ Elapsed time in hh:mm:ss =      0 h 04 m 11 s
+ Mean elapsed time per time step in seconds =    2.58828886E-02
+ Max norm displacement vector U in all slices (m) =    4.66057308E-08
+ Time steps done =         9700  out of        20000
+ Time steps remaining =        10300
+ Estimated remaining time in seconds =    266.593750    
+ Estimated remaining time in hh:mm:ss =      0 h 04 m 26 s
+ Estimated total run time in seconds =    517.657776    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    48.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #         9800
+ Time:    227.673843      seconds
+ Elapsed time in seconds =    253.62346200000002     
+ Elapsed time in hh:mm:ss =      0 h 04 m 13 s
+ Mean elapsed time per time step in seconds =    2.58799456E-02
+ Max norm displacement vector U in all slices (m) =    4.70907970E-08
+ Time steps done =         9800  out of        20000
+ Time steps remaining =        10200
+ Estimated remaining time in seconds =    263.975433    
+ Estimated remaining time in hh:mm:ss =      0 h 04 m 23 s
+ Estimated total run time in seconds =    517.598877    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    49.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #         9900
+ Time:    230.073837      seconds
+ Elapsed time in seconds =    256.19426399999998     
+ Elapsed time in hh:mm:ss =      0 h 04 m 16 s
+ Mean elapsed time per time step in seconds =    2.58782078E-02
+ Max norm displacement vector U in all slices (m) =    5.11737674E-08
+ Time steps done =         9900  out of        20000
+ Time steps remaining =        10100
+ Estimated remaining time in seconds =    261.369904    
+ Estimated remaining time in hh:mm:ss =      0 h 04 m 21 s
+ Estimated total run time in seconds =    517.564148    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    49.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #        10000
+ Time:    232.473846      seconds
+ Elapsed time in seconds =    258.77531299999998     
+ Elapsed time in hh:mm:ss =      0 h 04 m 18 s
+ Mean elapsed time per time step in seconds =    2.58775316E-02
+ Max norm displacement vector U in all slices (m) =    5.36587237E-08
+ Time steps done =        10000  out of        20000
+ Time steps remaining =        10000
+ Estimated remaining time in seconds =    258.775299    
+ Estimated remaining time in hh:mm:ss =      0 h 04 m 18 s
+ Estimated total run time in seconds =    517.550598    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    50.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #        10100
+ Time:    234.873840      seconds
+ Elapsed time in seconds =    261.35370300000000     
+ Elapsed time in hh:mm:ss =      0 h 04 m 21 s
+ Mean elapsed time per time step in seconds =    2.58766040E-02
+ Max norm displacement vector U in all slices (m) =    4.74824091E-08
+ Time steps done =        10100  out of        20000
+ Time steps remaining =         9900
+ Estimated remaining time in seconds =    256.178375    
+ Estimated remaining time in hh:mm:ss =      0 h 04 m 16 s
+ Estimated total run time in seconds =    517.532104    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    50.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #        10200
+ Time:    237.273834      seconds
+ Elapsed time in seconds =    263.95495899999997     
+ Elapsed time in hh:mm:ss =      0 h 04 m 23 s
+ Mean elapsed time per time step in seconds =    2.58779377E-02
+ Max norm displacement vector U in all slices (m) =    5.10329698E-08
+ Time steps done =        10200  out of        20000
+ Time steps remaining =         9800
+ Estimated remaining time in seconds =    253.603790    
+ Estimated remaining time in hh:mm:ss =      0 h 04 m 13 s
+ Estimated total run time in seconds =    517.558716    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    51.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #        10300
+ Time:    239.673843      seconds
+ Elapsed time in seconds =    266.54522099999997     
+ Elapsed time in hh:mm:ss =      0 h 04 m 26 s
+ Mean elapsed time per time step in seconds =    2.58781761E-02
+ Max norm displacement vector U in all slices (m) =    5.47348229E-08
+ Time steps done =        10300  out of        20000
+ Time steps remaining =         9700
+ Estimated remaining time in seconds =    251.018311    
+ Estimated remaining time in hh:mm:ss =      0 h 04 m 11 s
+ Estimated total run time in seconds =    517.563538    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    51.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #        10400
+ Time:    242.073837      seconds
+ Elapsed time in seconds =    269.19640499999997     
+ Elapsed time in hh:mm:ss =      0 h 04 m 29 s
+ Mean elapsed time per time step in seconds =    2.58842688E-02
+ Max norm displacement vector U in all slices (m) =    5.26912309E-08
+ Time steps done =        10400  out of        20000
+ Time steps remaining =         9600
+ Estimated remaining time in seconds =    248.488983    
+ Estimated remaining time in hh:mm:ss =      0 h 04 m 08 s
+ Estimated total run time in seconds =    517.685364    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    52.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #        10500
+ Time:    244.473846      seconds
+ Elapsed time in seconds =    271.79256099999998     
+ Elapsed time in hh:mm:ss =      0 h 04 m 31 s
+ Mean elapsed time per time step in seconds =    2.58850064E-02
+ Max norm displacement vector U in all slices (m) =    5.35087423E-08
+ Time steps done =        10500  out of        20000
+ Time steps remaining =         9500
+ Estimated remaining time in seconds =    245.907562    
+ Estimated remaining time in hh:mm:ss =      0 h 04 m 05 s
+ Estimated total run time in seconds =    517.700134    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    52.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #        10600
+ Time:    246.873840      seconds
+ Elapsed time in seconds =    274.38263200000000     
+ Elapsed time in hh:mm:ss =      0 h 04 m 34 s
+ Mean elapsed time per time step in seconds =    2.58851536E-02
+ Max norm displacement vector U in all slices (m) =    5.72551428E-08
+ Time steps done =        10600  out of        20000
+ Time steps remaining =         9400
+ Estimated remaining time in seconds =    243.320450    
+ Estimated remaining time in hh:mm:ss =      0 h 04 m 03 s
+ Estimated total run time in seconds =    517.703064    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    53.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #        10700
+ Time:    249.273834      seconds
+ Elapsed time in seconds =    276.93708599999997     
+ Elapsed time in hh:mm:ss =      0 h 04 m 36 s
+ Mean elapsed time per time step in seconds =    2.58819703E-02
+ Max norm displacement vector U in all slices (m) =    5.02795281E-08
+ Time steps done =        10700  out of        20000
+ Time steps remaining =         9300
+ Estimated remaining time in seconds =    240.702332    
+ Estimated remaining time in hh:mm:ss =      0 h 04 m 00 s
+ Estimated total run time in seconds =    517.639404    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    53.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #        10800
+ Time:    251.673843      seconds
+ Elapsed time in seconds =    279.49125599999996     
+ Elapsed time in hh:mm:ss =      0 h 04 m 39 s
+ Mean elapsed time per time step in seconds =    2.58788206E-02
+ Max norm displacement vector U in all slices (m) =    5.15584944E-08
+ Time steps done =        10800  out of        20000
+ Time steps remaining =         9200
+ Estimated remaining time in seconds =    238.085144    
+ Estimated remaining time in hh:mm:ss =      0 h 03 m 58 s
+ Estimated total run time in seconds =    517.576416    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    54.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #        10900
+ Time:    254.073837      seconds
+ Elapsed time in seconds =    282.04802999999998     
+ Elapsed time in hh:mm:ss =      0 h 04 m 42 s
+ Mean elapsed time per time step in seconds =    2.58759651E-02
+ Max norm displacement vector U in all slices (m) =    5.12638003E-08
+ Time steps done =        10900  out of        20000
+ Time steps remaining =         9100
+ Estimated remaining time in seconds =    235.471298    
+ Estimated remaining time in hh:mm:ss =      0 h 03 m 55 s
+ Estimated total run time in seconds =    517.519348    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    54.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #        11000
+ Time:    256.473846      seconds
+ Elapsed time in seconds =    284.59529399999997     
+ Elapsed time in hh:mm:ss =      0 h 04 m 44 s
+ Mean elapsed time per time step in seconds =    2.58722994E-02
+ Max norm displacement vector U in all slices (m) =    4.75183874E-08
+ Time steps done =        11000  out of        20000
+ Time steps remaining =         9000
+ Estimated remaining time in seconds =    232.850693    
+ Estimated remaining time in hh:mm:ss =      0 h 03 m 52 s
+ Estimated total run time in seconds =    517.445984    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    55.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #        11100
+ Time:    258.873840      seconds
+ Elapsed time in seconds =    287.14559700000001     
+ Elapsed time in hh:mm:ss =      0 h 04 m 47 s
+ Mean elapsed time per time step in seconds =    2.58689728E-02
+ Max norm displacement vector U in all slices (m) =    4.90650471E-08
+ Time steps done =        11100  out of        20000
+ Time steps remaining =         8900
+ Estimated remaining time in seconds =    230.233856    
+ Estimated remaining time in hh:mm:ss =      0 h 03 m 50 s
+ Estimated total run time in seconds =    517.379456    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    55.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #        11200
+ Time:    261.273834      seconds
+ Elapsed time in seconds =    289.70058399999999     
+ Elapsed time in hh:mm:ss =      0 h 04 m 49 s
+ Mean elapsed time per time step in seconds =    2.58661229E-02
+ Max norm displacement vector U in all slices (m) =    5.06909750E-08
+ Time steps done =        11200  out of        20000
+ Time steps remaining =         8800
+ Estimated remaining time in seconds =    227.621887    
+ Estimated remaining time in hh:mm:ss =      0 h 03 m 47 s
+ Estimated total run time in seconds =    517.322449    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    56.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #        11300
+ Time:    263.673828      seconds
+ Elapsed time in seconds =    292.24761999999998     
+ Elapsed time in hh:mm:ss =      0 h 04 m 52 s
+ Mean elapsed time per time step in seconds =    2.58626211E-02
+ Max norm displacement vector U in all slices (m) =    4.81997446E-08
+ Time steps done =        11300  out of        20000
+ Time steps remaining =         8700
+ Estimated remaining time in seconds =    225.004807    
+ Estimated remaining time in hh:mm:ss =      0 h 03 m 45 s
+ Estimated total run time in seconds =    517.252441    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    56.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #        11400
+ Time:    266.073853      seconds
+ Elapsed time in seconds =    294.79701399999999     
+ Elapsed time in hh:mm:ss =      0 h 04 m 54 s
+ Mean elapsed time per time step in seconds =    2.58593876E-02
+ Max norm displacement vector U in all slices (m) =    4.93609491E-08
+ Time steps done =        11400  out of        20000
+ Time steps remaining =         8600
+ Estimated remaining time in seconds =    222.390732    
+ Estimated remaining time in hh:mm:ss =      0 h 03 m 42 s
+ Estimated total run time in seconds =    517.187744    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    57.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #        11500
+ Time:    268.473846      seconds
+ Elapsed time in seconds =    297.34301699999997     
+ Elapsed time in hh:mm:ss =      0 h 04 m 57 s
+ Mean elapsed time per time step in seconds =    2.58559138E-02
+ Max norm displacement vector U in all slices (m) =    5.23429122E-08
+ Time steps done =        11500  out of        20000
+ Time steps remaining =         8500
+ Estimated remaining time in seconds =    219.775269    
+ Estimated remaining time in hh:mm:ss =      0 h 03 m 39 s
+ Estimated total run time in seconds =    517.118286    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    57.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #        11600
+ Time:    270.873840      seconds
+ Elapsed time in seconds =    299.92819199999997     
+ Elapsed time in hh:mm:ss =      0 h 04 m 59 s
+ Mean elapsed time per time step in seconds =    2.58558784E-02
+ Max norm displacement vector U in all slices (m) =    5.47383614E-08
+ Time steps done =        11600  out of        20000
+ Time steps remaining =         8400
+ Estimated remaining time in seconds =    217.189377    
+ Estimated remaining time in hh:mm:ss =      0 h 03 m 37 s
+ Estimated total run time in seconds =    517.117554    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    58.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #        11700
+ Time:    273.273834      seconds
+ Elapsed time in seconds =    302.56606899999997     
+ Elapsed time in hh:mm:ss =      0 h 05 m 02 s
+ Mean elapsed time per time step in seconds =    2.58603469E-02
+ Max norm displacement vector U in all slices (m) =    5.30617292E-08
+ Time steps done =        11700  out of        20000
+ Time steps remaining =         8300
+ Estimated remaining time in seconds =    214.640884    
+ Estimated remaining time in hh:mm:ss =      0 h 03 m 34 s
+ Estimated total run time in seconds =    517.206970    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    58.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #        11800
+ Time:    275.673828      seconds
+ Elapsed time in seconds =    305.13658399999997     
+ Elapsed time in hh:mm:ss =      0 h 05 m 05 s
+ Mean elapsed time per time step in seconds =    2.58590318E-02
+ Max norm displacement vector U in all slices (m) =    5.44366010E-08
+ Time steps done =        11800  out of        20000
+ Time steps remaining =         8200
+ Estimated remaining time in seconds =    212.044067    
+ Estimated remaining time in hh:mm:ss =      0 h 03 m 32 s
+ Estimated total run time in seconds =    517.180664    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    59.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #        11900
+ Time:    278.073853      seconds
+ Elapsed time in seconds =    307.70165599999996     
+ Elapsed time in hh:mm:ss =      0 h 05 m 07 s
+ Mean elapsed time per time step in seconds =    2.58572828E-02
+ Max norm displacement vector U in all slices (m) =    5.24592174E-08
+ Time steps done =        11900  out of        20000
+ Time steps remaining =         8100
+ Estimated remaining time in seconds =    209.443985    
+ Estimated remaining time in hh:mm:ss =      0 h 03 m 29 s
+ Estimated total run time in seconds =    517.145630    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    59.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #        12000
+ Time:    280.473846      seconds
+ Elapsed time in seconds =    310.32595399999997     
+ Elapsed time in hh:mm:ss =      0 h 05 m 10 s
+ Mean elapsed time per time step in seconds =    2.58604959E-02
+ Max norm displacement vector U in all slices (m) =    5.53532864E-08
+ Time steps done =        12000  out of        20000
+ Time steps remaining =         8000
+ Estimated remaining time in seconds =    206.883972    
+ Estimated remaining time in hh:mm:ss =      0 h 03 m 26 s
+ Estimated total run time in seconds =    517.209900    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    60.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #        12100
+ Time:    282.873840      seconds
+ Elapsed time in seconds =    312.94592799999998     
+ Elapsed time in hh:mm:ss =      0 h 05 m 12 s
+ Mean elapsed time per time step in seconds =    2.58632991E-02
+ Max norm displacement vector U in all slices (m) =    5.59677353E-08
+ Time steps done =        12100  out of        20000
+ Time steps remaining =         7900
+ Estimated remaining time in seconds =    204.320068    
+ Estimated remaining time in hh:mm:ss =      0 h 03 m 24 s
+ Estimated total run time in seconds =    517.265991    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    60.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #        12200
+ Time:    285.273834      seconds
+ Elapsed time in seconds =    315.60891799999996     
+ Elapsed time in hh:mm:ss =      0 h 05 m 15 s
+ Mean elapsed time per time step in seconds =    2.58695837E-02
+ Max norm displacement vector U in all slices (m) =    5.39509948E-08
+ Time steps done =        12200  out of        20000
+ Time steps remaining =         7800
+ Estimated remaining time in seconds =    201.782745    
+ Estimated remaining time in hh:mm:ss =      0 h 03 m 21 s
+ Estimated total run time in seconds =    517.391663    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    61.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #        12300
+ Time:    287.673828      seconds
+ Elapsed time in seconds =    318.24208899999996     
+ Elapsed time in hh:mm:ss =      0 h 05 m 18 s
+ Mean elapsed time per time step in seconds =    2.58733407E-02
+ Max norm displacement vector U in all slices (m) =    6.19833358E-08
+ Time steps done =        12300  out of        20000
+ Time steps remaining =         7700
+ Estimated remaining time in seconds =    199.224716    
+ Estimated remaining time in hh:mm:ss =      0 h 03 m 19 s
+ Estimated total run time in seconds =    517.466797    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    61.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #        12400
+ Time:    290.073853      seconds
+ Elapsed time in seconds =    320.89613600000001     
+ Elapsed time in hh:mm:ss =      0 h 05 m 20 s
+ Mean elapsed time per time step in seconds =    2.58787200E-02
+ Max norm displacement vector U in all slices (m) =    5.90778200E-08
+ Time steps done =        12400  out of        20000
+ Time steps remaining =         7600
+ Estimated remaining time in seconds =    196.678284    
+ Estimated remaining time in hh:mm:ss =      0 h 03 m 16 s
+ Estimated total run time in seconds =    517.574402    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    62.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #        12500
+ Time:    292.473846      seconds
+ Elapsed time in seconds =    323.44976299999996     
+ Elapsed time in hh:mm:ss =      0 h 05 m 23 s
+ Mean elapsed time per time step in seconds =    2.58759819E-02
+ Max norm displacement vector U in all slices (m) =    4.55154598E-08
+ Time steps done =        12500  out of        20000
+ Time steps remaining =         7500
+ Estimated remaining time in seconds =    194.069855    
+ Estimated remaining time in hh:mm:ss =      0 h 03 m 14 s
+ Estimated total run time in seconds =    517.519592    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    62.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #        12600
+ Time:    294.873840      seconds
+ Elapsed time in seconds =    326.03017499999999     
+ Elapsed time in hh:mm:ss =      0 h 05 m 26 s
+ Mean elapsed time per time step in seconds =    2.58754101E-02
+ Max norm displacement vector U in all slices (m) =    5.50819621E-08
+ Time steps done =        12600  out of        20000
+ Time steps remaining =         7400
+ Estimated remaining time in seconds =    191.478043    
+ Estimated remaining time in hh:mm:ss =      0 h 03 m 11 s
+ Estimated total run time in seconds =    517.508240    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    63.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #        12700
+ Time:    297.273834      seconds
+ Elapsed time in seconds =    328.69888800000001     
+ Elapsed time in hh:mm:ss =      0 h 05 m 28 s
+ Mean elapsed time per time step in seconds =    2.58818027E-02
+ Max norm displacement vector U in all slices (m) =    6.03075208E-08
+ Time steps done =        12700  out of        20000
+ Time steps remaining =         7300
+ Estimated remaining time in seconds =    188.937149    
+ Estimated remaining time in hh:mm:ss =      0 h 03 m 08 s
+ Estimated total run time in seconds =    517.636047    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    63.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #        12800
+ Time:    299.673828      seconds
+ Elapsed time in seconds =    331.35855399999997     
+ Elapsed time in hh:mm:ss =      0 h 05 m 31 s
+ Mean elapsed time per time step in seconds =    2.58873869E-02
+ Max norm displacement vector U in all slices (m) =    4.19783674E-08
+ Time steps done =        12800  out of        20000
+ Time steps remaining =         7200
+ Estimated remaining time in seconds =    186.389191    
+ Estimated remaining time in hh:mm:ss =      0 h 03 m 06 s
+ Estimated total run time in seconds =    517.747742    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    64.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #        12900
+ Time:    302.073853      seconds
+ Elapsed time in seconds =    333.96924700000000     
+ Elapsed time in hh:mm:ss =      0 h 05 m 33 s
+ Mean elapsed time per time step in seconds =    2.58890893E-02
+ Max norm displacement vector U in all slices (m) =    3.83275172E-08
+ Time steps done =        12900  out of        20000
+ Time steps remaining =         7100
+ Estimated remaining time in seconds =    183.812531    
+ Estimated remaining time in hh:mm:ss =      0 h 03 m 03 s
+ Estimated total run time in seconds =    517.781799    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    64.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #        13000
+ Time:    304.473846      seconds
+ Elapsed time in seconds =    336.54778899999997     
+ Elapsed time in hh:mm:ss =      0 h 05 m 36 s
+ Mean elapsed time per time step in seconds =    2.58882921E-02
+ Max norm displacement vector U in all slices (m) =    4.11726759E-08
+ Time steps done =        13000  out of        20000
+ Time steps remaining =         7000
+ Estimated remaining time in seconds =    181.218033    
+ Estimated remaining time in hh:mm:ss =      0 h 03 m 01 s
+ Estimated total run time in seconds =    517.765808    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    65.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #        13100
+ Time:    306.873840      seconds
+ Elapsed time in seconds =    339.16292599999997     
+ Elapsed time in hh:mm:ss =      0 h 05 m 39 s
+ Mean elapsed time per time step in seconds =    2.58903001E-02
+ Max norm displacement vector U in all slices (m) =    3.60420636E-08
+ Time steps done =        13100  out of        20000
+ Time steps remaining =         6900
+ Estimated remaining time in seconds =    178.643066    
+ Estimated remaining time in hh:mm:ss =      0 h 02 m 58 s
+ Estimated total run time in seconds =    517.805969    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    65.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #        13200
+ Time:    309.273834      seconds
+ Elapsed time in seconds =    341.82908599999996     
+ Elapsed time in hh:mm:ss =      0 h 05 m 41 s
+ Mean elapsed time per time step in seconds =    2.58961432E-02
+ Max norm displacement vector U in all slices (m) =    3.26587575E-08
+ Time steps done =        13200  out of        20000
+ Time steps remaining =         6800
+ Estimated remaining time in seconds =    176.093765    
+ Estimated remaining time in hh:mm:ss =      0 h 02 m 56 s
+ Estimated total run time in seconds =    517.922852    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    66.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #        13300
+ Time:    311.673828      seconds
+ Elapsed time in seconds =    344.46835299999998     
+ Elapsed time in hh:mm:ss =      0 h 05 m 44 s
+ Mean elapsed time per time step in seconds =    2.58998759E-02
+ Max norm displacement vector U in all slices (m) =    3.26918403E-08
+ Time steps done =        13300  out of        20000
+ Time steps remaining =         6700
+ Estimated remaining time in seconds =    173.529175    
+ Estimated remaining time in hh:mm:ss =      0 h 02 m 53 s
+ Estimated total run time in seconds =    517.997498    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    66.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #        13400
+ Time:    314.073853      seconds
+ Elapsed time in seconds =    347.08106399999997     
+ Elapsed time in hh:mm:ss =      0 h 05 m 47 s
+ Mean elapsed time per time step in seconds =    2.59015728E-02
+ Max norm displacement vector U in all slices (m) =    3.46594149E-08
+ Time steps done =        13400  out of        20000
+ Time steps remaining =         6600
+ Estimated remaining time in seconds =    170.950378    
+ Estimated remaining time in hh:mm:ss =      0 h 02 m 50 s
+ Estimated total run time in seconds =    518.031433    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 38 s
+ We have done    67.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #        13500
+ Time:    316.473846      seconds
+ Elapsed time in seconds =    349.68986999999998     
+ Elapsed time in hh:mm:ss =      0 h 05 m 49 s
+ Mean elapsed time per time step in seconds =    2.59029530E-02
+ Max norm displacement vector U in all slices (m) =    3.26902772E-08
+ Time steps done =        13500  out of        20000
+ Time steps remaining =         6500
+ Estimated remaining time in seconds =    168.369202    
+ Estimated remaining time in hh:mm:ss =      0 h 02 m 48 s
+ Estimated total run time in seconds =    518.059082    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 38 s
+ We have done    67.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #        13600
+ Time:    318.873840      seconds
+ Elapsed time in seconds =    352.32425300000000     
+ Elapsed time in hh:mm:ss =      0 h 05 m 52 s
+ Mean elapsed time per time step in seconds =    2.59061959E-02
+ Max norm displacement vector U in all slices (m) =    3.76662506E-08
+ Time steps done =        13600  out of        20000
+ Time steps remaining =         6400
+ Estimated remaining time in seconds =    165.799652    
+ Estimated remaining time in hh:mm:ss =      0 h 02 m 45 s
+ Estimated total run time in seconds =    518.123901    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 38 s
+ We have done    68.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #        13700
+ Time:    321.273834      seconds
+ Elapsed time in seconds =    354.92305299999998     
+ Elapsed time in hh:mm:ss =      0 h 05 m 54 s
+ Mean elapsed time per time step in seconds =    2.59067919E-02
+ Max norm displacement vector U in all slices (m) =    3.52124410E-08
+ Time steps done =        13700  out of        20000
+ Time steps remaining =         6300
+ Estimated remaining time in seconds =    163.212784    
+ Estimated remaining time in hh:mm:ss =      0 h 02 m 43 s
+ Estimated total run time in seconds =    518.135864    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 38 s
+ We have done    68.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #        13800
+ Time:    323.673828      seconds
+ Elapsed time in seconds =    357.54459499999996     
+ Elapsed time in hh:mm:ss =      0 h 05 m 57 s
+ Mean elapsed time per time step in seconds =    2.59090289E-02
+ Max norm displacement vector U in all slices (m) =    3.69507696E-08
+ Time steps done =        13800  out of        20000
+ Time steps remaining =         6200
+ Estimated remaining time in seconds =    160.635971    
+ Estimated remaining time in hh:mm:ss =      0 h 02 m 40 s
+ Estimated total run time in seconds =    518.180542    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 38 s
+ We have done    69.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #        13900
+ Time:    326.073853      seconds
+ Elapsed time in seconds =    360.20347599999997     
+ Elapsed time in hh:mm:ss =      0 h 06 m 00 s
+ Mean elapsed time per time step in seconds =    2.59139184E-02
+ Max norm displacement vector U in all slices (m) =    3.86587615E-08
+ Time steps done =        13900  out of        20000
+ Time steps remaining =         6100
+ Estimated remaining time in seconds =    158.074905    
+ Estimated remaining time in hh:mm:ss =      0 h 02 m 38 s
+ Estimated total run time in seconds =    518.278381    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 38 s
+ We have done    69.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #        14000
+ Time:    328.473846      seconds
+ Elapsed time in seconds =    362.85454099999998     
+ Elapsed time in hh:mm:ss =      0 h 06 m 02 s
+ Mean elapsed time per time step in seconds =    2.59181820E-02
+ Max norm displacement vector U in all slices (m) =    3.23212532E-08
+ Time steps done =        14000  out of        20000
+ Time steps remaining =         6000
+ Estimated remaining time in seconds =    155.509094    
+ Estimated remaining time in hh:mm:ss =      0 h 02 m 35 s
+ Estimated total run time in seconds =    518.363647    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 38 s
+ We have done    70.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #        14100
+ Time:    330.873840      seconds
+ Elapsed time in seconds =    365.45392199999998     
+ Elapsed time in hh:mm:ss =      0 h 06 m 05 s
+ Mean elapsed time per time step in seconds =    2.59187184E-02
+ Max norm displacement vector U in all slices (m) =    3.58802446E-08
+ Time steps done =        14100  out of        20000
+ Time steps remaining =         5900
+ Estimated remaining time in seconds =    152.920441    
+ Estimated remaining time in hh:mm:ss =      0 h 02 m 32 s
+ Estimated total run time in seconds =    518.374329    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 38 s
+ We have done    70.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #        14200
+ Time:    333.273834      seconds
+ Elapsed time in seconds =    368.09135599999996     
+ Elapsed time in hh:mm:ss =      0 h 06 m 08 s
+ Mean elapsed time per time step in seconds =    2.59219259E-02
+ Max norm displacement vector U in all slices (m) =    3.51117286E-08
+ Time steps done =        14200  out of        20000
+ Time steps remaining =         5800
+ Estimated remaining time in seconds =    150.347168    
+ Estimated remaining time in hh:mm:ss =      0 h 02 m 30 s
+ Estimated total run time in seconds =    518.438538    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 38 s
+ We have done    71.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #        14300
+ Time:    335.673828      seconds
+ Elapsed time in seconds =    370.67259500000000     
+ Elapsed time in hh:mm:ss =      0 h 06 m 10 s
+ Mean elapsed time per time step in seconds =    2.59211604E-02
+ Max norm displacement vector U in all slices (m) =    2.82050028E-08
+ Time steps done =        14300  out of        20000
+ Time steps remaining =         5700
+ Estimated remaining time in seconds =    147.750610    
+ Estimated remaining time in hh:mm:ss =      0 h 02 m 27 s
+ Estimated total run time in seconds =    518.423218    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 38 s
+ We have done    71.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #        14400
+ Time:    338.073853      seconds
+ Elapsed time in seconds =    373.25134199999997     
+ Elapsed time in hh:mm:ss =      0 h 06 m 13 s
+ Mean elapsed time per time step in seconds =    2.59202328E-02
+ Max norm displacement vector U in all slices (m) =    3.07626458E-08
+ Time steps done =        14400  out of        20000
+ Time steps remaining =         5600
+ Estimated remaining time in seconds =    145.153305    
+ Estimated remaining time in hh:mm:ss =      0 h 02 m 25 s
+ Estimated total run time in seconds =    518.404663    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 38 s
+ We have done    72.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #        14500
+ Time:    340.473846      seconds
+ Elapsed time in seconds =    375.80010399999998     
+ Elapsed time in hh:mm:ss =      0 h 06 m 15 s
+ Mean elapsed time per time step in seconds =    2.59172488E-02
+ Max norm displacement vector U in all slices (m) =    2.90003150E-08
+ Time steps done =        14500  out of        20000
+ Time steps remaining =         5500
+ Estimated remaining time in seconds =    142.544861    
+ Estimated remaining time in hh:mm:ss =      0 h 02 m 22 s
+ Estimated total run time in seconds =    518.344971    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 38 s
+ We have done    72.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #        14600
+ Time:    342.873840      seconds
+ Elapsed time in seconds =    378.35890200000000     
+ Elapsed time in hh:mm:ss =      0 h 06 m 18 s
+ Mean elapsed time per time step in seconds =    2.59149931E-02
+ Max norm displacement vector U in all slices (m) =    3.03174765E-08
+ Time steps done =        14600  out of        20000
+ Time steps remaining =         5400
+ Estimated remaining time in seconds =    139.940964    
+ Estimated remaining time in hh:mm:ss =      0 h 02 m 19 s
+ Estimated total run time in seconds =    518.299866    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 38 s
+ We have done    73.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #        14700
+ Time:    345.273834      seconds
+ Elapsed time in seconds =    380.93115799999998     
+ Elapsed time in hh:mm:ss =      0 h 06 m 20 s
+ Mean elapsed time per time step in seconds =    2.59136837E-02
+ Max norm displacement vector U in all slices (m) =    3.07378407E-08
+ Time steps done =        14700  out of        20000
+ Time steps remaining =         5300
+ Estimated remaining time in seconds =    137.342529    
+ Estimated remaining time in hh:mm:ss =      0 h 02 m 17 s
+ Estimated total run time in seconds =    518.273682    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 38 s
+ We have done    73.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #        14800
+ Time:    347.673828      seconds
+ Elapsed time in seconds =    383.49004199999996     
+ Elapsed time in hh:mm:ss =      0 h 06 m 23 s
+ Mean elapsed time per time step in seconds =    2.59114895E-02
+ Max norm displacement vector U in all slices (m) =    3.09490886E-08
+ Time steps done =        14800  out of        20000
+ Time steps remaining =         5200
+ Estimated remaining time in seconds =    134.739746    
+ Estimated remaining time in hh:mm:ss =      0 h 02 m 14 s
+ Estimated total run time in seconds =    518.229797    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 38 s
+ We have done    74.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #        14900
+ Time:    350.073853      seconds
+ Elapsed time in seconds =    386.04359999999997     
+ Elapsed time in hh:mm:ss =      0 h 06 m 26 s
+ Mean elapsed time per time step in seconds =    2.59089656E-02
+ Max norm displacement vector U in all slices (m) =    3.03596508E-08
+ Time steps done =        14900  out of        20000
+ Time steps remaining =         5100
+ Estimated remaining time in seconds =    132.135727    
+ Estimated remaining time in hh:mm:ss =      0 h 02 m 12 s
+ Estimated total run time in seconds =    518.179321    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 38 s
+ We have done    74.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #        15000
+ Time:    352.473846      seconds
+ Elapsed time in seconds =    388.60528699999998     
+ Elapsed time in hh:mm:ss =      0 h 06 m 28 s
+ Mean elapsed time per time step in seconds =    2.59070192E-02
+ Max norm displacement vector U in all slices (m) =    3.01442462E-08
+ Time steps done =        15000  out of        20000
+ Time steps remaining =         5000
+ Estimated remaining time in seconds =    129.535095    
+ Estimated remaining time in hh:mm:ss =      0 h 02 m 09 s
+ Estimated total run time in seconds =    518.140381    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 38 s
+ We have done    75.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #        15100
+ Time:    354.873840      seconds
+ Elapsed time in seconds =    391.15402399999999     
+ Elapsed time in hh:mm:ss =      0 h 06 m 31 s
+ Mean elapsed time per time step in seconds =    2.59042401E-02
+ Max norm displacement vector U in all slices (m) =    3.19487832E-08
+ Time steps done =        15100  out of        20000
+ Time steps remaining =         4900
+ Estimated remaining time in seconds =    126.930779    
+ Estimated remaining time in hh:mm:ss =      0 h 02 m 06 s
+ Estimated total run time in seconds =    518.084778    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 38 s
+ We have done    75.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #        15200
+ Time:    357.273834      seconds
+ Elapsed time in seconds =    393.72031099999998     
+ Elapsed time in hh:mm:ss =      0 h 06 m 33 s
+ Mean elapsed time per time step in seconds =    2.59026513E-02
+ Max norm displacement vector U in all slices (m) =    2.87100370E-08
+ Time steps done =        15200  out of        20000
+ Time steps remaining =         4800
+ Estimated remaining time in seconds =    124.332733    
+ Estimated remaining time in hh:mm:ss =      0 h 02 m 04 s
+ Estimated total run time in seconds =    518.053040    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 38 s
+ We have done    76.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #        15300
+ Time:    359.673828      seconds
+ Elapsed time in seconds =    396.26765300000000     
+ Elapsed time in hh:mm:ss =      0 h 06 m 36 s
+ Mean elapsed time per time step in seconds =    2.58998461E-02
+ Max norm displacement vector U in all slices (m) =    3.09158423E-08
+ Time steps done =        15300  out of        20000
+ Time steps remaining =         4700
+ Estimated remaining time in seconds =    121.729279    
+ Estimated remaining time in hh:mm:ss =      0 h 02 m 01 s
+ Estimated total run time in seconds =    517.996948    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    76.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #        15400
+ Time:    362.073853      seconds
+ Elapsed time in seconds =    398.86244099999999     
+ Elapsed time in hh:mm:ss =      0 h 06 m 38 s
+ Mean elapsed time per time step in seconds =    2.59001590E-02
+ Max norm displacement vector U in all slices (m) =    2.79864700E-08
+ Time steps done =        15400  out of        20000
+ Time steps remaining =         4600
+ Estimated remaining time in seconds =    119.140732    
+ Estimated remaining time in hh:mm:ss =      0 h 01 m 59 s
+ Estimated total run time in seconds =    518.003174    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 38 s
+ We have done    77.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #        15500
+ Time:    364.473846      seconds
+ Elapsed time in seconds =    401.47688099999999     
+ Elapsed time in hh:mm:ss =      0 h 06 m 41 s
+ Mean elapsed time per time step in seconds =    2.59017348E-02
+ Max norm displacement vector U in all slices (m) =    2.68747247E-08
+ Time steps done =        15500  out of        20000
+ Time steps remaining =         4500
+ Estimated remaining time in seconds =    116.557808    
+ Estimated remaining time in hh:mm:ss =      0 h 01 m 56 s
+ Estimated total run time in seconds =    518.034668    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 38 s
+ We have done    77.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #        15600
+ Time:    366.873840      seconds
+ Elapsed time in seconds =    404.02375699999999     
+ Elapsed time in hh:mm:ss =      0 h 06 m 44 s
+ Mean elapsed time per time step in seconds =    2.58989595E-02
+ Max norm displacement vector U in all slices (m) =    2.78652479E-08
+ Time steps done =        15600  out of        20000
+ Time steps remaining =         4400
+ Estimated remaining time in seconds =    113.955421    
+ Estimated remaining time in hh:mm:ss =      0 h 01 m 53 s
+ Estimated total run time in seconds =    517.979187    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    78.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #        15700
+ Time:    369.273834      seconds
+ Elapsed time in seconds =    406.57242199999996     
+ Elapsed time in hh:mm:ss =      0 h 06 m 46 s
+ Mean elapsed time per time step in seconds =    2.58963332E-02
+ Max norm displacement vector U in all slices (m) =    2.99444594E-08
+ Time steps done =        15700  out of        20000
+ Time steps remaining =         4300
+ Estimated remaining time in seconds =    111.354233    
+ Estimated remaining time in hh:mm:ss =      0 h 01 m 51 s
+ Estimated total run time in seconds =    517.926636    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    78.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #        15800
+ Time:    371.673828      seconds
+ Elapsed time in seconds =    409.12041299999999     
+ Elapsed time in hh:mm:ss =      0 h 06 m 49 s
+ Mean elapsed time per time step in seconds =    2.58936975E-02
+ Max norm displacement vector U in all slices (m) =    3.11764907E-08
+ Time steps done =        15800  out of        20000
+ Time steps remaining =         4200
+ Estimated remaining time in seconds =    108.753525    
+ Estimated remaining time in hh:mm:ss =      0 h 01 m 48 s
+ Estimated total run time in seconds =    517.873962    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    79.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #        15900
+ Time:    374.073853      seconds
+ Elapsed time in seconds =    411.66557100000000     
+ Elapsed time in hh:mm:ss =      0 h 06 m 51 s
+ Mean elapsed time per time step in seconds =    2.58909166E-02
+ Max norm displacement vector U in all slices (m) =    2.73125433E-08
+ Time steps done =        15900  out of        20000
+ Time steps remaining =         4100
+ Estimated remaining time in seconds =    106.152756    
+ Estimated remaining time in hh:mm:ss =      0 h 01 m 46 s
+ Estimated total run time in seconds =    517.818298    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    79.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #        16000
+ Time:    376.473846      seconds
+ Elapsed time in seconds =    414.24917199999999     
+ Elapsed time in hh:mm:ss =      0 h 06 m 54 s
+ Mean elapsed time per time step in seconds =    2.58905739E-02
+ Max norm displacement vector U in all slices (m) =    3.36340094E-08
+ Time steps done =        16000  out of        20000
+ Time steps remaining =         4000
+ Estimated remaining time in seconds =    103.562294    
+ Estimated remaining time in hh:mm:ss =      0 h 01 m 43 s
+ Estimated total run time in seconds =    517.811462    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    80.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #        16100
+ Time:    378.873840      seconds
+ Elapsed time in seconds =    416.80248200000000     
+ Elapsed time in hh:mm:ss =      0 h 06 m 56 s
+ Mean elapsed time per time step in seconds =    2.58883536E-02
+ Max norm displacement vector U in all slices (m) =    2.96881222E-08
+ Time steps done =        16100  out of        20000
+ Time steps remaining =         3900
+ Estimated remaining time in seconds =    100.964577    
+ Estimated remaining time in hh:mm:ss =      0 h 01 m 40 s
+ Estimated total run time in seconds =    517.767029    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    80.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #        16200
+ Time:    381.273834      seconds
+ Elapsed time in seconds =    419.35722999999996     
+ Elapsed time in hh:mm:ss =      0 h 06 m 59 s
+ Mean elapsed time per time step in seconds =    2.58862488E-02
+ Max norm displacement vector U in all slices (m) =    2.72565153E-08
+ Time steps done =        16200  out of        20000
+ Time steps remaining =         3800
+ Estimated remaining time in seconds =    98.3677444    
+ Estimated remaining time in hh:mm:ss =      0 h 01 m 38 s
+ Estimated total run time in seconds =    517.724976    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    81.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #        16300
+ Time:    383.673828      seconds
+ Elapsed time in seconds =    421.91577699999999     
+ Elapsed time in hh:mm:ss =      0 h 07 m 01 s
+ Mean elapsed time per time step in seconds =    2.58844029E-02
+ Max norm displacement vector U in all slices (m) =    2.56694985E-08
+ Time steps done =        16300  out of        20000
+ Time steps remaining =         3700
+ Estimated remaining time in seconds =    95.7722931    
+ Estimated remaining time in hh:mm:ss =      0 h 01 m 35 s
+ Estimated total run time in seconds =    517.688049    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    81.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #        16400
+ Time:    386.073853      seconds
+ Elapsed time in seconds =    424.46440200000001     
+ Elapsed time in hh:mm:ss =      0 h 07 m 04 s
+ Mean elapsed time per time step in seconds =    2.58819759E-02
+ Max norm displacement vector U in all slices (m) =    2.79344281E-08
+ Time steps done =        16400  out of        20000
+ Time steps remaining =         3600
+ Estimated remaining time in seconds =    93.1751099    
+ Estimated remaining time in hh:mm:ss =      0 h 01 m 33 s
+ Estimated total run time in seconds =    517.639526    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    82.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #        16500
+ Time:    388.473846      seconds
+ Elapsed time in seconds =    427.01213000000001     
+ Elapsed time in hh:mm:ss =      0 h 07 m 07 s
+ Mean elapsed time per time step in seconds =    2.58795228E-02
+ Max norm displacement vector U in all slices (m) =    2.61215565E-08
+ Time steps done =        16500  out of        20000
+ Time steps remaining =         3500
+ Estimated remaining time in seconds =    90.5783310    
+ Estimated remaining time in hh:mm:ss =      0 h 01 m 30 s
+ Estimated total run time in seconds =    517.590454    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    82.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #        16600
+ Time:    390.873840      seconds
+ Elapsed time in seconds =    429.63288299999999     
+ Elapsed time in hh:mm:ss =      0 h 07 m 09 s
+ Mean elapsed time per time step in seconds =    2.58814991E-02
+ Max norm displacement vector U in all slices (m) =    2.51963783E-08
+ Time steps done =        16600  out of        20000
+ Time steps remaining =         3400
+ Estimated remaining time in seconds =    87.9970932    
+ Estimated remaining time in hh:mm:ss =      0 h 01 m 27 s
+ Estimated total run time in seconds =    517.630005    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    83.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #        16700
+ Time:    393.273834      seconds
+ Elapsed time in seconds =    432.32604900000001     
+ Elapsed time in hh:mm:ss =      0 h 07 m 12 s
+ Mean elapsed time per time step in seconds =    2.58877873E-02
+ Max norm displacement vector U in all slices (m) =    2.71571903E-08
+ Time steps done =        16700  out of        20000
+ Time steps remaining =         3300
+ Estimated remaining time in seconds =    85.4296951    
+ Estimated remaining time in hh:mm:ss =      0 h 01 m 25 s
+ Estimated total run time in seconds =    517.755737    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    83.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #        16800
+ Time:    395.673828      seconds
+ Elapsed time in seconds =    434.88293399999998     
+ Elapsed time in hh:mm:ss =      0 h 07 m 14 s
+ Mean elapsed time per time step in seconds =    2.58858893E-02
+ Max norm displacement vector U in all slices (m) =    2.65366840E-08
+ Time steps done =        16800  out of        20000
+ Time steps remaining =         3200
+ Estimated remaining time in seconds =    82.8348465    
+ Estimated remaining time in hh:mm:ss =      0 h 01 m 22 s
+ Estimated total run time in seconds =    517.717773    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    84.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #        16900
+ Time:    398.073853      seconds
+ Elapsed time in seconds =    437.60487100000000     
+ Elapsed time in hh:mm:ss =      0 h 07 m 17 s
+ Mean elapsed time per time step in seconds =    2.58937795E-02
+ Max norm displacement vector U in all slices (m) =    2.47513388E-08
+ Time steps done =        16900  out of        20000
+ Time steps remaining =         3100
+ Estimated remaining time in seconds =    80.2707138    
+ Estimated remaining time in hh:mm:ss =      0 h 01 m 20 s
+ Estimated total run time in seconds =    517.875610    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    84.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #        17000
+ Time:    400.473846      seconds
+ Elapsed time in seconds =    440.15562599999998     
+ Elapsed time in hh:mm:ss =      0 h 07 m 20 s
+ Mean elapsed time per time step in seconds =    2.58915070E-02
+ Max norm displacement vector U in all slices (m) =    2.28031407E-08
+ Time steps done =        17000  out of        20000
+ Time steps remaining =         3000
+ Estimated remaining time in seconds =    77.6745224    
+ Estimated remaining time in hh:mm:ss =      0 h 01 m 17 s
+ Estimated total run time in seconds =    517.830139    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    85.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #        17100
+ Time:    402.873840      seconds
+ Elapsed time in seconds =    442.70817199999999     
+ Elapsed time in hh:mm:ss =      0 h 07 m 22 s
+ Mean elapsed time per time step in seconds =    2.58893669E-02
+ Max norm displacement vector U in all slices (m) =    2.43686706E-08
+ Time steps done =        17100  out of        20000
+ Time steps remaining =         2900
+ Estimated remaining time in seconds =    75.0791626    
+ Estimated remaining time in hh:mm:ss =      0 h 01 m 15 s
+ Estimated total run time in seconds =    517.787354    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    85.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #        17200
+ Time:    405.273834      seconds
+ Elapsed time in seconds =    445.26374599999997     
+ Elapsed time in hh:mm:ss =      0 h 07 m 25 s
+ Mean elapsed time per time step in seconds =    2.58874279E-02
+ Max norm displacement vector U in all slices (m) =    2.55356571E-08
+ Time steps done =        17200  out of        20000
+ Time steps remaining =         2800
+ Estimated remaining time in seconds =    72.4847946    
+ Estimated remaining time in hh:mm:ss =      0 h 01 m 12 s
+ Estimated total run time in seconds =    517.748535    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    86.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #        17300
+ Time:    407.673828      seconds
+ Elapsed time in seconds =    447.82166899999999     
+ Elapsed time in hh:mm:ss =      0 h 07 m 27 s
+ Mean elapsed time per time step in seconds =    2.58856453E-02
+ Max norm displacement vector U in all slices (m) =    2.58756181E-08
+ Time steps done =        17300  out of        20000
+ Time steps remaining =         2700
+ Estimated remaining time in seconds =    69.8912430    
+ Estimated remaining time in hh:mm:ss =      0 h 01 m 09 s
+ Estimated total run time in seconds =    517.712891    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    86.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #        17400
+ Time:    410.073853      seconds
+ Elapsed time in seconds =    450.40210300000001     
+ Elapsed time in hh:mm:ss =      0 h 07 m 30 s
+ Mean elapsed time per time step in seconds =    2.58851778E-02
+ Max norm displacement vector U in all slices (m) =    2.35546924E-08
+ Time steps done =        17400  out of        20000
+ Time steps remaining =         2600
+ Estimated remaining time in seconds =    67.3014603    
+ Estimated remaining time in hh:mm:ss =      0 h 01 m 07 s
+ Estimated total run time in seconds =    517.703552    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    87.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #        17500
+ Time:    412.473846      seconds
+ Elapsed time in seconds =    452.96398399999998     
+ Elapsed time in hh:mm:ss =      0 h 07 m 32 s
+ Mean elapsed time per time step in seconds =    2.58836560E-02
+ Max norm displacement vector U in all slices (m) =    2.28059474E-08
+ Time steps done =        17500  out of        20000
+ Time steps remaining =         2500
+ Estimated remaining time in seconds =    64.7091370    
+ Estimated remaining time in hh:mm:ss =      0 h 01 m 04 s
+ Estimated total run time in seconds =    517.673096    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    87.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #        17600
+ Time:    414.873840      seconds
+ Elapsed time in seconds =    455.52604199999996     
+ Elapsed time in hh:mm:ss =      0 h 07 m 35 s
+ Mean elapsed time per time step in seconds =    2.58821622E-02
+ Max norm displacement vector U in all slices (m) =    2.57008228E-08
+ Time steps done =        17600  out of        20000
+ Time steps remaining =         2400
+ Estimated remaining time in seconds =    62.1171875    
+ Estimated remaining time in hh:mm:ss =      0 h 01 m 02 s
+ Estimated total run time in seconds =    517.643250    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    88.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #        17700
+ Time:    417.273834      seconds
+ Elapsed time in seconds =    458.13840199999999     
+ Elapsed time in hh:mm:ss =      0 h 07 m 38 s
+ Mean elapsed time per time step in seconds =    2.58835256E-02
+ Max norm displacement vector U in all slices (m) =    2.56847681E-08
+ Time steps done =        17700  out of        20000
+ Time steps remaining =         2300
+ Estimated remaining time in seconds =    59.5321083    
+ Estimated remaining time in hh:mm:ss =      0 h 00 m 59 s
+ Estimated total run time in seconds =    517.670532    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    88.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #        17800
+ Time:    419.673828      seconds
+ Elapsed time in seconds =    460.71459399999998     
+ Elapsed time in hh:mm:ss =      0 h 07 m 40 s
+ Mean elapsed time per time step in seconds =    2.58828420E-02
+ Max norm displacement vector U in all slices (m) =    2.32260984E-08
+ Time steps done =        17800  out of        20000
+ Time steps remaining =         2200
+ Estimated remaining time in seconds =    56.9422531    
+ Estimated remaining time in hh:mm:ss =      0 h 00 m 56 s
+ Estimated total run time in seconds =    517.656860    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 37 s
+ We have done    89.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #        17900
+ Time:    422.073853      seconds
+ Elapsed time in seconds =    463.96870200000001     
+ Elapsed time in hh:mm:ss =      0 h 07 m 43 s
+ Mean elapsed time per time step in seconds =    2.59200390E-02
+ Max norm displacement vector U in all slices (m) =    2.34380320E-08
+ Time steps done =        17900  out of        20000
+ Time steps remaining =         2100
+ Estimated remaining time in seconds =    54.4320831    
+ Estimated remaining time in hh:mm:ss =      0 h 00 m 54 s
+ Estimated total run time in seconds =    518.400757    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 38 s
+ We have done    89.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #        18000
+ Time:    424.473846      seconds
+ Elapsed time in seconds =    466.85933399999999     
+ Elapsed time in hh:mm:ss =      0 h 07 m 46 s
+ Mean elapsed time per time step in seconds =    2.59366296E-02
+ Max norm displacement vector U in all slices (m) =    2.58707455E-08
+ Time steps done =        18000  out of        20000
+ Time steps remaining =         2000
+ Estimated remaining time in seconds =    51.8732605    
+ Estimated remaining time in hh:mm:ss =      0 h 00 m 51 s
+ Estimated total run time in seconds =    518.732605    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 38 s
+ We have done    90.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #        18100
+ Time:    426.873840      seconds
+ Elapsed time in seconds =    469.69936300000001     
+ Elapsed time in hh:mm:ss =      0 h 07 m 49 s
+ Mean elapsed time per time step in seconds =    2.59502418E-02
+ Max norm displacement vector U in all slices (m) =    2.40396485E-08
+ Time steps done =        18100  out of        20000
+ Time steps remaining =         1900
+ Estimated remaining time in seconds =    49.3054581    
+ Estimated remaining time in hh:mm:ss =      0 h 00 m 49 s
+ Estimated total run time in seconds =    519.004822    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 39 s
+ We have done    90.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #        18200
+ Time:    429.273834      seconds
+ Elapsed time in seconds =    472.33495899999997     
+ Elapsed time in hh:mm:ss =      0 h 07 m 52 s
+ Mean elapsed time per time step in seconds =    2.59524696E-02
+ Max norm displacement vector U in all slices (m) =    2.16796590E-08
+ Time steps done =        18200  out of        20000
+ Time steps remaining =         1800
+ Estimated remaining time in seconds =    46.7144470    
+ Estimated remaining time in hh:mm:ss =      0 h 00 m 46 s
+ Estimated total run time in seconds =    519.049377    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 39 s
+ We have done    91.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #        18300
+ Time:    431.673828      seconds
+ Elapsed time in seconds =    475.05178799999999     
+ Elapsed time in hh:mm:ss =      0 h 07 m 55 s
+ Mean elapsed time per time step in seconds =    2.59591136E-02
+ Max norm displacement vector U in all slices (m) =    2.64467754E-08
+ Time steps done =        18300  out of        20000
+ Time steps remaining =         1700
+ Estimated remaining time in seconds =    44.1304932    
+ Estimated remaining time in hh:mm:ss =      0 h 00 m 44 s
+ Estimated total run time in seconds =    519.182312    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 39 s
+ We have done    91.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #        18400
+ Time:    434.073853      seconds
+ Elapsed time in seconds =    477.60357899999997     
+ Elapsed time in hh:mm:ss =      0 h 07 m 57 s
+ Mean elapsed time per time step in seconds =    2.59567164E-02
+ Max norm displacement vector U in all slices (m) =    2.54391104E-08
+ Time steps done =        18400  out of        20000
+ Time steps remaining =         1600
+ Estimated remaining time in seconds =    41.5307465    
+ Estimated remaining time in hh:mm:ss =      0 h 00 m 41 s
+ Estimated total run time in seconds =    519.134338    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 39 s
+ We have done    92.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #        18500
+ Time:    436.473846      seconds
+ Elapsed time in seconds =    480.16601800000001     
+ Elapsed time in hh:mm:ss =      0 h 08 m 00 s
+ Mean elapsed time per time step in seconds =    2.59549208E-02
+ Max norm displacement vector U in all slices (m) =    2.19607514E-08
+ Time steps done =        18500  out of        20000
+ Time steps remaining =         1500
+ Estimated remaining time in seconds =    38.9323807    
+ Estimated remaining time in hh:mm:ss =      0 h 00 m 38 s
+ Estimated total run time in seconds =    519.098389    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 39 s
+ We have done    92.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #        18600
+ Time:    438.873840      seconds
+ Elapsed time in seconds =    482.74430599999999     
+ Elapsed time in hh:mm:ss =      0 h 08 m 02 s
+ Mean elapsed time per time step in seconds =    2.59539951E-02
+ Max norm displacement vector U in all slices (m) =    2.27457857E-08
+ Time steps done =        18600  out of        20000
+ Time steps remaining =         1400
+ Estimated remaining time in seconds =    36.3355942    
+ Estimated remaining time in hh:mm:ss =      0 h 00 m 36 s
+ Estimated total run time in seconds =    519.079895    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 39 s
+ We have done    93.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #        18700
+ Time:    441.273834      seconds
+ Elapsed time in seconds =    485.35545400000001     
+ Elapsed time in hh:mm:ss =      0 h 08 m 05 s
+ Mean elapsed time per time step in seconds =    2.59548370E-02
+ Max norm displacement vector U in all slices (m) =    2.22847021E-08
+ Time steps done =        18700  out of        20000
+ Time steps remaining =         1300
+ Estimated remaining time in seconds =    33.7412872    
+ Estimated remaining time in hh:mm:ss =      0 h 00 m 33 s
+ Estimated total run time in seconds =    519.096741    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 39 s
+ We have done    93.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #        18800
+ Time:    443.673828      seconds
+ Elapsed time in seconds =    487.94126100000000     
+ Elapsed time in hh:mm:ss =      0 h 08 m 07 s
+ Mean elapsed time per time step in seconds =    2.59543229E-02
+ Max norm displacement vector U in all slices (m) =    2.19801422E-08
+ Time steps done =        18800  out of        20000
+ Time steps remaining =         1200
+ Estimated remaining time in seconds =    31.1451874    
+ Estimated remaining time in hh:mm:ss =      0 h 00 m 31 s
+ Estimated total run time in seconds =    519.086426    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 39 s
+ We have done    94.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:14
+
+ Time step #        18900
+ Time:    446.073853      seconds
+ Elapsed time in seconds =    490.69825099999997     
+ Elapsed time in hh:mm:ss =      0 h 08 m 10 s
+ Mean elapsed time per time step in seconds =    2.59628706E-02
+ Max norm displacement vector U in all slices (m) =    2.11170157E-08
+ Time steps done =        18900  out of        20000
+ Time steps remaining =         1100
+ Estimated remaining time in seconds =    28.5591583    
+ Estimated remaining time in hh:mm:ss =      0 h 00 m 28 s
+ Estimated total run time in seconds =    519.257385    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 39 s
+ We have done    94.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #        19000
+ Time:    448.473846      seconds
+ Elapsed time in seconds =    493.24872799999997     
+ Elapsed time in hh:mm:ss =      0 h 08 m 13 s
+ Mean elapsed time per time step in seconds =    2.59604584E-02
+ Max norm displacement vector U in all slices (m) =    2.07978843E-08
+ Time steps done =        19000  out of        20000
+ Time steps remaining =         1000
+ Estimated remaining time in seconds =    25.9604588    
+ Estimated remaining time in hh:mm:ss =      0 h 00 m 25 s
+ Estimated total run time in seconds =    519.209167    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 39 s
+ We have done    95.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #        19100
+ Time:    450.873840      seconds
+ Elapsed time in seconds =    495.79342900000000     
+ Elapsed time in hh:mm:ss =      0 h 08 m 15 s
+ Mean elapsed time per time step in seconds =    2.59577706E-02
+ Max norm displacement vector U in all slices (m) =    2.26891093E-08
+ Time steps done =        19100  out of        20000
+ Time steps remaining =          900
+ Estimated remaining time in seconds =    23.3619938    
+ Estimated remaining time in hh:mm:ss =      0 h 00 m 23 s
+ Estimated total run time in seconds =    519.155396    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 39 s
+ We have done    95.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #        19200
+ Time:    453.273834      seconds
+ Elapsed time in seconds =    498.37788399999999     
+ Elapsed time in hh:mm:ss =      0 h 08 m 18 s
+ Mean elapsed time per time step in seconds =    2.59571820E-02
+ Max norm displacement vector U in all slices (m) =    2.31498678E-08
+ Time steps done =        19200  out of        20000
+ Time steps remaining =          800
+ Estimated remaining time in seconds =    20.7657452    
+ Estimated remaining time in hh:mm:ss =      0 h 00 m 20 s
+ Estimated total run time in seconds =    519.143616    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 39 s
+ We have done    96.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #        19300
+ Time:    455.673828      seconds
+ Elapsed time in seconds =    501.03146799999996     
+ Elapsed time in hh:mm:ss =      0 h 08 m 21 s
+ Mean elapsed time per time step in seconds =    2.59601790E-02
+ Max norm displacement vector U in all slices (m) =    2.21507257E-08
+ Time steps done =        19300  out of        20000
+ Time steps remaining =          700
+ Estimated remaining time in seconds =    18.1721249    
+ Estimated remaining time in hh:mm:ss =      0 h 00 m 18 s
+ Estimated total run time in seconds =    519.203613    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 39 s
+ We have done    96.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #        19400
+ Time:    458.073853      seconds
+ Elapsed time in seconds =    503.76602800000001     
+ Elapsed time in hh:mm:ss =      0 h 08 m 23 s
+ Mean elapsed time per time step in seconds =    2.59673204E-02
+ Max norm displacement vector U in all slices (m) =    2.38739926E-08
+ Time steps done =        19400  out of        20000
+ Time steps remaining =          600
+ Estimated remaining time in seconds =    15.5803928    
+ Estimated remaining time in hh:mm:ss =      0 h 00 m 15 s
+ Estimated total run time in seconds =    519.346436    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 39 s
+ We have done    97.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #        19500
+ Time:    460.473846      seconds
+ Elapsed time in seconds =    506.35824800000000     
+ Elapsed time in hh:mm:ss =      0 h 08 m 26 s
+ Mean elapsed time per time step in seconds =    2.59670895E-02
+ Max norm displacement vector U in all slices (m) =    2.45780889E-08
+ Time steps done =        19500  out of        20000
+ Time steps remaining =          500
+ Estimated remaining time in seconds =    12.9835443    
+ Estimated remaining time in hh:mm:ss =      0 h 00 m 12 s
+ Estimated total run time in seconds =    519.341797    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 39 s
+ We have done    97.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #        19600
+ Time:    462.873840      seconds
+ Elapsed time in seconds =    509.25518999999997     
+ Elapsed time in hh:mm:ss =      0 h 08 m 29 s
+ Mean elapsed time per time step in seconds =    2.59824079E-02
+ Max norm displacement vector U in all slices (m) =    2.29565806E-08
+ Time steps done =        19600  out of        20000
+ Time steps remaining =          400
+ Estimated remaining time in seconds =    10.3929634    
+ Estimated remaining time in hh:mm:ss =      0 h 00 m 10 s
+ Estimated total run time in seconds =    519.648132    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 39 s
+ We have done    98.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #        19700
+ Time:    465.273834      seconds
+ Elapsed time in seconds =    512.18128899999999     
+ Elapsed time in hh:mm:ss =      0 h 08 m 32 s
+ Mean elapsed time per time step in seconds =    2.59990506E-02
+ Max norm displacement vector U in all slices (m) =    2.09958770E-08
+ Time steps done =        19700  out of        20000
+ Time steps remaining =          300
+ Estimated remaining time in seconds =    7.79971504    
+ Estimated remaining time in hh:mm:ss =      0 h 00 m 07 s
+ Estimated total run time in seconds =    519.981018    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 39 s
+ We have done    98.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #        19800
+ Time:    467.673828      seconds
+ Elapsed time in seconds =    514.96908099999996     
+ Elapsed time in hh:mm:ss =      0 h 08 m 34 s
+ Mean elapsed time per time step in seconds =    2.60085389E-02
+ Max norm displacement vector U in all slices (m) =    2.21137348E-08
+ Time steps done =        19800  out of        20000
+ Time steps remaining =          200
+ Estimated remaining time in seconds =    5.20170784    
+ Estimated remaining time in hh:mm:ss =      0 h 00 m 05 s
+ Estimated total run time in seconds =    520.170776    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 40 s
+ We have done    99.0000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #        19900
+ Time:    470.073853      seconds
+ Elapsed time in seconds =    517.68394200000000     
+ Elapsed time in hh:mm:ss =      0 h 08 m 37 s
+ Mean elapsed time per time step in seconds =    2.60142684E-02
+ Max norm displacement vector U in all slices (m) =    1.98787919E-08
+ Time steps done =        19900  out of        20000
+ Time steps remaining =          100
+ Estimated remaining time in seconds =    2.60142684    
+ Estimated remaining time in hh:mm:ss =      0 h 00 m 02 s
+ Estimated total run time in seconds =    520.285339    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 40 s
+ We have done    99.5000000     % of that
+ The run will finish approximately on (in local time): Mon Nov 24, 2025 12:13
+
+ Time step #        20000
+ Time:    472.473846      seconds
+ Elapsed time in seconds =    520.27157999999997     
+ Elapsed time in hh:mm:ss =      0 h 08 m 40 s
+ Mean elapsed time per time step in seconds =    2.60135792E-02
+ Max norm displacement vector U in all slices (m) =    2.08646345E-08
+ Time steps done =        20000  out of        20000
+ Time steps remaining =            0
+ Estimated remaining time in seconds =    0.00000000    
+ Estimated remaining time in hh:mm:ss =      0 h 00 m 00 s
+ Estimated total run time in seconds =    520.271606    
+ Estimated total run time in hh:mm:ss =      0 h 08 m 40 s
+ We have done    100.000000     % of that
+
+ Writing the seismograms
+ Total number of time steps written:        20000
+ Writing the seismograms in parallel took    4.57829982E-02  seconds
+
+ Time loop finished. Timing info:
+ Total elapsed time in seconds =    520.34744200000000     
+ Total elapsed time in hh:mm:ss =      0 h 08 m 40 s
+
+ finalizing simulation
+
+
+ End of the simulation
+
