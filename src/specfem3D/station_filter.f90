@@ -35,7 +35,7 @@
   use constants, only: CUSTOM_REAL,MAX_LENGTH_NETWORK_NAME,MAX_LENGTH_STATION_NAME,MAX_STRING_LEN, &
     IIN,IOUT,IMAIN,ILONGLAT2UTM,IUTM2LONGLAT
 
-  use specfem_par, only: SUPPRESS_UTM_PROJECTION,myrank,xstore,ystore
+  use specfem_par, only: SUPPRESS_UTM_PROJECTION,USE_LUNAR_PROJECTIONS,myrank,xstore,ystore
 
   implicit none
 
@@ -154,8 +154,14 @@
         call utm_geo(maxlon,maxlat,LONGITUDE_MAX,LATITUDE_MAX,IUTM2LONGLAT)
         write(IMAIN,*) '    longitude min/max: ',minlon,maxlon
         write(IMAIN,*) '    latitude min/max : ',minlat,maxlat
-        write(IMAIN,*) '    UTM x min/max    : ',LONGITUDE_MIN,LONGITUDE_MAX
-        write(IMAIN,*) '    UTM y min/max    : ',LATITUDE_MIN,LATITUDE_MAX
+        if (USE_LUNAR_PROJECTIONS) then
+          ! Moon
+          write(IMAIN,*) 'LTM/LPS x min/max    : ',LONGITUDE_MIN,LONGITUDE_MAX
+          write(IMAIN,*) 'LTM/LPS y min/max    : ',LATITUDE_MIN,LATITUDE_MAX
+        else
+          write(IMAIN,*) '    UTM x min/max    : ',LONGITUDE_MIN,LONGITUDE_MAX
+          write(IMAIN,*) '    UTM y min/max    : ',LATITUDE_MIN,LATITUDE_MAX
+        endif
       endif
 
       write(IMAIN,*)

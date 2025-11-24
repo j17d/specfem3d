@@ -1,4 +1,6 @@
+%-----------------------------------------------------------------------------------------------------------------------------------%
 \chapter{Running the Solver \texttt{xspecfem3D}}\label{cha:Running-the-Solver}
+%-----------------------------------------------------------------------------------------------------------------------------------%
 
 Now that you have successfully generated the databases, you are ready
 to compile the solver. In the main directory, type
@@ -126,7 +128,7 @@ is the time in the first column of the output seismogram.
 
 
 If you know the earthquake source in strike/dip/rake format rather
-than in \texttt{CMTSOLUTION} format, use the C code \texttt{SPECFEM3D\_GLOBE/utils/strike\_dip\_rake\_to\_CMTSOLUTION.c}
+than in \texttt{CMTSOLUTION} format, use the C code \texttt{utils/CMTs/strike\_dip\_rake\_to\_CMTSOLUTION.c}
 to convert it. The conversion formulas are given for instance in \citet{AkRi80}.
 Note that the \citet{AkRi80} convention is slightly different from
 the Global/Harvard \texttt{CMTSOLUTION} convention (the sign of some components
@@ -383,7 +385,9 @@ executable. Of course it is best to include as many stations as possible,
 since this does not add to the cost of the simulation.
 
 
+%-----------------------------------------------------------------------------------------------------------------------------------%
 \section{Note on the simultaneous simulation of several earthquakes}
+%-----------------------------------------------------------------------------------------------------------------------------------%
 
 We have also added the ability to run several calculations (several earthquakes)
 in an embarrassingly-parallel fashion from within the same run;
@@ -442,7 +446,9 @@ parameter sets, they should have been created using the same number of MPI proce
 \end{itemize}
 
 
+%-----------------------------------------------------------------------------------------------------------------------------------%
 \section{Note on the viscoelastic model used}
+%-----------------------------------------------------------------------------------------------------------------------------------%
 
 \noindent
 The model used is a constant $Q$, thus with no dependence on frequency ($Q(f)$ = constant).

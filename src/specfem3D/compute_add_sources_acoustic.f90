@@ -761,7 +761,6 @@
   endif
 
   ! determines source time function value
-  !NQDU if (USE_FORCE_POINT_SOURCE) then
   if (is_POINTFORCE(isource)) then
     ! single point force
     select case(force_stf(isource))

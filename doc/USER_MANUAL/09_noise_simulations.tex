@@ -1,4 +1,6 @@
+%-----------------------------------------------------------------------------------------------------------------------------------%
 \chapter{Noise Cross-correlation Simulations}
+%-----------------------------------------------------------------------------------------------------------------------------------%
 
 
 Besides earthquake simulations, SPECFEM3D Cartesian includes functionality
@@ -13,7 +15,9 @@ kernels' \citep{trompetal2010}, in order to understand noise simulations
 from a theoretical perspective.
 
 
+%-----------------------------------------------------------------------------------------------------------------------------------%
 \section{Input Parameter Files}
+%-----------------------------------------------------------------------------------------------------------------------------------%
 
 As usual, the three main input files are crucial: \texttt{Par\_file},
 \texttt{CMTSOLUTION} and \texttt{STATIONS}. Unless otherwise specified,
@@ -71,7 +75,9 @@ step, it is quite problematic to have a globally shared \texttt{LOCAL\_PATH},
 in terms of both disk storage and I/O speed.
 
 
+%-----------------------------------------------------------------------------------------------------------------------------------%
 \section{Noise Simulations: Step by Step}
+%-----------------------------------------------------------------------------------------------------------------------------------%
 
 Proper parameters in those parameter files are not enough for noise
 simulations to run. We have more parameters to specify: for example,
@@ -181,7 +187,9 @@ the model. It should be quite self-explanatory for modifications.
 Should you modify this part, you have to re-compile the source code.
 \end{itemize}
 
+%-----------------------------------------------------------------------------------------------------------------------------------%
 \subsection{Simulations}
+%-----------------------------------------------------------------------------------------------------------------------------------%
 
 With all of the above done, we can finally launch our simulations.
 Again, please make sure that the \texttt{LOCAL\_PATH} in \texttt{Par\_file}
@@ -230,7 +238,9 @@ cluster you are using.\newline
 
 
 
+%-----------------------------------------------------------------------------------------------------------------------------------%
 \subsection{Post-simulation}
+%-----------------------------------------------------------------------------------------------------------------------------------%
 
 After those simulations, you have all stuff you need, either in the
 \texttt{OUTPUT\_FILES/} or in the directory specified by \texttt{LOCAL\_PATH}
@@ -268,7 +278,9 @@ of the ensemble kernels, using different forward and adjoint sources
 given in \citet{trompetal2010}.
 
 
+%-----------------------------------------------------------------------------------------------------------------------------------%
 \section{Example}
+%-----------------------------------------------------------------------------------------------------------------------------------%
 
 In order to illustrate noise simulations in an easy way, one example
 is provided in \texttt{EXAMPLES/applications/noise\_tomography/}. See \texttt{EXAMPLES/applications/noise\_tomography/README}

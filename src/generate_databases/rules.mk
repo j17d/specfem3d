@@ -67,6 +67,7 @@ generate_databases_OBJECTS = \
 	$O/parse_sep.genc.o \
 	$O/model_gll.gen.o \
 	$O/model_salton_trough.gen.o \
+	$O/model_scattering.gen.o \
 	$O/model_tomography.gen.o \
 	$O/model_vs30.gen.o \
 	$O/pml_set_local_dampingcoeff.gen.o \
@@ -90,6 +91,7 @@ generate_databases_MODULES = \
 	$(FC_MODDIR)/lts_generate_databases_par.$(FC_MODEXT) \
 	$(FC_MODDIR)/manager_adios.$(FC_MODEXT) \
 	$(FC_MODDIR)/model_coupled_par.$(FC_MODEXT) \
+	$(FC_MODDIR)/model_scattering_par.$(FC_MODEXT) \
 	$(FC_MODDIR)/model_sep_mod.$(FC_MODEXT) \
 	$(FC_MODDIR)/model_tomography_par.$(FC_MODEXT) \
 	$(FC_MODDIR)/salton_trough_par.$(FC_MODEXT) \
@@ -108,6 +110,7 @@ generate_databases_SHARED_OBJECTS = \
 	$O/define_mass_matrices.shared.o \
 	$O/detect_surface.shared.o \
 	$O/exit_mpi.shared.o \
+	$O/fft.shared.o \
 	$O/get_attenuation_model.shared.o \
 	$O/get_element_face.shared.o \
 	$O/get_global.shared.o \

@@ -33,7 +33,7 @@
   use constants
 
   use specfem_par, only: USE_FORCE_POINT_SOURCE,USE_RICKER_TIME_FUNCTION, &
-      UTM_PROJECTION_ZONE,SUPPRESS_UTM_PROJECTION,USE_SOURCES_RECEIVERS_Z, &
+      UTM_PROJECTION_ZONE,SUPPRESS_UTM_PROJECTION,USE_LUNAR_PROJECTIONS,USE_SOURCES_RECEIVERS_Z, &
       USE_EXTERNAL_SOURCE_FILE, &
       USE_TRICK_FOR_BETTER_PRESSURE,COUPLE_WITH_INJECTION_TECHNIQUE, &
       myrank,NSPEC_AB,NGLOB_AB,ibool,xstore,ystore,zstore,DT, &
@@ -86,7 +86,7 @@
   real(kind=CUSTOM_REAL) :: y_min_glob,y_max_glob
   real(kind=CUSTOM_REAL) :: z_min_glob,z_max_glob
 
-  double precision :: x,y,z,x_new,y_new,z_new
+  double precision :: x,y,z,x_new,y_new,z_new,utm_x_tmp,utm_y_tmp
   double precision :: xi,eta,gamma,final_distance_squared
   double precision, dimension(NDIM,NDIM) :: nu_found
 
@@ -137,8 +137,8 @@
   allocate(is_POINTFORCE(NSOURCES),stat=ier)
   if (ier /= 0) call exit_MPI(myrank,'Error allocating is_POINTFORCE arrays')
   is_POINTFORCE(:) = .true.
-  if ((.not. USE_CMT_AND_FORCE_SOURCE) .and. (.not. USE_FORCE_POINT_SOURCE)) is_POINTFORCE(:) = .false.
 
+  if ((.not. USE_CMT_AND_FORCE_SOURCE) .and. (.not. USE_FORCE_POINT_SOURCE)) is_POINTFORCE(:) = .false.
 
   ! allocates temporary arrays
   allocate(moment_tensor(6,NSOURCES), &
@@ -189,8 +189,21 @@
     if (SUPPRESS_UTM_PROJECTION) then
       write(IMAIN,*) 'no UTM projection'
     else
-      write(IMAIN,*) 'UTM projection:'
-      write(IMAIN,*) '  UTM zone: ',UTM_PROJECTION_ZONE
+      ! transverse mercator projections
+      if (USE_LUNAR_PROJECTIONS) then
+        ! Moon
+        write(IMAIN,*) 'LTM/LPS projection:'
+        if (UTM_PROJECTION_ZONE == 46) then
+          write(IMAIN,*) '  LPS zone: ',UTM_PROJECTION_ZONE,'(North Pole)'
+        else if (UTM_PROJECTION_ZONE == -46) then
+          write(IMAIN,*) '  LPS zone: ',UTM_PROJECTION_ZONE,'(South Pole)'
+        else
+          write(IMAIN,*) '  LTM zone: ',UTM_PROJECTION_ZONE
+        endif
+      else
+        write(IMAIN,*) 'UTM projection:'
+        write(IMAIN,*) '  UTM zone: ',UTM_PROJECTION_ZONE
+      endif
     endif
     if (USE_SOURCES_RECEIVERS_Z) then
       write(IMAIN,*) 'using sources/receivers Z:'
@@ -201,7 +214,7 @@
   endif
 
   ! determines target point locations (need to locate z coordinate of all sources)
-  ! note: we first locate all the target positions in the mesh to reduces the need of MPI communication
+  ! note: we first locate all the target positions in the mesh to reduce MPI communication
   if (.not. USE_SOURCES_RECEIVERS_Z) then
     ! converts km to m
     do isource = 1,NSOURCES
@@ -460,7 +473,6 @@
         endif
 
         ! source location (reference element)
-        !NQDU if (USE_FORCE_POINT_SOURCE) then
         if (is_POINTFORCE(isource)) then
           ! single point force
           write(IMAIN,*) '  using force point source: '
@@ -495,7 +507,6 @@
           write(IMAIN,*)
         else
           ! STF details
-          !if (USE_FORCE_POINT_SOURCE) then
           if (is_POINTFORCE(isource)) then
             ! force sources
             ! single point force
@@ -603,7 +614,6 @@
         write(IMAIN,*)
 #else
         write(IMAIN,*) '  magnitude of the source:'
-        !NQDU if (USE_FORCE_POINT_SOURCE) then
         if (is_POINTFORCE(isource)) then
           ! single point force
           ! force in Newton
@@ -622,15 +632,21 @@
         ! location accuracy
         write(IMAIN,*) '  original (requested) position of the source:'
         write(IMAIN,*)
-        write(IMAIN,*) '            latitude: ',lat(isource)
-        write(IMAIN,*) '           longitude: ',lon(isource)
+        write(IMAIN,*) '        latitude: ',lat(isource)
+        write(IMAIN,*) '       longitude: ',lon(isource)
         write(IMAIN,*)
         if (SUPPRESS_UTM_PROJECTION) then
           write(IMAIN,*) '               x: ',utm_x_source(isource)
           write(IMAIN,*) '               y: ',utm_y_source(isource)
         else
-          write(IMAIN,*) '           UTM x: ',utm_x_source(isource)
-          write(IMAIN,*) '           UTM y: ',utm_y_source(isource)
+          if (USE_LUNAR_PROJECTIONS) then
+            ! Moon
+            write(IMAIN,*) '       LTM/LPS x: ',utm_x_source(isource)
+            write(IMAIN,*) '       LTM/LPS y: ',utm_y_source(isource)
+          else
+            write(IMAIN,*) '           UTM x: ',utm_x_source(isource)
+            write(IMAIN,*) '           UTM y: ',utm_y_source(isource)
+          endif
         endif
         if (USE_SOURCES_RECEIVERS_Z) then
           write(IMAIN,*) '           z: ',depth(isource),' m'
@@ -646,8 +662,14 @@
           write(IMAIN,*) '               x: ',x_found(isource)
           write(IMAIN,*) '               y: ',y_found(isource)
         else
-          write(IMAIN,*) '           UTM x: ',x_found(isource)
-          write(IMAIN,*) '           UTM y: ',y_found(isource)
+          if (USE_LUNAR_PROJECTIONS) then
+            ! Moon
+            write(IMAIN,*) '       LTM/LPS x: ',x_found(isource)
+            write(IMAIN,*) '       LTM/LPS y: ',y_found(isource)
+          else
+            write(IMAIN,*) '           UTM x: ',x_found(isource)
+            write(IMAIN,*) '           UTM y: ',y_found(isource)
+          endif
         endif
         if (USE_SOURCES_RECEIVERS_Z) then
           write(IMAIN,*) '               z: ',z_found(isource)
@@ -682,7 +704,6 @@
       endif  ! end of detailed output to locate source
 
       ! checks CMTSOLUTION format for acoustic case
-      !NQDU if (idomain(isource) == IDOMAIN_ACOUSTIC .and. .not. USE_FORCE_POINT_SOURCE) then
       if (idomain(isource) == IDOMAIN_ACOUSTIC .and. .not. is_POINTFORCE(isource)) then
         if (Mxx(isource) /= Myy(isource) .or. Myy(isource) /= Mzz(isource) .or. &
            Mxy(isource) > TINYVAL .or. Mxz(isource) > TINYVAL .or. Myz(isource) > TINYVAL) then
@@ -705,7 +726,45 @@
       if (idomain(isource) /= IDOMAIN_ACOUSTIC .and. &
           idomain(isource) /= IDOMAIN_ELASTIC .and. &
           idomain(isource) /= IDOMAIN_POROELASTIC) then
-        call exit_MPI(myrank,'source located in unknown domain')
+        ! unknown domain
+        print *,'Error locating source # ',isource,' located in unknown domain'
+        print *,'  latitude : ',lat(isource)
+        print *,'  longitude: ',lon(isource)
+        ! convert station location to UTM
+        call utm_geo(lon(isource),lat(isource),utm_x_tmp,utm_y_tmp,ILONGLAT2UTM)
+        ! original position
+        if (SUPPRESS_UTM_PROJECTION) then
+          print *,'  original x: ',sngl(utm_x_tmp)
+          print *,'  original y: ',sngl(utm_y_tmp)
+        else
+          if (USE_LUNAR_PROJECTIONS) then
+            ! Moon
+            print *,'  original LTM/LPS x: ',sngl(utm_x_tmp)
+            print *,'  original LTM/LPS y: ',sngl(utm_y_tmp)
+          else
+            print *,'  original UTM x: ',sngl(utm_x_tmp)
+            print *,'  original UTM y: ',sngl(utm_y_tmp)
+          endif
+        endif
+        if (USE_SOURCES_RECEIVERS_Z) then
+          print *,'  original z: ',sngl(depth(isource))
+        else
+          print *,'  original depth: ',sngl(depth(isource)),' m'
+        endif
+        ! found position
+        print *,'  found    x: ',sngl(utm_x_source(isource))
+        print *,'  found    y: ',sngl(utm_y_source(isource))
+        print *,'  found    z: ',sngl(z_found(isource))
+        print *
+        print *,'  found in an invalid element: slice         :',islice_selected_source(isource)
+        print *,'                               ispec         :',ispec_selected_source(isource)
+        print *,'                               domain        :',idomain(isource)
+        print *,'                               xi/eta/gamma  :',xi_source(isource),eta_source(isource),gamma_source(isource)
+        print *,'                               final_distance:',final_distance(isource)
+        print *
+        print *,'Please check your source position and move it closer to the mesh geometry - exiting...'
+        print *
+        call exit_MPI(myrank,'Error locating source: located in unknown domain')
       endif
 
     ! end of loop on all the sources
@@ -736,7 +795,6 @@
       total_force_N = 0.d0
 
       do isource = 1,NSOURCES
-        !NQDU if (USE_FORCE_POINT_SOURCE) then
         if (is_POINTFORCE(isource)) then
           ! single point force
           ! factor_force_source in FORCESOLUTION file is by default in Newton
@@ -911,7 +969,7 @@
     call flush_IMAIN()
   endif
 
-  !NQDU reads in source descriptsions
+  ! reads in source descriptions
   if (.not. USE_CMT_AND_FORCE_SOURCE) then
     ! reads in source descriptions
     if (USE_FORCE_POINT_SOURCE) then

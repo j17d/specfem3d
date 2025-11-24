@@ -14,7 +14,7 @@ dnl
 ############################################################
 
 AC_PREREQ(2.61)
-AC_INIT([Specfem3D], m4_normalize(m4_include([VERSION])), [see the wiki], [Specfem3D])
+AC_INIT([SPECFEM3D Cartesian], m4_normalize(m4_include([VERSION])), [see the wiki], [Specfem3D])
 AC_CONFIG_SRCDIR([src/specfem3D/specfem3D.F90])
 
 AC_CONFIG_HEADERS([setup/config.h])
@@ -144,6 +144,9 @@ AM_CONDITIONAL([COND_HIP_MI25], [test x"$want_hip" = xMI25])
 AM_CONDITIONAL([COND_HIP_MI50], [test x"$want_hip" = xMI50])
 AM_CONDITIONAL([COND_HIP_MI100], [test x"$want_hip" = xMI100])
 AM_CONDITIONAL([COND_HIP_MI250], [test x"$want_hip" = xMI250])
+AM_CONDITIONAL([COND_HIP_MI300], [test x"$want_hip" = xMI300])
+AM_CONDITIONAL([COND_HIP_MI325], [test x"$want_hip" = xMI325])
+AM_CONDITIONAL([COND_HIP_MI350], [test x"$want_hip" = xMI350])
 
 AM_CONDITIONAL([COND_HIP_CUDA5], [test x"$want_hip" = xcuda5])
 AM_CONDITIONAL([COND_HIP_CUDA6], [test x"$want_hip" = xcuda6])

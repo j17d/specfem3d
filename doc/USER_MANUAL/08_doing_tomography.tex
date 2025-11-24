@@ -1,10 +1,14 @@
+%-----------------------------------------------------------------------------------------------------------------------------------%
 \chapter[Doing tomography based on the sensitivity kernels obtained]{Doing tomography, i.e., updating the model based on the sensitivity kernels obtained}\label{cha:tomo}
+%-----------------------------------------------------------------------------------------------------------------------------------%
 
 \red{See also the next chapter (Chapter~\ref{cha:FWI}) about how to perform full waveform inversion (FWI) or source inversions.}\newline
 
 STILL UNDER CONSTRUCTION ... New content will be added soon.
 
+%-----------------------------------------------------------------------------------------------------------------------------------%
 \section{Tomographic full waveform inversion (FWI) / imaging using the sensitivity kernels obtained}
+%-----------------------------------------------------------------------------------------------------------------------------------%
 
 One of the fundamental reasons for computing sensitivity kernels (Section~\ref{sec:Adjoint-simulation-finite})
 is to use them within a tomographic inversion, i.e., perform imaging. In other words, use
@@ -32,7 +36,9 @@ illustrated in \citet{TrKoLi08} and \citet{TaLiTr07} using a conjugate-gradient 
 Other, more powerful techniques such as the Limited-Memory Broyden-Fletcher-Goldfarb-Shanno (L-BFGS) method can now be used,
 as illustrated for instance in \cite{MoChKoWa15}.
 
+%-----------------------------------------------------------------------------------------------------------------------------------%
 \subsection{Principle}
+%-----------------------------------------------------------------------------------------------------------------------------------%
 
 We want to minimize the classical waveform misfit function:
 \begin{equation}
@@ -68,7 +74,9 @@ The nearest minimum of $\chi$ in (\ref{local_misfit}) with respect to the model 
 The local minimum of (\ref{misfit}) is thus given by perturbing the model in the direction of the gradient preconditioned
 by the inverse Hessian.
 
+%-----------------------------------------------------------------------------------------------------------------------------------%
 \subsection{Computation of the gradient based on the adjoint method}
+%-----------------------------------------------------------------------------------------------------------------------------------%
 
 A direct method to compute the gradient is to take the derivative of (\ref{misfit}) with respect to model parameters:
 \begin{equation}
@@ -193,9 +201,11 @@ Doing so for an elastic Earth, one only needs a small amount of disk storage to 
 step of the forward run, which is then used as an initial condition to redo the forward run backwards,
 as well as the field on the outer edges of the mesh for each time steps in order to be able to undo the absorbing boundary conditions.\newline
 
+%-----------------------------------------------------------------------------------------------------------------------------------%
 \section{Tomographic tools}
+%-----------------------------------------------------------------------------------------------------------------------------------%
 
-Besides the ability to compute adjoint sensitivity kernels, the SPECFEM3D package provides a number of tools useful for post-processing kernels, gradients and conducting tomographic model updates. The tomographic and post-processing tools can be compiled by typing in the main directory:
+Besides the ability to compute adjoint sensitivity kernels, the SPECFEM3D Cartesian package provides a number of tools useful for post-processing kernels, gradients and conducting tomographic model updates. The tomographic and post-processing tools can be compiled by typing in the main directory:
 \begin{verbatim}
 make tomography
 make postprocess
@@ -212,10 +222,12 @@ The iterative inversion workflow may comprise three main steps for which tools a
 \end{enumerate}
 
 
-Please note that the tomographic routines are very similar for both SPECFEM3D\_Cartesian and SPECFEM3D\_GLOBE versions. Some differences occur, e.g., when reading in mesh files and when the maximum of the gradient is taken for the update step length. Also note that currently only the binary database format is supported, no ADIOS file format support is implemented yet. In future, we plan to extend and merge these into the same set of tools within a common SPECFEM function library.\newline
+Please note that the tomographic routines are very similar for both SPECFEM3D Cartesian and SPECFEM3D Globe versions. Some differences occur, e.g., when reading in mesh files and when the maximum of the gradient is taken for the update step length. Also note that currently only the binary database format is supported, no ADIOS file format support is implemented yet. In future, we plan to extend and merge these into the same set of tools within a common SPECFEM function library.\newline
 
 
+%-----------------------------------------------------------------------------------------------------------------------------------%
 \subsection{Summing kernels}
+%-----------------------------------------------------------------------------------------------------------------------------------%
 
 For summing different event kernels, the executables \texttt{xsum\_kernels} and \texttt{xsum\_preconditioned\_kernels} can be used.
 The binaries sum up either a set of isotropic or transversely isotropic kernel files, depending on the setting in file \texttt{setup/constants\_tomography.h}.
@@ -363,7 +375,7 @@ To create these kernels, you have to set \texttt{APPROXIMATE\_HESS\_KL} to \text
 \end{itemize}
 
 
-For SPECFEM3D\_GLOBE, by default only kernels in the crust/mantle region ("reg1") will be considered for summation. You can change the default by setting parameter \texttt{REG} in file \texttt{constants\_tomography.h} to the region of interest. \newline
+For SPECFEM3D Globe, by default only kernels in the crust/mantle region ("reg1") will be considered for summation. You can change the default by setting parameter \texttt{REG} in file \texttt{constants\_tomography.h} to the region of interest. \newline
 
 
 Note that although we provide the preconditioned summation here, we recommend to smooth first both, the summed kernels and summed approximate Hessians, before inverting the summed Hessian and applying it as preconditioner to the gradient. From experience, we prefer doing
@@ -377,7 +389,9 @@ rather than
 Due to the large sensitivity kernel values close to source and receiver locations, the inverse of the thresholded summed Hessian becomes better balanced in the former.
 
 
+%-----------------------------------------------------------------------------------------------------------------------------------%
 \subsection{Smoothing and post-processing}
+%-----------------------------------------------------------------------------------------------------------------------------------%
 For additional smoothing and post-processing of kernels, gradients, or models, we provide tools useful for gradient and model preparation.
 These additional tools for post-processing sensitivity kernels are provided together with the main package. For compilation of these tools, you type in the main directory:
 \begin{verbatim}
@@ -468,7 +482,9 @@ e.g. \texttt{alpha\_kernel,beta\_kernel,rho\_kernel}.
 
 \end{description}
 
+%-----------------------------------------------------------------------------------------------------------------------------------%
 \subsection{Model updating}
+%-----------------------------------------------------------------------------------------------------------------------------------%
 We provide (simple) tools for updating the current model $\boldm_i$ using a gradient $\boldg$ and steplength $\alpha$:, i.e.
 \begin{equation}
 \boldm_{i+i} = \boldm_i + \delta \boldm  \nonumber
@@ -550,14 +566,16 @@ proc***_rho_new.bin
 
 \end{description}
 
-Note that additional post-processing and model update tools are provided for the SPECFEM3D\_GLOBE version and will be provided for the Cartesian version as well in future.
+Note that additional post-processing and model update tools are provided for the SPECFEM3D Globe version and will be provided for the Cartesian version as well in future.
 
 
+%-----------------------------------------------------------------------------------------------------------------------------------%
 \section{OLD VERSION OF THE SECTION, WILL SOON BE IMPROVED AND ENRICHED}
+%-----------------------------------------------------------------------------------------------------------------------------------%
 
 There are many other versions of gradient-based inversion
 algorithms that could alternatively be used (see e.g. \cite{ViOp09,MoChKoWa15} for a list).
-The tomographic inversion of \citet{TaLiMaTr09,TaLiMaTr2010} used SPECFEM3D\_Cartesian as well
+The tomographic inversion of \citet{TaLiMaTr09,TaLiMaTr2010} used SPECFEM3D Cartesian as well
 as several additional components which are also stored on the CIG
 svn server, described next.\newline
 

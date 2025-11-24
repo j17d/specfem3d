@@ -763,10 +763,7 @@
 !-------------------------------------------------------------------------------------------------
 !
 
-!
-!-------------------------------------------------------------------------------------------------
-!
-  ! nqdu  FK elastic + acoustic
+  ! FK elastic + acoustic
   subroutine FK(vp,vs,rho, H, nlayer, &
                   Tg, ray_p, phi, x0, y0, z0, &
                   t0, dt, npts,npt, &
@@ -820,8 +817,8 @@
 
   ! spline work array
   double precision, dimension(:), allocatable                :: tmp_c
-!
-  ! nqdu matrices for computation
+
+  ! matrices for computation
   complex(kind=CUSTOM_CMPLX)                                :: eta_alpha(nlayer),eta_beta(nlayer),gamma0(nlayer),gamma1(nlayer)
   complex(kind=CUSTOM_CMPLX)                                :: E_mat(4,4),Qmat(2,2),Pmat(4,4),Qmat_I(2,2)
   logical                                                   :: have_fluid_layer
@@ -1293,6 +1290,7 @@
 
       !! store undersampled version of velocity  FK solution
       if (ispec_is_elastic(ispec)) then
+        ! elastic element
         tmp_t1(:) = field(:,1) * cos(phi)
         call compute_spline_coef_to_store(tmp_t1, npts2, tmp_t2, tmp_c)
         Veloc_FK(1,ipt,1:NF_FOR_STORING) = tmp_t2(1:NF_FOR_STORING)
@@ -1304,9 +1302,11 @@
         tmp_t1(:) = field(:,2)
         call compute_spline_coef_to_store(tmp_t1, npts2, tmp_t2, tmp_c)
         Veloc_FK(3,ipt,1:NF_FOR_STORING) = tmp_t2(1:NF_FOR_STORING)
-      else if (ispec_is_acoustic(ispec)) then ! nqdu
-        !note, veloc_FK now saves displ instead of velocity
-        ! and tract_FK saves chi_dot instead of traction
+
+      else if (ispec_is_acoustic(ispec)) then
+        ! acoustic element
+        ! nqdu comment: veloc_FK now saves displ instead of velocity
+        !               and tract_FK saves chi_dot instead of traction
         tmp_t1(:) = field(:,1) * cos(phi)
         call compute_spline_coef_to_store(tmp_t1, npts2, tmp_t2, tmp_c)
         veloc_FK(1,ipt,1:NF_FOR_STORING) = tmp_t2(1:NF_FOR_STORING)
@@ -1492,189 +1492,6 @@ subroutine fk_propagator_ac(om,eta_alpha,rho, &
   Qmat(2,1) = sa * rho / (ray_p  * eta_alpha)
 
 end subroutine fk_propagator_ac
-
-!
-!-------------------------------------------------------------------------------------------------
-!
-
-  subroutine FFT(npow,xi,zign,dtt,mpow)
-
-! Fourier transform
-! This inputs AND outputs a complex function.
-! The convention is FFT --> e^(-iwt)
-! numerical factor for Plancherel theorem: planch_fac = dble(NPT * dt * dt)
-
-  use constants, only: CUSTOM_REAL
-
-  implicit none
-
-  integer, parameter :: CUSTOM_CMPLX = 8
-
-  integer,intent(in) :: npow
-
-  real(kind=CUSTOM_REAL),intent(in) :: zign,dtt
-
-  complex(kind=CUSTOM_CMPLX),dimension(*),intent(inout) :: xi
-
-!! DK DK here is the hardwired maximum size of the array
-!! DK DK Aug 2016: if this routine is called many times (for different mesh points at which the SEM is coupled with FK)
-!! DK DK Aug 2016: this should be moved to the calling program and precomputed once and for all
-  real(kind=CUSTOM_REAL),intent(in) :: mpow(30)
-
-  ! local parameters
-  integer :: lblock,k,FK,jh,ii,istart
-  integer :: l,iblock,nblock,i,lbhalf,j,lx
-  complex(kind=CUSTOM_CMPLX) :: wk, hold, q
-  real(kind=CUSTOM_REAL) :: flx,inv_of_flx,v
-  ! PI = acos(-1.d0)
-  real(kind=CUSTOM_REAL), parameter :: TWO_PI = 2.0_CUSTOM_REAL * acos(-1.d0)
-
-!! DK DK added this sanity check
-  if (npow > 30) stop 'error: the FK FTT routine has an hardwired maximum of 30 levels'
-!! DK DK in any case the line below imposes a maximum of 31, otherwise the integer 2**n will overflow
-
-  lx = 2**npow
-
-  do l = 1,npow
-
-    nblock = 2**(l-1)
-    lblock = lx/nblock
-    lbhalf = lblock/2
-
-    k = 0
-
-    do iblock = 1,nblock
-
-      FK = k
-      flx = lx
-
-      v = zign * TWO_PI * FK / flx         ! Fourier convention
-
-      ! - sign: MATLAB convention: forward e^{-i om t}
-      ! + sign: engineering convention: forward e^{i om t}
-      wk = cmplx(cos(v),-sin(v))   ! sign change to -sin(v) or sin(v)
-      istart = lblock*(iblock-1)
-
-      do i = 1,lbhalf
-        j  = istart+i
-        jh = j+lbhalf
-        q = xi(jh)*wk
-        xi(jh) = xi(j)-q
-        xi(j)  = xi(j)+q
-      enddo
-
-      do i = 2,npow
-        ii = i
-        if (k < mpow(i)) goto 4
-        k = k-mpow(i)
-      enddo
-
-    4 k = k+mpow(ii)
-
-    enddo
-  enddo
-
-  k = 0
-
-  do j = 1,lx
-    if (k < j) goto 5
-
-    hold = xi(j)
-    xi(j) = xi(k+1)
-    xi(k+1) = hold
-
-5   do i = 1,npow
-      ii = i
-      if (k < mpow(i)) goto 7
-      k = k-mpow(i)
-    enddo
-
-7   k = k+mpow(ii)
-  enddo
-
-  ! final steps deal with dt factors
-  if (zign > 0.) then
-    ! FORWARD FFT
-    xi(1:lx) = xi(1:lx) * dtt    ! multiplication by dt
-
-  else
-    ! REVERSE FFT
-    flx = flx*dtt
-    inv_of_flx = 1._CUSTOM_REAL / flx
-
-!! DK DK Aug 2016: changed to multiplication by the precomputed inverse to make the routine faster
-!       xi(1:lx) = xi(1:lx) / flx         ! division by dt
-    xi(1:lx) = xi(1:lx) * inv_of_flx  ! division by dt
-
-  endif
-
-  end subroutine FFT
-
-!
-!-------------------------------------------------------------------------------------------------
-!
-
-  subroutine FFTinv(npow,s,zign,dtt,r,mpow)
-
-! inverse Fourier transform -- calls FFT
-
-  use constants, only: CUSTOM_REAL
-
-  implicit none
-
-  integer, parameter :: CUSTOM_CMPLX = 8
-
-  integer,intent(in) :: npow
-  real(kind=CUSTOM_REAL),intent(in)  :: dtt,zign
-
-  complex(kind=CUSTOM_CMPLX), intent(inout) :: s(*)
-  real(kind=CUSTOM_REAL), intent(out) :: r(*)   ! note that this is real, not double precision
-
-!! DK DK here is the hardwired maximum size of the array
-!! DK DK Aug 2016: if this routine is called many times (for different mesh points at which the SEM is coupled with FK)
-!! DK DK Aug 2016: this should be moved to the calling program and precomputed once and for all
-  real(kind=CUSTOM_REAL),intent(in) :: mpow(30)
-
-  ! local parameters
-  integer :: nsmp, nhalf
-
-  nsmp = 2**npow
-  nhalf = nsmp/2
-
-  call rspec(s,nhalf)   ! restructuring
-  call FFT(npow,s,zign,dtt,mpow)    ! Fourier transform
-
-  r(1:nsmp) = real(s(1:nsmp))     ! take the real part
-
-  end subroutine FFTinv
-
-!
-!-------------------------------------------------------------------------------------------------
-!
-
-  subroutine rspec(s,np2)
-
-  implicit none
-
-  integer, parameter :: CUSTOM_CMPLX = 8
-
-  complex(kind=CUSTOM_CMPLX),intent(inout) :: s(*)
-  integer, intent(in) :: np2
-
-  ! local parameters
-  integer :: n,n1,i
-
-  n = 2*np2
-  n1 = np2+1
-
-  s(n1) = 0.0
-  s(1)  = cmplx(real(s(1)),0.0)
-
-  do i = 1,np2
-    s(np2+i) = conjg(s(np2+2-i))
-  enddo
-
-  end subroutine rspec
 
 !
 !-------------------------------------------------------------------------------------------------
@@ -4173,15 +3990,16 @@ contains
 
   end subroutine couple_with_injection_cleanup
 
-!------------------------------------------------------
-! NQDU added
-! read injection file
+!
+!-------------------------------------------------------------------------------------------------
+!
 
   subroutine fetch_injection_wavefield()
+
+! read injection file
+
   use constants
-
   use specfem_par, only: SIMULATION_TYPE,GPU_MODE,Mesh_pointer
-
   use specfem_par, only: num_abs_boundary_faces,it
 
   ! boundary coupling
@@ -4190,13 +4008,11 @@ contains
     Veloc_dsm_boundary, Tract_dsm_boundary, Veloc_axisem, Tract_axisem, Tract_axisem_time, &
     Veloc_specfem, Tract_specfem
   use specfem_par_coupling, only: NP_RESAMP, Veloc_FK, Tract_FK
+
   implicit none
-
-
   integer :: ii, kk, iim1, iip1, iip2,npts
   real(kind=CUSTOM_REAL) :: cs1,cs2,cs3,cs4,w
-
-  !! NQDU temporary arrays coupling
+  ! temporary arrays coupling
   real(kind=CUSTOM_REAL), dimension(:,:),allocatable :: veloc_inj,tract_inj
 
   ! safety checks
@@ -4238,10 +4054,11 @@ contains
   ! copy injection field to GPU
   ! allcoate space
   allocate(veloc_inj(NDIM,num_abs_boundary_faces*NGLLSQUARE), &
-            tract_inj(NDIM,num_abs_boundary_faces*NGLLSQUARE))
+           tract_inj(NDIM,num_abs_boundary_faces*NGLLSQUARE))
 
   select case(INJECTION_TECHNIQUE_TYPE)
   case (INJECTION_TECHNIQUE_IS_DSM)
+    ! DSM
     veloc_inj(:,:) = reshape(Veloc_dsm_boundary(:,it_dsm,:,:),(/NDIM,num_abs_boundary_faces*NGLLSQUARE/))
     tract_inj(:,:) = reshape(Tract_dsm_boundary(:,it_dsm,:,:),(/NDIM,num_abs_boundary_faces*NGLLSQUARE/))
     it_dsm = it_dsm + 1
@@ -4297,6 +4114,7 @@ contains
   veloc_inj = -veloc_inj
   tract_inj = -tract_inj
   npts = num_abs_boundary_faces * NGLLSQUARE * NDIM
+
   call transfer_injection_field_to_device(npts,veloc_inj,tract_inj,Mesh_pointer)
 
   ! free memory
@@ -4304,82 +4122,87 @@ contains
 
   end subroutine fetch_injection_wavefield
 
-
-!=============================================================================
+!
+!-------------------------------------------------------------------------------------------------
+!
 
   subroutine read_dsm_file(Veloc_dsm_boundary,Tract_dsm_boundary,num_abs_boundary_faces,it_dsm)
 
-    use constants
+  use constants
 
-    implicit none
+  implicit none
 
-    integer igll,it_dsm
-    integer iface,num_abs_boundary_faces,i,j
-    real(kind=CUSTOM_REAL) :: Veloc_dsm_boundary(3,Ntime_step_dsm,NGLLSQUARE,num_abs_boundary_faces)
-    real(kind=CUSTOM_REAL) :: Tract_dsm_boundary(3,Ntime_step_dsm,NGLLSQUARE,num_abs_boundary_faces)
+  integer igll,it_dsm
+  integer iface,num_abs_boundary_faces,i,j
+  real(kind=CUSTOM_REAL) :: Veloc_dsm_boundary(3,Ntime_step_dsm,NGLLSQUARE,num_abs_boundary_faces)
+  real(kind=CUSTOM_REAL) :: Tract_dsm_boundary(3,Ntime_step_dsm,NGLLSQUARE,num_abs_boundary_faces)
 
-    real(kind=CUSTOM_REAL) :: dsm_boundary_tmp(3,Ntime_step_dsm,NGLLX,NGLLY)
+  real(kind=CUSTOM_REAL) :: dsm_boundary_tmp(3,Ntime_step_dsm,NGLLX,NGLLY)
 
-    it_dsm = 1
+  it_dsm = 1
 
-    do iface = 1,num_abs_boundary_faces
-      igll = 0
-      do j = 1,NGLLY
-        do i = 1,NGLLX
-          igll = igll + 1
-          read(IIN_veloc_dsm) dsm_boundary_tmp(:,:,i,j)
-          Veloc_dsm_boundary(:,:,igll,iface) = dsm_boundary_tmp(:,:,i,j)
-          read(IIN_tract_dsm) dsm_boundary_tmp(:,:,i,j)
-          Tract_dsm_boundary(:,:,igll,iface) = dsm_boundary_tmp(:,:,i,j)
-        enddo
+  do iface = 1,num_abs_boundary_faces
+    igll = 0
+    do j = 1,NGLLY
+      do i = 1,NGLLX
+        igll = igll + 1
+        read(IIN_veloc_dsm) dsm_boundary_tmp(:,:,i,j)
+        Veloc_dsm_boundary(:,:,igll,iface) = dsm_boundary_tmp(:,:,i,j)
+        read(IIN_tract_dsm) dsm_boundary_tmp(:,:,i,j)
+        Tract_dsm_boundary(:,:,igll,iface) = dsm_boundary_tmp(:,:,i,j)
       enddo
     enddo
+  enddo
 
-    end subroutine read_dsm_file
+  end subroutine read_dsm_file
 
-  !=============================================================================
+!
+!-------------------------------------------------------------------------------------------------
+!
 
-    subroutine read_axisem_file(Veloc_axisem,Tract_axisem,nb)
+  subroutine read_axisem_file(Veloc_axisem,Tract_axisem,nb)
 
-    use constants
+  use constants
 
-    implicit none
+  implicit none
 
-    integer :: nb
-    real(kind=CUSTOM_REAL) :: Veloc_axisem(3,nb)
-    real(kind=CUSTOM_REAL) :: Tract_axisem(3,nb)
+  integer :: nb
+  real(kind=CUSTOM_REAL) :: Veloc_axisem(3,nb)
+  real(kind=CUSTOM_REAL) :: Tract_axisem(3,nb)
 
-    read(IIN_veloc_dsm) Veloc_axisem, Tract_axisem
+  read(IIN_veloc_dsm) Veloc_axisem, Tract_axisem
 
-    end subroutine read_axisem_file
+  end subroutine read_axisem_file
 
-  !=============================================================================
+!
+!-------------------------------------------------------------------------------------------------
+!
 
-    subroutine read_specfem_file(Veloc_specfem,Tract_specfem,nb,it)
+  subroutine read_specfem_file(Veloc_specfem,Tract_specfem,nb,it)
 
-    use constants, only: myrank,CUSTOM_REAL,NDIM,IIN_veloc_dsm
+  use constants, only: myrank,CUSTOM_REAL,NDIM,IIN_veloc_dsm
 
-    implicit none
+  implicit none
 
-    integer, intent(in) :: nb
-    real(kind=CUSTOM_REAL), intent(out) :: Veloc_specfem(NDIM,nb)
-    real(kind=CUSTOM_REAL), intent(out) :: Tract_specfem(NDIM,nb)
-    integer,intent(in) :: it
+  integer, intent(in) :: nb
+  real(kind=CUSTOM_REAL), intent(out) :: Veloc_specfem(NDIM,nb)
+  real(kind=CUSTOM_REAL), intent(out) :: Tract_specfem(NDIM,nb)
+  integer,intent(in) :: it
 
-    ! local parameters
-    integer :: ier
+  ! local parameters
+  integer :: ier
 
-    ! reads velocity & traction
-    !read(IIN_veloc_dsm,iostat=ier) Veloc_specfem, Tract_specfem
-    ! w/ direct access
-    read(IIN_veloc_dsm,rec=it,iostat=ier) Veloc_specfem, Tract_specfem
+  ! reads velocity & traction
+  !read(IIN_veloc_dsm,iostat=ier) Veloc_specfem, Tract_specfem
+  ! w/ direct access
+  read(IIN_veloc_dsm,rec=it,iostat=ier) Veloc_specfem, Tract_specfem
 
-    ! check
-    if (ier /= 0) then
-      print *,'Error: rank ',myrank,'failed to read in wavefield (veloc & traction) at time step it = ',it
-      print *,'       Please check that the wavefield injection files proc***_sol_specfem.bin exists.'
-      call exit_MPI(myrank,'Error reading injection wavefield file')
-    endif
+  ! check
+  if (ier /= 0) then
+    print *,'Error: rank ',myrank,'failed to read in wavefield (veloc & traction) at time step it = ',it
+    print *,'       Please check that the wavefield injection files proc***_sol_specfem.bin exists.'
+    call exit_MPI(myrank,'Error reading injection wavefield file')
+  endif
 
-    end subroutine read_specfem_file
+  end subroutine read_specfem_file
 

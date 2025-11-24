@@ -280,6 +280,7 @@
           call update_displ_Newmark()
         endif
 
+        ! wavefield injection
         if (COUPLE_WITH_INJECTION_TECHNIQUE) call fetch_injection_wavefield()
 
         ! computes acoustic domain (first)

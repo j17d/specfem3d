@@ -217,6 +217,15 @@ end module constants
   ! prescribed wavefield discontinuity on an interface
   logical :: IS_WAVEFIELD_DISCONTINUITY = .false. ! if .true. then wavefield discontinuity is turned on (default is false)
 
+  ! (optional) scattering perturbations
+  logical :: ADD_SCATTERING_PERTURBATIONS = .false.
+  double precision :: SCATTERING_STRENGTH = 0.d0
+  double precision :: SCATTERING_CORRELATION = 1.d0
+  character(len=MAX_STRING_LEN) :: SCATTERING_MATERIAL_IDS = ""
+
+  ! Moon's Lunar Projections (LTM/LPS) instead of UTM
+  logical :: USE_LUNAR_PROJECTIONS = .false.
+
   end module shared_input_parameters
 
 !

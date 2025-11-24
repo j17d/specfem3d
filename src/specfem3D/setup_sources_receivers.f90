@@ -216,7 +216,7 @@
            hdur_Gaussian(NSOURCES), &
            utm_x_source(NSOURCES), &
            utm_y_source(NSOURCES), &
-           isource_glob2loc(NSOURCES), &  ! nqdu add
+           isource_glob2loc(NSOURCES), &
            nu_source(NDIM,NDIM,NSOURCES),stat=ier)
   if (ier /= 0) call exit_MPI_without_rank('error allocating array 2049')
   if (ier /= 0) stop 'error allocating arrays for sources'
@@ -268,13 +268,9 @@
     NSTEP_STF = 1
     NSOURCES_STF = 1
   endif
+
   ! allocate array that contains the user defined source time function
-  ! allocate(user_source_time_function(NSTEP_STF, NSOURCES_STF),stat=ier)
-  ! if (ier /= 0) call exit_MPI_without_rank('error allocating array 2058')
-  ! if (ier /= 0) stop 'error allocating arrays for user sources time function'
-  ! user_source_time_function(:,:) = 0.0_CUSTOM_REAL
-  ! allocate array that contains the user defined source time function
-  if (.not. USE_BINARY_SOURCE_FILE) then  !nqdu added
+  if (.not. USE_BINARY_SOURCE_FILE) then
     allocate(user_source_time_function(NSTEP_STF, NSOURCES_STF),stat=ier)
     if (ier /= 0) call exit_MPI_without_rank('error allocating array 2058')
     if (ier /= 0) stop 'error allocating arrays for user sources time function'
@@ -422,8 +418,6 @@
   ! local parameters
   double precision :: t0_acoustic
   integer :: isource,ispec
-
-  !nqdu
   double precision :: t0_cmt
   character(len=MAX_STRING_LEN) :: path_to_add,filename
 
@@ -477,103 +471,65 @@
     endif
   endif
 
-  !loop every force source to find t0
-  t0 = 0.
-  t0_cmt = 0
+  ! define t0 as the earliest start time
+  t0 = 0.d0
+  t0_cmt = 0.d0
+  ! loop sources to find simulation t0
   do isource = 1,NSOURCES
     ! point source
     if (is_POINTFORCE(isource)) then
+      ! point force sources
+      ! (might start depending on the frequency given by hdur)
+      ! note: point force sources will give the dominant frequency in hdur, thus the main period is 1/hdur.
+      !       also, these sources might use a Ricker source time function instead of a Gaussian.
+      !       For a Ricker source time function, a start time ~1.2 * main_period is a good choice.
       select case(force_stf(isource))
       case (0)
         ! Gaussian source time function
-        t0 = min(t0,1.5d0 * (tshift_src(isource) - hdur(isource)))
+        t0 = min(t0,(tshift_src(isource) - 1.5d0 * hdur(isource)))
       case (1)
         ! Ricker source time function
-        t0 = min(t0,1.2d0 * (tshift_src(isource) - 1.0d0/hdur(isource)))
+        t0 = min(t0,(tshift_src(isource) - 1.2d0 * 1.0d0/hdur(isource)))
       case (2)
         ! Heaviside
-        t0 = min(t0,1.5d0 * (tshift_src(isource) - hdur(isource)))
+        t0 = min(t0,(tshift_src(isource) - 1.5d0 * hdur(isource)))
       case (3)
         ! Monochromatic
         t0 = 0.d0
       case (4)
         ! Gaussian source time function by Meschede et al. (2011)
-        t0 = min(t0,1.5d0 * (tshift_src(isource) - hdur(isource)))
+        t0 = min(t0,(tshift_src(isource) - 1.5d0 * hdur(isource)))
       case (5)
         ! Brune
         ! This needs to be CHECKED!!!
-        t0 = min(t0,1.5d0 * (tshift_src(isource) - hdur(isource)))
+        t0 = min(t0,(tshift_src(isource) - 1.5d0 * hdur(isource)))
       case (6)
         ! Smoothed Brune
         ! This needs to be CHECKED!!!
-        t0 = min(t0,1.5d0 * (tshift_src(isource) - hdur(isource)))
+        t0 = min(t0,(tshift_src(isource) - 1.5d0 * hdur(isource)))
       case default
         stop 'unsupported force_stf value!'
       end select
-    else  ! CMT
+    else
+      ! CMT moment tensors
       if (USE_RICKER_TIME_FUNCTION) then
-        t0_cmt = min(t0_cmt,1.20 * (tshift_src(isource) - 1.0d0/hdur(isource)))
+        ! note: sources will give the dominant frequency in hdur,
+        !       thus the main period is 1/hdur.
+        !       for a Ricker source time function, a start time ~1.2 * dominant_period is a good choice
+        t0_cmt = min(t0_cmt,(tshift_src(isource) - 1.20 * 1.0d0/hdur(isource)))
       else
-        t0_cmt = min(t0_cmt,2.0 * (tshift_src(isource) - hdur(isource)))
+        ! (based on Heaviside functions)
+        ! note: an earlier start time also reduces numerical noise due to a
+        !          non-zero offset at the beginning of the source time function
+        t0_cmt = min(t0_cmt,(tshift_src(isource) - 2.0 * hdur(isource)))
       endif
     endif
   enddo
+  ! overall start time
   t0 = min(t0_cmt,t0)
-  t0 = -t0
 
-  ! ! define t0 as the earliest start time
-  ! if (USE_FORCE_POINT_SOURCE) then
-  !   ! point force sources
-  !   ! (might start depending on the frequency given by hdur)
-  !   ! note: point force sources will give the dominant frequency in hdur, thus the main period is 1/hdur.
-  !   !       also, these sources might use a Ricker source time function instead of a Gaussian.
-  !   !       For a Ricker source time function, a start time ~1.2 * main_period is a good choice.
-  !   t0 = 0.d0
-  !   do isource = 1,NSOURCES
-  !     select case(force_stf(isource))
-  !     case (0)
-  !       ! Gaussian source time function
-  !       t0 = min(t0,1.5d0 * (tshift_src(isource) - hdur(isource)))
-  !     case (1)
-  !       ! Ricker source time function
-  !       t0 = min(t0,1.2d0 * (tshift_src(isource) - 1.0d0/hdur(isource)))
-  !     case (2)
-  !       ! Heaviside
-  !       t0 = min(t0,1.5d0 * (tshift_src(isource) - hdur(isource)))
-  !     case (3)
-  !       ! Monochromatic
-  !       t0 = 0.d0
-  !     case (4)
-  !       ! Gaussian source time function by Meschede et al. (2011)
-  !       t0 = min(t0,1.5d0 * (tshift_src(isource) - hdur(isource)))
-  !     case (5)
-  !       ! Brune
-  !       ! This needs to be CHECKED!!!
-  !       t0 = min(t0,1.5d0 * (tshift_src(isource) - hdur(isource)))
-  !     case (6)
-  !       ! Smoothed Brune
-  !       ! This needs to be CHECKED!!!
-  !       t0 = min(t0,1.5d0 * (tshift_src(isource) - hdur(isource)))
-  !     case default
-  !       stop 'unsupported force_stf value!'
-  !     end select
-  !   enddo
-  !   ! start time defined as positive value, will be subtracted
-  !   t0 = - t0
-  ! else
-  !   ! moment tensors
-  !   if (USE_RICKER_TIME_FUNCTION) then
-  !     ! note: sources will give the dominant frequency in hdur,
-  !     !       thus the main period is 1/hdur.
-  !     !       for a Ricker source time function, a start time ~1.2 * dominant_period is a good choice
-  !     t0 = - 1.2d0 * minval(tshift_src(:) - 1.0d0/hdur(:))
-  !   else
-  !     ! (based on Heaviside functions)
-  !     ! note: an earlier start time also reduces numerical noise due to a
-  !     !          non-zero offset at the beginning of the source time function
-  !     t0 = - 2.0d0 * minval(tshift_src(:) - hdur(:))   ! - 1.5d0 * minval(tshift_src-hdur)
-  !   endif
-  ! endif
+  ! start time defined as positive value, will be subtracted
+  t0 = -t0
 
   ! uses an earlier start time if source is acoustic with a Gaussian source time function
   t0_acoustic = 0.0d0

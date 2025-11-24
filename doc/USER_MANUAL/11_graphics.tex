@@ -1,6 +1,10 @@
+%-----------------------------------------------------------------------------------------------------------------------------------%
 \chapter{Graphics}
+%-----------------------------------------------------------------------------------------------------------------------------------%
 
+%-----------------------------------------------------------------------------------------------------------------------------------%
 \section{Meshes}\label{sec:Mesh-graphics}
+%-----------------------------------------------------------------------------------------------------------------------------------%
 
 In case you used the internal mesher \texttt{xmeshfem3D} to create
 and partition your mesh, you can output mesh files in ABAQUS (.INP)
@@ -37,7 +41,9 @@ to visualized these partitions.\newline
 
 {\red To visualize seismograms with Paraview, you should turn off the flag SU\_FORMAT, and turn on the use binary seismograms flag. This will generate .bin files, that you can open with Paraview. You have to select the way you open it ("raw"), and specify the dimensions of the file (NSTEP and NREC).}
 
+%-----------------------------------------------------------------------------------------------------------------------------------%
 \section{Movies}\label{sec:Movies}
+%-----------------------------------------------------------------------------------------------------------------------------------%
 
 To make a surface or volume movie of the simulation, set parameters
 \texttt{MOVIE\_SURFACE}, \texttt{MOVIE\_VOLUME}, \texttt{MOVIE\_TYPE},
@@ -74,7 +80,9 @@ by the simulation, but for a finite source one would keep all the
 \texttt{half durations} as prescribed by the finite source model and
 set \texttt{HDUR\_MOVIE} = 0.0.
 
+%-----------------------------------------------------------------------------------------------------------------------------------%
 \subsection{Movie Surface and Shakemaps}
+%-----------------------------------------------------------------------------------------------------------------------------------%
 
 When running \texttt{xspecfem3D} with the \texttt{MOVIE\_SURFACE}
 flag turned on, the code outputs \texttt{moviedata??????} files in
@@ -129,14 +137,16 @@ showing movie snapshots of vertical velocity components at different times.}
 \end{figure}
 
 \end{description}
-The \texttt{SPECFEM3D Cartesian} code is running in near real-time
+The SPECFEM3D Cartesian code is running in near real-time
 to produce animations of southern California earthquakes via the web;
 see Southern California \href{www.shakemovie.caltech.edu}{ShakeMovie\textregistered{}}.
 
 
+%-----------------------------------------------------------------------------------------------------------------------------------%
 \subsection{Movie Volume}\label{sub:Movie-Volume}
+%-----------------------------------------------------------------------------------------------------------------------------------%
 
-When running xspecfem3D with the
+When running \texttt{xspecfem3D} with the
 \texttt{\small MOVIE\_VOLUME}
 flag turned on, the code outputs several files in \texttt{\small LOCAL\_PATH}
 specified in the main \texttt{DATA/Par\_file},
@@ -261,7 +271,9 @@ in the script according to your system.\newline
 
 Then, to do a movie with several iterations, you have to repeat this process for each iteration you want to put in your movie.
 
+%-----------------------------------------------------------------------------------------------------------------------------------%
 \section{Finite-Frequency Kernels}\label{sec:Finite-Frequency-Kernels}
+%-----------------------------------------------------------------------------------------------------------------------------------%
 
 The finite-frequency kernels computed as explained in Section \ref{sec:Adjoint-simulation-finite}
 are saved in the \texttt{LOCAL\_PATH} at the end of the simulation.

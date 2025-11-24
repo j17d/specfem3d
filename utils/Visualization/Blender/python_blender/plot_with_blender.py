@@ -12,6 +12,7 @@ import sys
 import os
 import time
 import datetime
+import math
 
 # blender
 try:
@@ -125,6 +126,7 @@ world_background_color = (1,1,1,1)  # white
 # utm projections for locations
 transformer_to_utm = None
 utm_zone = None
+use_moon_ltm = False
 
 # timing info
 time_string = None
@@ -158,6 +160,21 @@ class SuppressStream(object):
 
 def convert_latlon_to_UTM(lat, lon):
     global transformer_to_utm
+    global use_moon_ltm
+    global utm_zone
+
+    if use_moon_ltm:
+        print("  converting coordinates to Moon LTM/LPS...")
+        # determine zone if not specified
+        if utm_zone == None:
+            utm_zone = geo2ltm(lon, lat, zone=None, iway=2)
+            hemisphere_auto = 'N' if utm_zone > 0 else 'S'
+            print("  detected LTM/LPS zone: {}   - {} hemisphere".format(utm_zone,hemisphere_auto))
+            print("")
+
+        # convert to LTM/LPS
+        ltm_x, ltm_y = geo2ltm(lon, lat, utm_zone, iway=2)
+        return ltm_x, ltm_y
 
     # transform lat/lon to UTM
     if transformer_to_utm == None:
@@ -240,6 +257,241 @@ def convert_latlon_to_UTM(lat, lon):
     x_utm,y_utm = transformer_to_utm.transform(x,y)
 
     return x_utm,y_utm
+
+
+def geo2ltm(lon, lat, zone=None, iway=2):
+    """
+    Lunar Transverse Mercator (LTM) and Lunar Polar Stereographic (LPS) projection for polar regions
+
+    this routine assumes a perfectly spherical Moon.
+    LTM implementation is a simplified Spherical Transverse Mercator, 8-degree zones.
+
+    note: by default, the LTM implementation in the python script LGRS_Coordinate_Conversion_mk7.2.py provided by USGS astrogeology site
+          https://astrogeology.usgs.gov/search/map/lunar-map-projections-and-grid-reference-system-for-artemis-astronaut-surface-navigation
+          uses a spherical Moon for their LTM projection.
+
+          However, they still use the formula for a Gauss-Schreiber projection,
+          that combines a projection of an ellipsoid to a sphere followed by a spherical transverse Mercator formula.
+          Assuming the ellipsoid is perfectly spherical, then the first projection is an identity transform and only the second,
+          spherical transverse Mercator formula is needed.
+          Here, we use this simplification of applying directly the spherical transverse Mercator projection, assuming a spherical Moon.
+
+    lon - longitude in degree range [-180,180]
+    lat - latitude in degree range [-90,90]
+
+    zone - LTM zones use 1 to 45, positive for Northern hemisphere, negative for Southern hemisphere
+           LPS zones use 46 for North pole, -46 for South pole
+
+    iway = 1  from LTM     to lon/lat
+    iway = 2  from lon/lat to LTM
+    """
+
+    PI = math.pi
+    degrad = PI / 180.0
+    raddeg = 180.0 / PI
+
+    # ---- Lunar spherical radius ----
+    R = 1737400.0   # mean lunar radius (meters)
+
+    # ---- Scale factor ----
+    # Lunar map projection scale factors
+    scfa = 0.999         # transverse Mercator (LTM)
+    scfa_polar = 0.994   # polar stereographic (LPS)
+
+    # ---- False origins ----
+    false_east  =  250000.0
+    false_north = 2500000.0
+
+    false_east_polar  =  500000.0
+    false_north_polar =  500000.0
+
+    ILTM2LONGLAT = 1
+    ILONGLAT2LTM = 2
+
+    #----- Set Zone parameters
+    # determine zone
+    # for convenience, if zone is unspecified in forward mode, this computes it for the given longitude/latitude position
+    # and returns only the zone number
+    if iway == ILONGLAT2LTM and (zone is None or zone == 0):
+        # checks latitute range for LTM [-82,82], beyond is polar region
+        if lat >= -82.0 and lat <= 82.0:
+            # LTM
+            # longitudinal zone
+            zone = int((lon + 180.0) // 8) + 1   # note: uses +1 because USGS's LGRS_Coordinate_Conversion_mk7.2.py has zone index starting at 1
+            # 180-degree values sometimes come up as 46. We assign it back to zone 1
+            if zone > 45:
+                zone -= 45
+            # we use negative values for Southern hemisphere
+            if lat < 0.0:
+                zone = -zone
+        else:
+            # LPS
+            # polar region
+            if lat >= 0.0:
+                zone = 46    # north pole
+            else:
+                zone = -46   # south pole
+        # just return zone
+        return zone
+
+    # zone is given as input, check if valid
+    if zone is None or zone == 0 or int(abs(zone)) > 46:
+        print(f"error: geo2ltm routine has as input zone {zone}, which is invalid. zone must be +/- 1-45 for LTM and +/- 46 for LPS")
+        sys.exit(1)
+
+    # zone index absolute
+    z = int(abs(zone))
+
+    # polar region
+    use_polar = False
+    # check if LPS or LTM
+    if z == 46: use_polar = True
+
+    # Lunar Polar Stereographic (LPS) projection
+    if use_polar:
+        if iway == ILONGLAT2LTM:
+            # Forward transformation: lon/lat to LPS
+            # Snyder (1987) spherical equations
+            rlon = lon * degrad
+            rlat = lat * degrad
+
+            # Calculate polar stereographic spherical scale error
+            A = 2.0 * R * scfa_polar
+
+            if zone < 0:
+                # South pole
+                t = math.tan(PI/4.0 + rlat/2.0)
+            else:
+                # North pole
+                t = math.tan(PI/4.0 - rlat/2.0)
+
+            # stereographic map projection, Snyder (1987)
+            # note: here, we use +cos(lon) as done in routine spherical_stereographic_map_y() of the USGS script LGRS_Coordinate_Conversion_mk7.2.py
+            #       for both, North and South poles. the standard polar stereographic projection defined by Snyder would use
+            #       North Pole: x = 2 R k0 tan(pi/4 - phi/2) sin(lambda - lambda0)
+            #                   y = - 2 R k0 tan(pi/4 - phi/2) cos(lambda - lambda0)
+            #       South Pole: x = 2 R k0 tan(pi/4 + phi/2) sin(lambda - lambda0)
+            #                   y = 2 R k0 tan(pi/4 + phi/2) cos(lambda - lambda0)
+            #       (see Snyder 1987, page 158, chapter 21 "Stereographic Projection", section "Formulas for the Sphere",
+            #        eqs. 21-5, 21-6 and 21-9,21-10.
+            #        https://pubs.usgs.gov/pp/1395/report.pdf ).
+            # we'll take the convention from the USGS implementation to use +cos for both poles.
+            #
+            # X coordinate for a s
+            x = A * t * math.sin(rlon)
+            # Y coordinate for a stereographic map projection
+            y = A * t * math.cos(rlon)
+
+            # Add false Eastings and Northings
+            x += false_east_polar
+            y += false_north_polar
+
+            # all done
+            return x, y
+
+        else:
+            # Inverse transformation: LPS t0 lon/lat
+            # remove false origins (must be same values used in forward)
+            x = lon - false_east_polar
+            y = lat - false_north_polar
+
+            # radial distance from projection origin
+            rho = math.hypot(x, y)
+
+            # at the pole: rho == 0
+            if rho == 0.0:
+                deglat = -90.0 if zone < 0 else 90.0
+                deglon = 0.0
+                return deglon, deglat
+
+            A = 2.0 * R * scfa_polar
+
+            # t = tan( PI/4 ± lat/2 )  where sign depends on hemisphere in forward
+            t = rho / A
+
+            if zone < 0:
+                # South pole
+                # forward used: tan(PI/4 + lat/2) = t  -> lat = 2*atan(t) - PI/2
+                latr = 2.0 * math.atan(t) - PI/2.0
+            else:
+                # North pole
+                # forward used: tan(PI/4 - lat/2) = t  -> lat = PI/2 - 2*atan(t)
+                latr = PI/2.0 - 2.0 * math.atan(t)
+
+            # longitude from sin/cos ordering used in forward: x = factor*sin(lon), y = factor*cos(lon)
+            lonr = math.atan2(x, y)
+
+            deglon = lonr * raddeg
+            deglat = latr * raddeg
+
+            # normalize lon to -180..180
+            if deglon > 180.0:
+                deglon -= 360.0
+            if deglon < -180.0:
+                deglon += 360.0
+
+            return deglon, deglat
+
+
+    # Lunar Transverse Mercator (LTM) Projection
+    # ---- Central meridian of 8-degree zone ----
+    # central meridian
+    cm = -180.0 + ((z - 1) + 0.5) * 8.0      # longitude of central meridian (note: z-1 because zones start at 1)
+    cmr = cm * degrad
+
+    # ----------------------------------------------------------------------
+    # Forward transformation: lon/lat to LTM
+    # ----------------------------------------------------------------------
+    if iway == ILONGLAT2LTM:
+        rlon = lon * degrad
+        rlat = lat * degrad
+
+        dlam = rlon - cmr
+
+        # ---- Spherical Transverse Mercator (forward) ----
+        B = math.cos(rlat) * math.sin(dlam)
+
+        x = 0.5 * R * scfa * math.log((1.0 + B) / (1.0 - B))
+        y = R * scfa * math.atan2(math.tan(rlat), math.cos(dlam))
+
+        # False origins
+        x += false_east
+        # only for South sections
+        if zone < 0:
+            y += false_north
+
+        return x, y
+
+    # ----------------------------------------------------------------------
+    # Inverse transformation: LTM to lon/lat
+    # ----------------------------------------------------------------------
+    else:
+        # remove false origins
+        x = lon - false_east
+        if zone < 0:
+            # only for South sections
+            y = lat - false_north
+        else:
+            y = lat
+
+        # ---- Spherical TM inverse ----
+        D = y / (R * scfa)
+        T = x / (R * scfa)
+
+        lonr = cmr + math.atan2(math.sinh(T), math.cos(D))
+        latr = math.asin(math.sin(D) / math.cosh(T))
+
+        deglon = lonr * raddeg
+        deglat = latr * raddeg
+
+        # normalize lon to -180..180
+        if deglon > 180.0:
+            deglon -= 360.0
+        if deglon < -180.0:
+            deglon += 360.0
+
+        return deglon, deglat
+
 
 def setup_color_table(colormap, data_min, data_max):
     # creates a color table
@@ -2624,7 +2876,7 @@ def plot_with_blender(vtk_file: str="", image_title: str="", colormap: int=0, co
 def usage() -> None:
     print("usage: ./plot_with_blender.py [--vtk_file=file] [--title=my_mesh_name] [--colormap=val] [--color-max=val] [--vertical-exaggeration=val]")
     print("                              [--buildings=file] [--shift-buildings=val] [--borders=file]")
-    print("                              [--locations=file] [--utm-zone=ZoneNumber] [--time='val']")
+    print("                              [--locations=file] [--utm-zone=ZoneNumber] [--moon] [--time='val']")
     print("                              [--no-sea-level] [--transparent-sea-level] [--sea-level-separation=val]")
     print("                              [--centered] [--closeup] [--small] [--anim] [--matte]")
     print("                              [--with-cycles/--no-cycles] [--suppress]")
@@ -2647,6 +2899,7 @@ def usage() -> None:
     print("     --time                    - a time string to add to the display (e.g. '13:24:00')")
     print("     --white-labels            - use white text for location labels")
     print("     --utm_zone                - use specified UTM zone number (1-60) with (+) for Northern (-) for Southern hemisphere (e.g., -58)")
+    print("     --moon                    - use Moon projections (LTM/LPS) instead of UTM")
     print("     --no-sea-level            - turns off sea-level plane")
     print("     --transparent-sea-level   - turns on transparency for sea-level plane")
     print("     --sea-level-separation    - shift factor to move up/down points at sea-level for better sea-level separation")
@@ -2709,6 +2962,8 @@ if __name__ == '__main__':
             locations_file = arg.split('=')[1]
         elif "--matte" in arg:
             use_matte_material = True
+        elif "--moon" in arg:
+            use_moon_ltm = True
         elif "--no-cycles" in arg:
             use_cycles_renderer = False
         elif "--no-dive-in" in arg:

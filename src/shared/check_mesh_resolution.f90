@@ -1420,13 +1420,13 @@
 
   implicit none
 
-  real(kind=CUSTOM_REAL) :: distance_min,distance_max
+  real(kind=CUSTOM_REAL), intent(out) :: distance_min,distance_max
 
-  integer :: ispec
+  integer, intent(in) :: ispec
 
-  integer :: NSPEC_AB,NGLOB_AB
-  integer, dimension(NGLLX,NGLLY,NGLLZ,NSPEC_AB) :: ibool
-  real(kind=CUSTOM_REAL), dimension(NGLOB_AB) :: xstore,ystore,zstore
+  integer, intent(in) :: NSPEC_AB,NGLOB_AB
+  integer, dimension(NGLLX,NGLLY,NGLLZ,NSPEC_AB), intent(in) :: ibool
+  real(kind=CUSTOM_REAL), dimension(NGLOB_AB), intent(in) :: xstore,ystore,zstore
 
   ! local parameters
   real(kind=CUSTOM_REAL) :: dist
@@ -1495,7 +1495,7 @@
 !
 
   subroutine get_elem_minmaxsize(elemsize_min,elemsize_max,ispec, &
-                          NSPEC_AB,NGLOB_AB,ibool,xstore,ystore,zstore)
+                                 NSPEC_AB,NGLOB_AB,ibool,xstore,ystore,zstore)
 
 ! calculates the min/max size of an edge of the specified element (ispec);
 ! we purposely do not include the distance along the diagonals of the element, only the size of its edges.
@@ -1504,13 +1504,13 @@
 
   implicit none
 
-  real(kind=CUSTOM_REAL) :: elemsize_min,elemsize_max
+  real(kind=CUSTOM_REAL), intent(out) :: elemsize_min,elemsize_max
 
-  integer :: ispec
+  integer, intent(in) :: ispec
 
-  integer :: NSPEC_AB,NGLOB_AB
-  integer, dimension(NGLLX,NGLLY,NGLLZ,NSPEC_AB) :: ibool
-  real(kind=CUSTOM_REAL), dimension(NGLOB_AB) :: xstore,ystore,zstore
+  integer, intent(in) :: NSPEC_AB,NGLOB_AB
+  integer, dimension(NGLLX,NGLLY,NGLLZ,NSPEC_AB), intent(in) :: ibool
+  real(kind=CUSTOM_REAL), dimension(NGLOB_AB), intent(in) :: xstore,ystore,zstore
 
   ! local parameters
   real(kind=CUSTOM_REAL) :: dist

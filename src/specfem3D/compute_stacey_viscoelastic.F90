@@ -448,6 +448,8 @@
 
     ! ! transfers updated acceleration field back to the GPU
     ! call transfer_accel_to_device(NDIM*NGLOB_AB,accel, Mesh_pointer)
+
+    ! now handled on GPU
     call compute_coupled_injection_contribution_el_GPU(iphase,Mesh_pointer)
   endif
 
@@ -616,7 +618,9 @@
 
   ! gets velocity & stress for boundary points
   select case(INJECTION_TECHNIQUE_TYPE)
-  !NQDU don't need
+  ! this is now read in by routine fetch_injection_wavefield() ...
+  ! NQDU comment: don't need
+  !
   ! case (INJECTION_TECHNIQUE_IS_DSM)
   !   ! DSM coupling
   !   if (old_DSM_coupling_from_Vadim) then
@@ -626,14 +630,11 @@
   !   else
   !     !! MODIFS DE NOBU 2D
   !   endif
-
   ! case (INJECTION_TECHNIQUE_IS_AXISEM)
   !   ! AxiSEM coupling
   !   call read_axisem_file(Veloc_axisem,Tract_axisem,num_abs_boundary_faces*NGLLSQUARE)
-
   !   !! CD CD add this
   !   if (RECIPROCITY_AND_KH_INTEGRAL) Tract_axisem_time(:,:,it) = Tract_axisem(:,:)
-
   ! case (INJECTION_TECHNIQUE_IS_SPECFEM)
   !   ! SPECFEM coupling
   !   call read_specfem_file(Veloc_specfem,Tract_specfem,num_abs_boundary_faces*NGLLSQUARE,it)
@@ -785,10 +786,8 @@
   end subroutine compute_coupled_injection_contribution_el
 
 
-
 !=============================================================================
 !
-! NQDU added
 ! For coupling with external code, GPU version
 !
 !=============================================================================
@@ -796,25 +795,18 @@
   subroutine compute_coupled_injection_contribution_el_GPU(iphase,Mesh_pointer)
 
   use constants
-
   use specfem_par, only: SAVE_STACEY,SIMULATION_TYPE
-
   use specfem_par, only: num_abs_boundary_faces
-
   ! boundary coupling
   use shared_parameters, only: COUPLE_WITH_INJECTION_TECHNIQUE
   ! FK3D calculation
-
   use specfem_par_coupling, only: b_boundary_injection_field
 
   implicit none
-
   ! communication overlap
   integer,intent(in) :: iphase
-
   ! GPU_MODE variables
   integer(kind=8),intent(in) :: Mesh_pointer
-
 
   ! safety checks
   if (.not. COUPLE_WITH_INJECTION_TECHNIQUE) return
@@ -831,7 +823,6 @@
   ! compute contribution in device
   call compute_coupled_injection_contribution_el_device(Mesh_pointer,b_boundary_injection_field, &
                                                         SAVE_STACEY)
-
 
   end subroutine compute_coupled_injection_contribution_el_GPU
 

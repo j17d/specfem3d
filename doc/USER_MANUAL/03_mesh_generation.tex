@@ -1,4 +1,6 @@
+%-----------------------------------------------------------------------------------------------------------------------------------%
 \chapter{Mesh Generation}\label{cha:Mesh-Generation}
+%-----------------------------------------------------------------------------------------------------------------------------------%
 
 The first step in running a spectral-element simulation consists of
 constructing a high-quality mesh for the region under consideration.
@@ -7,7 +9,9 @@ hexahedral mesher CUBIT, or (2) using the provided, internal mesher
 \texttt{xmeshfem3D}. In the following, we explain these two approaches.
 
 
+%-----------------------------------------------------------------------------------------------------------------------------------%
 \section{Meshing with \texttt{CUBIT}}\label{cha:Running-the-Mesher-CUBIT}
+%-----------------------------------------------------------------------------------------------------------------------------------%
 
 CUBIT is a meshing tool suite for the creation of finite-element meshes
 for arbitrarily shaped models. It has been developed and maintained
@@ -43,7 +47,9 @@ Examples are provided in the SPECFEM3D Cartesian package in the subdirectory
 example to this package through the github repository!
 
 
+%-----------------------------------------------------------------------------------------------------------------------------------%
 \subsection{Creating the Mesh with CUBIT}
+%-----------------------------------------------------------------------------------------------------------------------------------%
 
 For the installation and handling of the CUBIT meshing tool suite,
 please refer to the CUBIT user manual and documentation. In order
@@ -116,7 +122,9 @@ This second way is chosen by default because GEOCUBIT can handle partitions for 
 You will find out by experimenting what is easier for your case.
 
 
+%-----------------------------------------------------------------------------------------------------------------------------------%
 \subsection{Exporting the Mesh with \texttt{run\_cubit2specfem3d.py} }\label{subsec:Exporting-the-Mesh}
+%-----------------------------------------------------------------------------------------------------------------------------------%
 
 Once the geometric model volumes in CUBIT are meshed, you prepare
 the model for exportation with the definition of material blocks and
@@ -236,7 +244,7 @@ or to a Xmax CPML, the flag is the same in both cases; the same is
 true for Ymin and Ymax, and also Zmin and Zmax.\newline
 
 
-When you have an existing CUBIT (or similar) mesh stored in SPECFEM3D
+When you have an existing CUBIT (or similar) mesh stored in SPECFEM3D Cartesian
 format, i.e., if you have existing \texttt{nodes\_coords\_file}
 and \texttt{mesh\_file} files but do not know
 how to assign CPML flags to them, we have created a small serial Fortran
@@ -248,7 +256,7 @@ and a small Makefile is provided in that directory (utils/CPML).\newline
 
 
 IMPORTANT: it is your responsibility to make sure that in the input
-CUBIT (or similar) mesh that this code will read in SPECFEM3D format
+CUBIT (or similar) mesh that this code will read in SPECFEM3D Cartesian format
 from files \texttt{nodes\_coords\_file} and \texttt{mesh\_file}
 you have created layers of elements that constitute a layer of constant
 thickness aligned with the coordinate grid axes (X, Y and/or Z), so
@@ -376,9 +384,9 @@ details.\newline
 
 
 In directory "CUBIT\_GEOCUBIT/" we provide a script that can help doing the above tasks of exporting a CUBIT mesh
-to SPECFEM3D format automatically for you: "run\_cubit2specfem3d.py".
+to SPECFEM3D Cartesian format automatically for you: "run\_cubit2specfem3d.py".
 Just edit them to indicate the path to your local installation of CUBIT and also the name of the *.cub existing CUBIT mesh file
-that you want to export to SPECFEM3D format. These scripts will do the conversion for you automatically except assigning material properties
+that you want to export to SPECFEM3D Cartesian format. These scripts will do the conversion for you automatically except assigning material properties
 to the different mesh layers. To do so, you will then need to edit the file
 called "nummaterial\_velocity\_file" that will have just been created and change it from the prototype created:
 
@@ -399,7 +407,9 @@ to for instance
 \end{verbatim}
 }
 
+%-----------------------------------------------------------------------------------------------------------------------------------%
 \subsubsection*{Checking the mesh quality}
+%-----------------------------------------------------------------------------------------------------------------------------------%
 
 The quality of the mesh may be inspected more precisely based upon
 the serial code in the file \texttt{check\_mesh\_quality\_}~\newline
@@ -445,7 +455,9 @@ are striving for meshes with elements with `cube-like' dimensions,
 e.g., the mesh should contain no very elongated or skewed elements.}{\small \par}
 
 
+%-----------------------------------------------------------------------------------------------------------------------------------%
 \subsection{Partitioning the Mesh with \texttt{xdecompose\_mesh}}
+%-----------------------------------------------------------------------------------------------------------------------------------%
 
 The SPECFEM3D Cartesian software package performs large scale simulations
 in a parallel 'Single Process Multiple Data' way. The spectral-element
@@ -540,7 +552,9 @@ must be placed in the \texttt{input\_directory} folder before running
 the program.
 
 
+%-----------------------------------------------------------------------------------------------------------------------------------%
 \section{Meshing with \texttt{xmeshfem3D}}\label{cha:Running-the-Mesher-Meshfem3D}
+%-----------------------------------------------------------------------------------------------------------------------------------%
 
 In case you successfully ran the configuration script, you are also
 ready to compile the internal mesher. This is an alternative to CUBIT
@@ -851,14 +865,16 @@ skewness histogram on the screen, you could type
 \end{verbatim}}
 
 
+%-----------------------------------------------------------------------------------------------------------------------------------%
 \section{Poroelastic materials}\label{cha:Poroelastic-materials}
+%-----------------------------------------------------------------------------------------------------------------------------------%
 
-The present version of SPECFEM can handle fully saturated porous simulations.
+The present version of SPECFEM3D Cartesian can handle fully saturated porous simulations.
 At the moment, the code implements Biot's equation.
 However, the code cannot calculate partially saturated cases in its current state.\newline
 
 
-The way we prescribe material property for porous material in SPECFEM3D depends on wheter the internal mesher \texttt{xmeshfem3D}
+The way we prescribe material property for porous material in SPECFEM3D Cartesian depends on wheter the internal mesher \texttt{xmeshfem3D}
 or an external mesher like CUBIT is taken.
 For external meshers which provide the resulting meshes in a folder like \texttt{MESH/},
 we use a file \texttt{nummaterial\_poroelastic\_file}, which needs to be added to this directory \texttt{MESH/}.

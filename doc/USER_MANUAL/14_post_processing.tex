@@ -1,4 +1,6 @@
+%-----------------------------------------------------------------------------------------------------------------------------------%
 \chapter{Post-Processing Scripts}
+%-----------------------------------------------------------------------------------------------------------------------------------%
 
 Several post-processing scripts/programs are provided in the \texttt{utils/}
 directory, and most of them need to be adjusted when used on different
@@ -9,7 +11,9 @@ or, in a lot of cases, type the script/program name without arguments
 for its usage.
 
 
+%-----------------------------------------------------------------------------------------------------------------------------------%
 \section{Process Data and Synthetics}\label{sec:Process-data-and-syn}
+%-----------------------------------------------------------------------------------------------------------------------------------%
 
 In many cases, the SEM synthetics are calculated and compared to data
 seismograms recorded at seismic stations. Since the SEM synthetics
@@ -38,7 +42,9 @@ seismograms. Preferably, avoid filtering your records more than once.
 directory:
 
 
+%-----------------------------------------------------------------------------------------------------------------------------------%
 \subsection{Data processing script \texttt{process\_data.pl}}
+%-----------------------------------------------------------------------------------------------------------------------------------%
 
 This script cuts a given portion of the original data, filters it,
 transfers the data into a displacement record, and picks the first
@@ -65,7 +71,9 @@ and that all the environment variables are set properly before running
 these scripts.
 
 
+%-----------------------------------------------------------------------------------------------------------------------------------%
 \subsection{Synthetics processing script \texttt{process\_syn.pl}}
+%-----------------------------------------------------------------------------------------------------------------------------------%
 
 This script converts the synthetic output from the SEM code from ASCII
 to SAC format, and performs similar operations as `\texttt{process\_data.pl}'.
@@ -96,7 +104,9 @@ are provided in the subdirectories ~\newline
  \texttt{utils/scripts/sac2000\_alpha\_convert/} and \texttt{utils/scripts/seis\_process/asc2sac/}.
 
 
+%-----------------------------------------------------------------------------------------------------------------------------------%
 \subsection{Script \texttt{rotate.pl}}
+%-----------------------------------------------------------------------------------------------------------------------------------%
 
 The original data and synthetics have three components: vertical (BHZ
 resp. BXZ), north (BHN resp. BXN) and east (BHE resp. BXE). However,
@@ -113,7 +123,9 @@ through Seismogram Transfer Program (\href{http://www.data.scec.org/STP/stp.html
 while the second command rotates the processed SEM synthetics.
 
 
+%-----------------------------------------------------------------------------------------------------------------------------------%
 \section{Collect Synthetic Seismograms}
+%-----------------------------------------------------------------------------------------------------------------------------------%
 
 The forward and adjoint simulations generate synthetic seismograms
 in the \texttt{OUTPUT\_FILES/} directory by default. For the forward
@@ -142,7 +154,9 @@ to the output directory.
 \end{description}
 
 
+%-----------------------------------------------------------------------------------------------------------------------------------%
 \section{Clean Local Database}
+%-----------------------------------------------------------------------------------------------------------------------------------%
 
 After all the simulations are done, the seismograms are collected,
 and the useful database files are copied to the frontend, you may
@@ -157,10 +171,14 @@ cleanbase.pl machines
 where \texttt{machines} is a file containing the node names.
 
 
+%-----------------------------------------------------------------------------------------------------------------------------------%
 \section{Plot Movie Snapshots and Synthetic Shakemaps}
+%-----------------------------------------------------------------------------------------------------------------------------------%
 
 
+%-----------------------------------------------------------------------------------------------------------------------------------%
 \subsection{Script \texttt{movie2gif.gmt.pl}}
+%-----------------------------------------------------------------------------------------------------------------------------------%
 
 With the movie data saved in \texttt{OUTPUT\_FILES/} at the end of
 a movie simulation (\texttt{\small MOVIE\_SURFACE=.true.}{\small ),
@@ -178,7 +196,9 @@ command in GMT, and plots them on a 2D topography map. Note that `\texttt{-2}'
 and `\texttt{-p}' are both optional.
 
 
+%-----------------------------------------------------------------------------------------------------------------------------------%
 \subsection{Script \texttt{plot\_shakemap.gmt.pl}}
+%-----------------------------------------------------------------------------------------------------------------------------------%
 
 With the shakemap data saved in \texttt{OUTPUT\_FILES/} at the end
 of a shakemap simulation ~\newline
@@ -193,7 +213,9 @@ where \texttt{type=1} for a displacement shakemap, \texttt{2} for
 velocity, and \texttt{3} for acceleration.
 
 
+%-----------------------------------------------------------------------------------------------------------------------------------%
 \section{Map Local Database}
+%-----------------------------------------------------------------------------------------------------------------------------------%
 
 A sample program \texttt{remap\_database} is provided to map the local
 database from a set of machines to another set of machines. This is
