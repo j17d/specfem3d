@@ -70,9 +70,10 @@ The setup is done by the following steps:
   The script also modified the entries in the `interfaces.dat` to read the correct number of entries and increments.
   It also modifies `Mesh_Par_file` to set the correct mesh lat/lon-dimensions and lunar projection zone number (as the `UTM_PROJECTION_ZONE`).
 
-  > [!NOTE]
-  > For Moon simulations, instead of the Universal Transverse Mercator (UTM) projection valid for Earth, the mesher will use a Lunar Transverse Mercator (LTM) projection (for latitudes between [-82,82] degrees) or a Lunar Polar Stereographic (LPS) at North/South pole regions. To enable these lunar projections, use a model name starting with `moon_***` (see `moon_default` in `Par_file`; or use `moon_tomo` for combining it with a tomography model).
-  > The zone numbers are positive for the Northern hemisphere and negative for Southern hemisphere. LTM uses zone numbers in the range +/- [1,45], LPS uses 46 for North pole and -46 for South pole regions. The script `run_get_simulation_topography.py` will output the corresponding zone number for the specified area (using its midpoint to determine the zone).
+> [!NOTE] 
+> For Moon simulations, instead of the Universal Transverse Mercator (UTM) projection valid for Earth, the mesher will use a Lunar Transverse Mercator (LTM) projection (for latitudes between [-82,82] degrees) or a Lunar Polar Stereographic (LPS) at North/South pole regions. To enable these lunar projections, use a model name starting with `moon_***` (see `moon_default` in `Par_file`; or use `moon_tomo` for combining it with a tomography model).
+>
+> The zone numbers are positive for the Northern hemisphere and negative for Southern hemisphere. LTM uses zone numbers in the range +/- [1,45], LPS uses 46 for North pole and -46 for South pole regions. The script `run_get_simulation_topography.py` will output the corresponding zone number for the specified area (using its midpoint to determine the zone).
 
 
 
@@ -114,9 +115,9 @@ Here we chose some arbitrary values just to visualize its effect. The settings w
   ```
 
   The simulation is meant as a movie simulation. To suppress numerical noise for a cleaner movie visualization, we enlarged the source half-duration
-  by `HDUR_MOVIE = 8.0` in the `Par_file`.
+  by `HDUR_MOVIE = 5.0` in the `Par_file`.
 
-  The solver will create binary movie files in `OUTPUT_FILES/` folder. To convert them to VTK-files that can be visualize e.g. with Paraview,
+  The solver will create binary movie files in `OUTPUT_FILES/` folder. To convert them to VTK-files that can be visualized e.g. with Paraview,
   we run the script:
   ```
   > ./xcreate_movie_files.sh
