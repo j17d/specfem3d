@@ -202,7 +202,7 @@ def save_as_GeoCSV():
     header = f"""
 # dataset: GeoCSV2.0
 # created: {str(datetime.datetime.now())}
-# delimiter: |    
+# delimiter: |
 # global_title: CentralAlp_VelocityModel_3D
 # global_model: CentralAlp_VelocityModel_3D_Pg_Sg_v07
 # global_id: CentralAlp_VelocityModel_3D_Pg_Sg_v07

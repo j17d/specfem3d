@@ -219,7 +219,7 @@ class WaveformSection:
     except Exception as e:
       sys.exit(f"{e}\n")
     self.coord_list = coord_list
-    
+
     waveforms = []
     if t is not None:
       if (verbose==1): print(f'use time t0={t[0]}, dt={t[1]-t[0]}, nt={nt}\n')
@@ -250,6 +250,6 @@ class WaveformSection:
       except Exception as e:
         sys.exit(f"{e}\n")
     self.waveforms = waveforms
-    self.t = t                  
-      
-      
+    self.t = t
+
+

@@ -2159,7 +2159,7 @@ def add_title(title: str="") -> None:
 
 def add_location_labels(locations_file: str="") -> None:
     """
-    adds locations defined in file 
+    adds locations defined in file
     """
     global centered_view,use_white_location_labels
     global location_labels_color

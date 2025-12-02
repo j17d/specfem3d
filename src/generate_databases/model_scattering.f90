@@ -45,6 +45,7 @@
 
   ! perturbation array (regular x/y/z grid)
   real(kind=CUSTOM_REAL), dimension(:,:,:),allocatable :: perturbation_grid
+  integer :: pert_Nx,pert_Ny,pert_Nz
 
   ! normalized fft cube mesh extends in range [0,1]
   double precision, parameter :: grid_length = 1.d0   ! range [0,1]
@@ -52,6 +53,7 @@
   ! for mesh interpolations
   ! grid origin location, grid spacing
   double precision :: grid_origin_x,grid_origin_y,grid_origin_z
+  double precision :: grid_dim_x,grid_dim_y,grid_dim_z
   double precision :: grid_dx
 
   double precision :: grid_cell_size                  ! fft grid cell size
@@ -303,6 +305,10 @@
   grid_origin_y = y_min_all
   grid_origin_z = z_min_all
 
+  grid_dim_x = dim_x
+  grid_dim_y = dim_y
+  grid_dim_z = dim_z
+
   ! store normalization factor to get fft grid in range [0,1]
   grid_normalization_factor = dim_max
 
@@ -445,7 +451,9 @@
   real(kind=CUSTOM_REAL),dimension(:),allocatable :: freqs
   integer :: N,npower_of_2,index_k_lambda
   integer :: i,j,k,ik,ier
+  double precision :: mb_size
 
+  ! complex array in double precision (must match with fft.f90 precision)
   integer, parameter :: CUSTOM_CMPLX = 8
   complex(kind=CUSTOM_CMPLX),dimension(:,:,:),allocatable :: kxyz_dist
   complex(kind=CUSTOM_CMPLX) :: k_random
@@ -521,10 +529,21 @@
     write(IMAIN,*) '  FFT using number of grid points : N           = ',N
     write(IMAIN,*) '  FFT using power of 2            : npower_of_2 = ',npower_of_2
     write(IMAIN,*) '  grid spacing                    : dx          = ',sngl(grid_dx * grid_normalization_factor),'(m)'
-    write(IMAIN,*) '  grid memory size                : ',dble(N) * dble(N) * dble(N) * dble(CUSTOM_REAL) / 1024.d0 / 1024.d0,'MB'
+    ! memory required
+    mb_size = dble(N) * dble(N) * dble(N) * dble(CUSTOM_REAL) / 1024.d0 / 1024.d0
+    write(IMAIN,*) '  grid memory size                : ',sngl(mb_size),'MB'
     write(IMAIN,*)
     call flush_IMAIN()
   endif
+
+  ! for perturbation grid dimension
+  pert_Nx = int(grid_dim_x / grid_normalization_factor / grid_dx) + 1
+  pert_Ny = int(grid_dim_y / grid_normalization_factor / grid_dx) + 1
+  pert_Nz = int(grid_dim_z / grid_normalization_factor / grid_dx) + 1
+  ! make sure perturbation grid is not bigger than wavenumber distribution array
+  if (pert_Nx > N) pert_Nx = N
+  if (pert_Ny > N) pert_Ny = N
+  if (pert_Nz > N) pert_Nz = N
 
   ! wavenumbers
   ! min/max: k_max = 2 pi / (2 dx)
@@ -615,12 +634,7 @@
     !call random_number(rand_phase)
     !print *,'debug: rank ',myrank,'random number 1: ',rand_phase
 
-    ! perturbation grid array
-    allocate(perturbation_grid(N,N,N),stat=ier)
-    if (ier /= 0) stop 'Error allocating perturbation_grid array'
-    perturbation_grid(:,:,:) = 0.0_CUSTOM_REAL
-
-    ! wavenumber distribution
+    ! wavenumber distribution (for FFTs)
     allocate(kxyz_dist(N,N,N),stat=ier)
     if (ier /= 0) stop 'Error allocating kxyz_dist array'
     kxyz_dist(:,:,:) = cmplx(0.0,0.0)
@@ -650,10 +664,8 @@
     enddo
 
     ! user output
-    if (myrank == 0) then
-      write(IMAIN,*) '  starting 3D FFTs'
-      call flush_IMAIN()
-    endif
+    write(IMAIN,*) '  starting 3D FFTs'
+    call flush_IMAIN()
 
     ! define symmetry conditions for 3D FFT
     call fft_apply_3D_symmetry(kxyz_dist,N)
@@ -690,10 +702,24 @@
     ! 3D FFT
     call FFT_3D(N, npower_of_2, kxyz_dist, -1.0_CUSTOM_REAL, dk, mpow) ! inverse 3D FFT (zign == -1)
 
+    ! user output
+    write(IMAIN,*)
+    write(IMAIN,*) '  perturbations: grid Nx/Ny/Nz = ',pert_Nx,'/',pert_Ny,'/',pert_Nz
+    ! memory required
+    mb_size = dble(pert_Nx) * dble(pert_Ny) * dble(pert_Nz) * dble(CUSTOM_REAL) / 1024.d0 / 1024.d0
+    write(IMAIN,*) '                 memory size   = ',sngl(mb_size),'MB'
+    write(IMAIN,*)
+    call flush_IMAIN()
+
+    ! perturbation grid array (for model perturbations)
+    allocate(perturbation_grid(pert_Nx,pert_Ny,pert_Nz),stat=ier)
+    if (ier /= 0) stop 'Error allocating perturbation_grid array'
+    perturbation_grid(:,:,:) = 0.0_CUSTOM_REAL
+
     ! stores real part
-    do k = 1,N
-      do j = 1,N
-        do i = 1,N
+    do k = 1,pert_Nz
+      do j = 1,pert_Ny
+        do i = 1,pert_Nx
           ! stores perturbations array
           perturbation_grid(i,j,k) = real(kxyz_dist(i,j,k),kind=CUSTOM_REAL)
         enddo
@@ -701,22 +727,26 @@
     enddo
 
     ! user output
-    if (myrank == 0) then
-      write(IMAIN,*) '  applying scaling: maximum amplitude = ',SCATTERING_STRENGTH
-      call flush_IMAIN()
-    endif
+    write(IMAIN,*) '  applying scaling: maximum amplitude = ',SCATTERING_STRENGTH
+    call flush_IMAIN()
 
     ! debug
     !print *,'before scattering perturbation: min/max = ',minval(perturbation_grid),'/',maxval(perturbation_grid)
     !print *,'                                average = ',sum(perturbation_grid)/(N*N*N)
 
     ! applies scaling
+    !
+    ! note: let's get the average and absolute maximum value from the actual perturbation_grid() array.
+    !       this might differ a bit from the full kxyz_dist() array, depending on the chosen (partial)
+    !       mesh domain to cover with the grid perturbations. Still, we want the applied perturbations to have
+    !       a zero mean and scaled such that the maximum perturbation becomes the scattering strength defined by the user.
+    !
+    call get_grid_average_max(perturbation_grid,pert_Nx,pert_Ny,pert_Nz,val_avg,val_max)
+
     ! makes sure it has a zero average
-    val_avg = sum(perturbation_grid) / (N*N*N)
     perturbation_grid(:,:,:) = perturbation_grid(:,:,:) - val_avg
 
     ! normalizes to range [-1,1]
-    val_max = maxval(abs(perturbation_grid))
     if (val_max > 0.0_CUSTOM_REAL) then
       perturbation_grid(:,:,:) = perturbation_grid(:,:,:) / val_max
     endif
@@ -739,19 +769,19 @@
   ! allocates grid on secondary processes
   if (myrank /= 0) then
     ! perturbation grid array
-    allocate(perturbation_grid(N,N,N),stat=ier)
+    allocate(perturbation_grid(pert_Nx,pert_Ny,pert_Nz),stat=ier)
     if (ier /= 0) stop 'Error allocating perturbation_grid array'
     perturbation_grid(:,:,:) = 0.0_CUSTOM_REAL
   endif
 
   ! main process distributes grid to all other arrays
-  call bcast_all_cr(perturbation_grid,N*N*N)
+  call bcast_all_cr(perturbation_grid,pert_Nx * pert_Ny * pert_Nz)
 
   ! user output
   if (myrank == 0) then
     write(IMAIN,*)
     write(IMAIN,*) '  perturbations: min/max = ',minval(perturbation_grid),'/',maxval(perturbation_grid)
-    write(IMAIN,*) '                 average = ',sum(perturbation_grid)/(N*N*N)
+    write(IMAIN,*) '                 average = ',sum(perturbation_grid)/ real(pert_Nx * pert_Ny * pert_Nz,kind=CUSTOM_REAL)
     write(IMAIN,*)
     ! timing
     tCPU = wtime() - time_start
@@ -764,7 +794,7 @@
   if (SAVE_MESH_FILES .and. myrank == 0) then
     ! output VTU file for visual inspection
     name = 'perturbation_grid'
-    call plot_grid_data(perturbation_grid,N,name)
+    call plot_grid_data(perturbation_grid,pert_Nx,pert_Ny,pert_Nz,name)
   endif
 
   end subroutine generate_perturbations
@@ -773,15 +803,65 @@
 !-------------------------------------------------------------------------------------------------
 !
 
-  subroutine plot_grid_data(array,N,name)
+  subroutine get_grid_average_max(array,Nx,Ny,Nz,val_avg,val_max)
+
+  use constants, only: CUSTOM_REAL,SIZE_DOUBLE
+
+  implicit none
+
+  integer, intent(in) :: Nx,Ny,Nz
+  real(kind=CUSTOM_REAL),dimension(Nx,Ny,Nz), intent(in) :: array
+  real(kind=CUSTOM_REAL), intent(out) :: val_avg,val_max
+
+  ! local parameters
+  integer :: i,j,k
+  double precision :: davg,dmax,dval
+
+  ! initializes
+  val_avg = 0.0_CUSTOM_REAL
+  val_max = 0.0_CUSTOM_REAL
+
+  ! in custom real
+  !val_avg = sum(perturbation_grid) / real(pert_Nx * pert_Ny * pert_Nz, kind=CUSTOM_REAL)
+  !val_max = maxval(abs(perturbation_grid))
+
+  ! determine average and maximum value (in double precision)
+  davg = 0.d0
+  dmax = 0.d0
+  do k = 1,Nz
+    do j = 1,Ny
+      do i = 1,Nx
+        ! in double precision
+        dval = real(array(i,j,k),kind=SIZE_DOUBLE)
+        ! for avg
+        davg = davg + dval
+        ! for max
+        dmax = max(dmax,abs(dval))
+      enddo
+    enddo
+  enddo
+  ! takes average
+  davg = davg / dble(Nx * Ny * Nz)
+
+  ! return as custom real values
+  val_avg = real(davg, kind=CUSTOM_REAL)
+  val_max = real(dmax, kind=CUSTOM_REAL)
+
+  end subroutine get_grid_average_max
+
+!
+!-------------------------------------------------------------------------------------------------
+!
+
+  subroutine plot_grid_data(array,Nx,Ny,Nz,name)
 
   use constants, only: myrank,IMAIN,CUSTOM_REAL,MAX_STRING_LEN
   use model_scattering_par, only: grid_origin_x,grid_origin_y,grid_origin_z,grid_dx,grid_normalization_factor
 
   implicit none
 
-  integer, intent(in) :: N
-  real(kind=CUSTOM_REAL),dimension(N,N,N),intent(in) :: array
+  integer, intent(in) :: Nx,Ny,Nz
+  real(kind=CUSTOM_REAL),dimension(Nx,Ny,Nz),intent(in) :: array
   character(len=MAX_STRING_LEN),intent(in) :: name
 
   ! local parameters
@@ -796,8 +876,8 @@
   character(len=MAX_STRING_LEN) :: mesh_file,var_name
 
   ! regular grid
-  np = N * N * N             ! total number of points
-  ne = (N-1) * (N-1) * (N-1) ! total number of elements
+  np = Nx * Ny * Nz             ! total number of points
+  ne = (Nx-1) * (Ny-1) * (Nz-1) ! total number of elements
 
   ! creates array to hold point data
   allocate(total_dat(np),stat=ier)
@@ -815,14 +895,14 @@
 
   ! regular grid points values
   np = 0
-  do k = 1,N
-    do j = 1,N
-      do i = 1,N
+  do k = 1,Nz
+    do j = 1,Ny
+      do i = 1,Nx
         ! number counter
         np = np + 1
 
         ! checks point index
-        ixyz = i + (j-1) * (N) + (k-1) * (N * N)
+        ixyz = i + (j-1) * (Nx) + (k-1) * (Nx * Ny)
         if (np /= ixyz) stop 'Invalid grid point'
 
         ! array value
@@ -837,9 +917,9 @@
   enddo
   ! element connections
   ne = 0
-  do k = 1,N-1
-    do j = 1,N-1
-      do i = 1,N-1
+  do k = 1,Nz-1
+    do j = 1,Ny-1
+      do i = 1,Nx-1
         ! element counter
         ne = ne + 1
 
@@ -847,14 +927,14 @@
         !ixyz = i + (j-1) * (N) + (k-1) * (N * N)
 
         ! element corners
-        n1 = i     + (j-1) * (N) + (k-1) * (N * N)  ! i  ,j  ,k
-        n2 = (i+1) + (j-1) * (N) + (k-1) * (N * N)  ! i+1,j  ,k
-        n3 = (i+1) + (j  ) * (N) + (k-1) * (N * N)  ! i+1,j+1,k
-        n4 = i     + (j  ) * (N) + (k-1) * (N * N)  ! i  ,j+1,k
-        n5 = i     + (j-1) * (N) + (k  ) * (N * N)  ! i  ,j  ,k+1
-        n6 = (i+1) + (j-1) * (N) + (k  ) * (N * N)  ! i+1,j  ,k+1
-        n7 = (i+1) + (j  ) * (N) + (k  ) * (N * N)  ! i+1,j+1,k+1
-        n8 = i     + (j  ) * (N) + (k  ) * (N * N)  ! i  ,j+1,k+1
+        n1 = i     + (j-1) * (Nx) + (k-1) * (Nx * Ny)  ! i  ,j  ,k
+        n2 = (i+1) + (j-1) * (Nx) + (k-1) * (Nx * Ny)  ! i+1,j  ,k
+        n3 = (i+1) + (j  ) * (Nx) + (k-1) * (Nx * Ny)  ! i+1,j+1,k
+        n4 = i     + (j  ) * (Nx) + (k-1) * (Nx * Ny)  ! i  ,j+1,k
+        n5 = i     + (j-1) * (Nx) + (k  ) * (Nx * Ny)  ! i  ,j  ,k+1
+        n6 = (i+1) + (j-1) * (Nx) + (k  ) * (Nx * Ny)  ! i+1,j  ,k+1
+        n7 = (i+1) + (j  ) * (Nx) + (k  ) * (Nx * Ny)  ! i+1,j+1,k+1
+        n8 = i     + (j  ) * (Nx) + (k  ) * (Nx * Ny)  ! i  ,j+1,k+1
 
         ! note: indices for VTK start at 0
         total_dat_con(1,ne) = n1 - 1
@@ -913,7 +993,7 @@
 
   ! local parameters
   double precision :: pert_val,scaling
-  integer :: ix,iy,iz,N
+  integer :: ix,iy,iz,Nx,Ny,Nz
   ! positioning
   double precision :: offset_x,offset_y,offset_z
   double precision :: spac_x,spac_y,spac_z
@@ -949,15 +1029,17 @@
   iz = iz + 1
 
   ! number of grid points (in x,y,z direction)
-  N = grid_N
+  Nx = pert_Nx
+  Ny = pert_Ny
+  Nz = pert_Nz
 
   ! suppress edge effects for points outside of the model SPOSTARE DOPO
   if (ix < 1) then
      ix = 1
      gamma_interp_x = 0.d0
   endif
-  if (ix > N-1) then
-     ix = N-1
+  if (ix > Nx-1) then
+     ix = Nx-1
      gamma_interp_x = 1.d0
   endif
 
@@ -965,8 +1047,8 @@
      iy = 1
      gamma_interp_y = 0.d0
   endif
-  if (iy > N-1) then
-     iy = N-1
+  if (iy > Ny-1) then
+     iy = Ny-1
      gamma_interp_y = 1.d0
   endif
 
@@ -974,8 +1056,8 @@
      iz = 1
      gamma_interp_z = 0.d0
   endif
-  if (iz > N-1) then
-     iz = N-1
+  if (iz > Nz-1) then
+     iz = Nz-1
      gamma_interp_z = 1.d0
   endif
 
