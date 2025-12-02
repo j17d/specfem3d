@@ -44,37 +44,35 @@ Furthermore, we want to use a (realistic) velocity model for this region.
 We will take one of the EarthScope (IRIS) [EMC models](https://ds.iris.edu/ds/products/emc-earthmodels/).
 For this region, a nice model seems to be [FWEA23](https://ds.iris.edu/ds/products/emc-fwea23/) by Liu et al. (2024).
 
-
-
 1. **Setup model**:
 
-  We will first setup the topography surface and tomographic model for meshing our region.
-  In this example folder, we provide a bash script `setup_model.sh` to setup these model files.
-
-  Just run the setup script with the default target region:
-  ```
-  > ./setup_model.sh
-  ```
-
-  This might take a while to complete and download the rather large EMC model file.
-  Note that we added additional interfaces at 100km and 6km depth to facilitate the meshing with doubling layers.
-
-  Furthermore, USGS provides a global [Vs30 model and data](https://earthquake.usgs.gov/data/vs30/) set.
-  The script will download and extract a corresponding Vs30-interface for our region.
-
-
+    We will first setup the topography surface and tomographic model for meshing our region.
+    In this example folder, we provide a bash script `setup_model.sh` to setup these model files.
+  
+    Just run the setup script with the default target region:
+    ```
+    > ./setup_model.sh
+    ```
+  
+    This might take a while to complete and download the rather large EMC model file.
+    Note that we added additional interfaces at 100km and 6km depth to facilitate the meshing with doubling layers.
+  
+    Furthermore, USGS provides a global [Vs30 model and data](https://earthquake.usgs.gov/data/vs30/) set.
+    The script will download and extract a corresponding Vs30-interface for our region.
+  
+  
 2. **Wave simulation**:
 
-  After you have completed the mesh setup, you can run the in-house mesher `xmeshfem3D` and `xgenerate_databases` to create the spectral-element mesh of our region.
-  The seismic wave propagation solver `xspecfem3D` then creates the needed movie data files for our visualization.
+    After you have completed the mesh setup, you can run the in-house mesher `xmeshfem3D` and `xgenerate_databases` to create the spectral-element mesh of our region.
+    The seismic wave propagation solver `xspecfem3D` then creates the needed movie data files for our visualization.
+  
+    To run the simulation, just type:
+    ```
+    > ./run_this_example.sh
+    ```
 
-  To run the simulation, just type:
-  ```
-  > ./run_this_example.sh
-  ```
 
-
-  3. **Visualization**:
+3. **Visualization**:
 
     For our simulation here, we turned on the surface movie and shake map outputs in `DATA/Par_file` like:
     ```
@@ -91,21 +89,21 @@ For this region, a nice model seems to be [FWEA23](https://ds.iris.edu/ds/produc
     NTSTEP_BETWEEN_FRAMES           = 100
     HDUR_MOVIE                      = 0.0
     ```
-
+  
     To visualize the corresponding output data (`OUTPUT_FILES/moviedata***`), we can create movie snapshot files as `OUTPUT_FILES/AVS_*.inp` files:
     ```
     > ./xcreate_movie_files.sh
     ```
-
+  
     Similar for the shakemap, we can plot the peak-ground velocity (PGV) values by
     ```
     > ./xcreate_shakemap.sh 2
     ```
-
+  
     You can use for example [Paraview](https://www.paraview.org) to look at the created `OUTPUT_FILEs/AVS_movie*.inp` files.
 
 
-  That's it, try it out for yourself...
+That's it, try it out for yourself...
 
 
 ## Visualization with Blender (optional)
@@ -117,13 +115,11 @@ A single wavefield snapshot like above can be plotted using [Blender](https://ww
 > ./xcreate_snapshot.sh 10000
 ```
 
-
 Regarding shakemap image coloring, for conversion to Modified Mercalli Intensity (MMI), Wald et al. suggest a table like:
 
 | PGV (cm/s)           | < 0.1 | 0.1-0.4 | 0.4-1.1 | 1.1-3.4 | 3.4-8.1 | 8.1-16.0 | 16.0-31.0 | 31.0-60.0 | 60.0-116.0 | > 116.0 |
 | - | - | - | - | - | - | - | - | - | - | - |
 | Intensity (MMI)      |  I      |  II     |  III      |  IV    |    V       |  VI       |   VII     |   VIII    |     IX    |       X+ |
-
 
 USGS uses a scale like:
 
@@ -150,6 +146,7 @@ Adjust color-max accordingly:
 ![screenshot of wavefield](./REF_SEIS/image.shakemap.PGV.jpg)
 
 
+
 ## Spectral Acceleration (SA) - response spectrum at Bangkok Chatuchak building collapse
 
 Our simulation outputs the ground motions at the Chatuchak building site in Bangkok, Thailand. In particular, we are interested in how the [Spectral Acceleration (SA)](https://en.wikipedia.org/wiki/Spectral_acceleration) for a building at this location looked like.
@@ -163,22 +160,24 @@ A simple script to produce this figure is provided in this example directory:
 > ./xcreate_spectral_response.sh
 ```
 
+
 ## Sonification of traces (optional)
 
-  To hear how the ground shaking sounded, we can "sonify" the output traces, i.e., map the traces to an audible spectrum.
-  First, get the script from the [shakemovie](https://github.com/SPECFEM/shakemovie) repository:
-  ```
-  > git clone https://github.com/SPECFEM/shakemovie.git
-  > ln -s shakemovie/scripts/run_create_sound.py
-  ```
+To hear how the ground shaking sounded, we can "sonify" the output traces, i.e., map the traces to an audible spectrum.
+First, get the script from the [shakemovie](https://github.com/SPECFEM/shakemovie) repository:
+```
+> git clone https://github.com/SPECFEM/shakemovie.git
+> ln -s shakemovie/scripts/run_create_sound.py
+```
 
-  and create sounds:
-  ```
-  > ./run_create_sound.py 1.0 OUTPUT_FILES/DB.MANDALAY.BXZ.semv 25.0
-  > ./run_create_sound.py 1.0 OUTPUT_FILES/DB.NAYPYIDAW.BXZ.semv 25.0
-  ```
+and create sounds:
+```
+> ./run_create_sound.py 1.0 OUTPUT_FILES/DB.MANDALAY.BXZ.semv 25.0
+> ./run_create_sound.py 1.0 OUTPUT_FILES/DB.NAYPYIDAW.BXZ.semv 25.0
+```
 
-  ## Reference solution
 
-  For comparison, we provide a reference solution in folder `REF_SEIS/` with corresponding output files.
-  The simulation was run in parallel using 16 MPI processes, each using a single Nvidia A100 GPU. The total simulated time is 1000 s with a time-to-solution of ~ 24 min 15 s.
+## Reference solution
+
+For comparison, we provide a reference solution in folder `REF_SEIS/` with corresponding output files.
+The simulation was run in parallel using 16 MPI processes, each using a single Nvidia A100 GPU. The total simulated time is 1000 s with a time-to-solution of ~ 24 min 15 s.
