@@ -1,5 +1,5 @@
-import numpy as np 
-import matplotlib.pyplot as plt 
+import numpy as np
+import matplotlib.pyplot as plt
 
 def ricker_wavelet(t, f_c):
     """
@@ -18,7 +18,7 @@ def ricker_wavelet(t, f_c):
 
 nt = 3000
 dt = 2.0e-3
-t = np.arange(nt) * dt 
+t = np.arange(nt) * dt
 
 NS_CMT = 10
 NS_FORCE = 5
@@ -32,7 +32,7 @@ for i in range(NS_FORCE):
             fio.write("%f\n" %(stf[it]))
 
 # cmt
-stf1 = np.cumsum(stf) * dt 
+stf1 = np.cumsum(stf) * dt
 for i in range(NS_CMT):
     with open(f"DATA/stf.cmt.{i}.txt","w") as fio:
         for it in range(nt):
