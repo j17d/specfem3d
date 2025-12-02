@@ -590,7 +590,7 @@ def amplitude_correction(st,catalog,inventory):
 
             # original for vis
             trace_org = tr.data.copy()
-            
+
             # correct waveform
             tr.data = tr.data * correction_factor
 
@@ -1006,14 +1006,14 @@ def add_missing_zero_traces(st):
     from obspy.core.trace import Stats
 
     complete_stream = Stream()
-    
+
     # Get unique station names from the stream
     stations = sorted(list(set(tr.stats.station for tr in st)))
 
     for station_name in stations:
         # Extract traces for the current station
         station_traces = st.select(station=station_name)
-        
+
         # Check for existing channels
         channels = sorted(list(set(tr.stats.channel for tr in station_traces)))
 
@@ -1037,7 +1037,7 @@ def add_missing_zero_traces(st):
                     print(f"  station {station_name}: adding zero trace for {channel}")
                     zero_data = np.zeros(num_samples, dtype=stored_trace.data.dtype)
                     zero_trace = Trace(data=zero_data)
-                
+
                     # Copy relevant stats and update channel
                     zero_trace.stats = stored_trace.stats.copy()
                     #zero_trace.stats.network       = stored_trace.stats.network
@@ -1059,7 +1059,7 @@ def add_missing_zero_traces(st):
 
     # Sort the stream to ensure consistent ordering (optional but good practice)
     complete_stream.sort(['station', 'channel'])
-    
+
     return complete_stream
 
 #----------------------------------------------------------------------------------------
