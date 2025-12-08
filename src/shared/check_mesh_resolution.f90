@@ -1597,3 +1597,59 @@
 
   end subroutine get_elem_minmaxsize
 
+!
+!-------------------------------------------------------------------------------------------------
+!
+
+  subroutine get_elem_minmax_xyz(x_min,x_max,y_min,y_max,z_min,z_max, &
+                                 ispec,NSPEC_AB,NGLOB_AB,ibool,xstore,ystore,zstore)
+
+! calculates the min/max x/y/z positions of the specified element (ispec)
+
+  use constants, only: CUSTOM_REAL,NGLLX,NGLLY,NGLLZ,HUGEVAL
+
+  implicit none
+
+  real(kind=CUSTOM_REAL), intent(out) :: x_min,x_max,y_min,y_max,z_min,z_max
+
+  integer, intent(in) :: ispec
+
+  integer, intent(in) :: NSPEC_AB,NGLOB_AB
+  integer, dimension(NGLLX,NGLLY,NGLLZ,NSPEC_AB), intent(in) :: ibool
+  real(kind=CUSTOM_REAL), dimension(NGLOB_AB), intent(in) :: xstore,ystore,zstore
+
+  ! local parameters
+  real(kind=CUSTOM_REAL) :: x,y,z
+  integer :: i,j,k,iglob
+
+  ! initializes
+  x_min = HUGEVAL
+  y_min = HUGEVAL
+  z_min = HUGEVAL
+
+  x_max = - HUGEVAL
+  y_max = - HUGEVAL
+  z_max = - HUGEVAL
+
+  ! loops over the corners
+  do k = 1, NGLLZ, NGLLZ-1
+    do j = 1, NGLLY, NGLLY-1
+      do i = 1, NGLLX, NGLLX-1
+        iglob = ibool(i,j,k,ispec)
+
+        x = xstore(iglob)
+        y = ystore(iglob)
+        z = zstore(iglob)
+
+        x_min = min(x_min,x)
+        y_min = min(y_min,y)
+        z_min = min(z_min,z)
+
+        x_max = max(x_max,x)
+        y_max = max(y_max,y)
+        z_max = max(z_max,z)
+      enddo
+    enddo
+  enddo
+
+  end subroutine get_elem_minmax_xyz
