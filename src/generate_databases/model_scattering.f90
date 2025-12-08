@@ -1009,7 +1009,7 @@
   pert_val = 2.0_CUSTOM_REAL * rand_val - 1.0_CUSTOM_REAL
 
   ! scale to target strength
-  pert_val = pert_val * SCATTERING_STRENGTH
+  pert_val = pert_val * real(SCATTERING_STRENGTH,kind=CUSTOM_REAL)
 
   end function get_random_perturbation_value
 
@@ -1087,9 +1087,9 @@
         endif
 
         ! grid point position [-L/2,L/2]
-        total_dat_xyz(1,np) = grid_origin_x + (i-1) * cell_size
-        total_dat_xyz(2,np) = grid_origin_y + (j-1) * cell_size
-        total_dat_xyz(3,np) = grid_origin_z + (k-1) * cell_size
+        total_dat_xyz(1,np) = real(grid_origin_x + (i-1) * cell_size,kind=CUSTOM_REAL)
+        total_dat_xyz(2,np) = real(grid_origin_y + (j-1) * cell_size,kind=CUSTOM_REAL)
+        total_dat_xyz(3,np) = real(grid_origin_z + (k-1) * cell_size,kind=CUSTOM_REAL)
       enddo
     enddo
   enddo
