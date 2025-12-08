@@ -43,6 +43,10 @@
   integer :: num_target_materials = 0
   logical :: USE_ALL_MATERIALS = .false.
 
+  ! white noise (otherwise von Karman noise distribution)
+  logical :: USE_WHITE_NOISE = .false.
+
+  ! von Karman distribution
   ! perturbation array (regular x/y/z grid)
   real(kind=CUSTOM_REAL), dimension(:,:,:),allocatable :: perturbation_grid
   integer :: pert_Nx,pert_Ny,pert_Nz
@@ -260,6 +264,7 @@
   implicit none
   real(kind=CUSTOM_REAL) :: x_min,x_min_all,y_min,y_min_all,z_min,z_min_all, &
                             x_max,x_max_all,y_max,y_max_all,z_max,z_max_all
+  real(kind=CUSTOM_REAL) :: x_min_elem,y_min_elem,z_min_elem,x_max_elem,y_max_elem,z_max_elem
   real(kind=CUSTOM_REAL) :: dim_x,dim_y,dim_z,dim_max
   real(kind=CUSTOM_REAL) :: elemsize_min,elemsize_max,elemsize_min_slice,elemsize_min_norm
   integer :: ispec,imaterial_id
@@ -268,14 +273,47 @@
   if (num_target_materials == 0) return
 
   ! get mesh properties
-  ! Calculation of whole computational domain
-  x_min = minval(xstore(:))
-  x_max = maxval(xstore(:))
-  y_min = minval(ystore(:))
-  y_max = maxval(ystore(:))
-  z_min = minval(zstore(:))
-  z_max = maxval(zstore(:))
+  if (USE_ALL_MATERIALS) then
+    ! Calculation of whole computational domain
+    x_min = minval(xstore(:))
+    x_max = maxval(xstore(:))
+    y_min = minval(ystore(:))
+    y_max = maxval(ystore(:))
+    z_min = minval(zstore(:))
+    z_max = maxval(zstore(:))
+  else
+    ! only domains of target materials
+    x_min = HUGEVAL
+    y_min = HUGEVAL
+    z_min = HUGEVAL
 
+    x_max = - HUGEVAL
+    y_max = - HUGEVAL
+    z_max = - HUGEVAL
+
+    do ispec = 1,NSPEC_AB
+      ! material id: index 1 has associated material number
+      imaterial_id = mat_ext_mesh(1,ispec)
+
+      ! check only elements for target materials (target id 0 means to apply to all materials)
+      if (any(target_material_ids(:) == imaterial_id)) then
+        ! determine min/max extent of element
+        call get_elem_minmax_xyz(x_min_elem,x_max_elem,y_min_elem,y_max_elem,z_min_elem,z_max_elem, &
+                                 ispec,NSPEC_AB,NGLOB_AB,ibool,xstore,ystore,zstore)
+
+        ! domain min/max
+        x_min = min(x_min,x_min_elem)
+        y_min = min(y_min,y_min_elem)
+        z_min = min(z_min,z_min_elem)
+
+        x_max = max(x_max,x_max_elem)
+        y_max = max(y_max,y_max_elem)
+        z_max = max(z_max,z_max_elem)
+      endif
+    enddo
+  endif
+
+  ! determine min/max on all processes
   x_min_all = HUGEVAL
   y_min_all = HUGEVAL
   z_min_all = HUGEVAL
@@ -296,6 +334,10 @@
   dim_x = x_max_all - x_min_all
   dim_y = y_max_all - y_min_all
   dim_z = z_max_all - z_min_all
+
+  if (dim_x < 0.0_CUSTOM_REAL) dim_x = 0.0_CUSTOM_REAL
+  if (dim_y < 0.0_CUSTOM_REAL) dim_y = 0.0_CUSTOM_REAL
+  if (dim_z < 0.0_CUSTOM_REAL) dim_z = 0.0_CUSTOM_REAL
 
   ! maximum mesh length
   dim_max = max(dim_x,dim_y,dim_z)
@@ -321,6 +363,23 @@
     call flush_IMAIN()
   endif
 
+  ! check if domain volume found, otherwise target material ids won't match any in the mesh
+  if (dim_x == 0.0_CUSTOM_REAL .or. dim_y == 0.0_CUSTOM_REAL .or. dim_z == 0.0_CUSTOM_REAL) then
+    ! user info
+    if (myrank == 0) then
+      write(IMAIN,*) '  no valid domain found (target material ids not found in mesh)'
+      write(IMAIN,*) '  no perturbations will be applied...'
+      write(IMAIN,*)
+      call flush_IMAIN()
+    endif
+    ! set zero targets
+    num_target_materials = 0
+    ! all done
+    return
+  endif
+
+  ! determine cell size for FFT grid
+  !
   ! get minimum element size
   elemsize_min_slice = HUGEVAL
   do ispec = 1, NSPEC_AB
@@ -466,9 +525,6 @@
   integer :: num_seed
   integer,dimension(:),allocatable :: myseed
 
-  ! debug output
-  character(len=MAX_STRING_LEN) :: name
-
   ! external function
   real,external :: psd_vonKarman_3D
 
@@ -478,6 +534,91 @@
 
   ! checks if anything to do
   if (num_target_materials == 0) return
+
+  ! white noise
+  ! in case correlation length is smaller than GLL point distance, we use white noise
+  !
+  ! correlation length
+  ! such that k * a ~ 1 (for correlation factor == 1)
+  !   a_corr = real(grid_lambda_min / (2.d0 * PI) * SCATTERING_CORRELATION,kind=CUSTOM_REAL)
+  !
+  ! therefore
+  !   grid_lambda_min / (2.d0 * PI) * SCATTERING_CORRELATION < elemsize_min_norm / (NGLLX-1)
+  ! using the estimates for grid_lambda_min = ( elemsize_min_norm / (NGLLX-1) * 5), this is equal to
+  !   5 / (2.d0 * PI) * SCATTERING_CORRELATION < 1
+  ! and
+  !   SCATTERING_CORRELATION < 1 / 5 * 2 * PI ~ 1.25
+  ! let's use white noise for factors < 1
+  if (SCATTERING_CORRELATION < 1.0d0) then
+    ! set flag
+    USE_WHITE_NOISE = .true.
+
+    ! user output
+    if (myrank == 0) then
+      write(IMAIN,*) '  perturbation distribution       : ','white noise (correlation factor < 1.0)'
+      write(IMAIN,*) '  perturbation correlation factor : ',sngl(SCATTERING_CORRELATION)
+      write(IMAIN,*) '  perturbation maximum amplitude  : ',sngl(SCATTERING_STRENGTH)
+      write(IMAIN,*)
+      call flush_IMAIN()
+    endif
+
+    ! no need for FFTs, just random number generation
+    !
+    ! initializes random number generator
+    ! seed with fixed value to make successive runs repeatable
+    call random_seed(size=num_seed)
+    allocate(myseed(num_seed))
+    myseed(1:num_seed) = 12345
+    call random_seed(put=myseed)
+
+    ! visualization output (for debugging)
+    if (SAVE_MESH_FILES .and. myrank == 0) then
+      ! file output of perturbation grid
+      !
+      ! note: this perturbation grid is not actually used and allocated for white noise perturbations.
+      !       the file output here is meant for debugging and visualization.
+
+      ! determines grid dimensions
+      ! next power of 2 for FFT
+      npower_of_2 = int(log2(grid_length / grid_cell_size)) + 1
+      N = 2**npower_of_2
+      ! limits minimum/maximum number of points for FFT
+      !if (N < 1024) N = 1024  ! number of minimum points along x-direction (power of 2 for fft) 2**(10)
+      !if (N < 512) N = 512    ! number of minimum points along x-direction (power of 2 for fft) 2**(9)
+      if (N < 256) N = 256    ! number of minimum points along x-direction (power of 2 for fft) 2**(8)
+      !if (N > 8192) N = 8192  ! number of maximum points along x-direction (power of 2 for fft) 2**(13)
+      !if (N > 4096) N = 4096  ! number of maximum points along x-direction (power of 2 for fft) 2**(12)
+      if (N > 2048) N = 2048  ! number of minimum points along x-direction (power of 2 for fft) 2**(11)
+      ! power of 2
+      npower_of_2 = ceiling(log2(real(N)))
+      ! for mesh interpolations (uses double precision values)
+      grid_dx       = grid_length / (N-1)  ! grid space increment, dx == dy == dz
+      ! for perturbation grid dimension
+      pert_Nx = int(grid_dim_x / grid_normalization_factor / grid_dx) + 1
+      pert_Ny = int(grid_dim_y / grid_normalization_factor / grid_dx) + 1
+      pert_Nz = int(grid_dim_z / grid_normalization_factor / grid_dx) + 1
+      ! make sure perturbation grid is not bigger than wavenumber distribution array
+      if (pert_Nx > N) pert_Nx = N
+      if (pert_Ny > N) pert_Ny = N
+      if (pert_Nz > N) pert_Nz = N
+
+      ! user output
+      if (myrank == 0) then
+        write(IMAIN,*) '  grid spacing                    : dx          = ',sngl(grid_dx * grid_normalization_factor),'(m)'
+        write(IMAIN,*) '  perturbations: grid Nx/Ny/Nz = ',pert_Nx,'/',pert_Ny,'/',pert_Nz
+        write(IMAIN,*)
+        call flush_IMAIN()
+      endif
+
+      ! output VTU file for visual inspection
+      call plot_grid_data()
+    endif
+
+    ! all done
+    return
+  endif
+
+  ! from here on, we generate noise with von Karman distribution
 
   ! user output
   if (myrank == 0) then
@@ -528,10 +669,10 @@
   if (myrank == 0) then
     write(IMAIN,*) '  FFT using number of grid points : N           = ',N
     write(IMAIN,*) '  FFT using power of 2            : npower_of_2 = ',npower_of_2
-    write(IMAIN,*) '  grid spacing                    : dx          = ',sngl(grid_dx * grid_normalization_factor),'(m)'
     ! memory required
     mb_size = dble(N) * dble(N) * dble(N) * dble(CUSTOM_REAL) / 1024.d0 / 1024.d0
-    write(IMAIN,*) '  grid memory size                : ',sngl(mb_size),'MB'
+    write(IMAIN,*) '  FFT using memory size           : ',sngl(mb_size),'MB'
+    write(IMAIN,*) '  grid spacing                    : dx          = ',sngl(grid_dx * grid_normalization_factor),'(m)'
     write(IMAIN,*)
     call flush_IMAIN()
   endif
@@ -793,8 +934,7 @@
   ! visualization output
   if (SAVE_MESH_FILES .and. myrank == 0) then
     ! output VTU file for visual inspection
-    name = 'perturbation_grid'
-    call plot_grid_data(perturbation_grid,pert_Nx,pert_Ny,pert_Nz,name)
+    call plot_grid_data()
   endif
 
   end subroutine generate_perturbations
@@ -853,17 +993,44 @@
 !-------------------------------------------------------------------------------------------------
 !
 
-  subroutine plot_grid_data(array,Nx,Ny,Nz,name)
+  function get_random_perturbation_value() result(pert_val)
 
-  use constants, only: myrank,IMAIN,CUSTOM_REAL,MAX_STRING_LEN
-  use model_scattering_par, only: grid_origin_x,grid_origin_y,grid_origin_z,grid_dx,grid_normalization_factor
+  use constants, only: CUSTOM_REAL
+  use shared_parameters, only: SCATTERING_STRENGTH
 
   implicit none
+  real(kind=CUSTOM_REAL) :: pert_val
+  real(kind=CUSTOM_REAL) :: rand_val
 
-  integer, intent(in) :: Nx,Ny,Nz
-  real(kind=CUSTOM_REAL),dimension(Nx,Ny,Nz),intent(in) :: array
-  character(len=MAX_STRING_LEN),intent(in) :: name
+  ! random value between [0,1]
+  call random_number(rand_val)
 
+  ! white noise between [-1,1]
+  pert_val = 2.0_CUSTOM_REAL * rand_val - 1.0_CUSTOM_REAL
+
+  ! scale to target strength
+  pert_val = pert_val * SCATTERING_STRENGTH
+
+  end function get_random_perturbation_value
+
+!
+!-------------------------------------------------------------------------------------------------
+!
+
+  subroutine plot_grid_data()
+
+  use constants, only: myrank,IMAIN,CUSTOM_REAL,MAX_STRING_LEN
+
+  use model_scattering_par, only: grid_origin_x,grid_origin_y,grid_origin_z, &
+    grid_dx,grid_normalization_factor,USE_WHITE_NOISE
+
+  use model_scattering_par, only: &
+    array => perturbation_grid, &
+    Nx => pert_Nx, &
+    Ny => pert_Ny, &
+    Nz => pert_Nz
+
+  implicit none
   ! local parameters
   integer :: ne,np,ixyz,n1,n2,n3,n4,n5,n6,n7,n8
   integer :: i,j,k,ier
@@ -874,6 +1041,12 @@
   real(kind=CUSTOM_REAL) :: cell_size
   integer,dimension(:,:),allocatable :: total_dat_con
   character(len=MAX_STRING_LEN) :: mesh_file,var_name
+
+  ! for white noise
+  real(kind=CUSTOM_REAL),external :: get_random_perturbation_value
+
+  ! file output
+  character(len=MAX_STRING_LEN) :: name
 
   ! regular grid
   np = Nx * Ny * Nz             ! total number of points
@@ -906,7 +1079,12 @@
         if (np /= ixyz) stop 'Invalid grid point'
 
         ! array value
-        total_dat(np) = array(i,j,k)
+        if (USE_WHITE_NOISE) then
+          ! random perturbation value
+          total_dat(np) = get_random_perturbation_value()
+        else
+          total_dat(np) = array(i,j,k)
+        endif
 
         ! grid point position [-L/2,L/2]
         total_dat_xyz(1,np) = grid_origin_x + (i-1) * cell_size
@@ -950,6 +1128,7 @@
   enddo
 
   ! VTU binary format
+  name = 'perturbation_grid'
   mesh_file = 'OUTPUT_FILES/' // trim(name) // '.vtu'
   var_name = 'val'
   call write_VTU_movie_data_binary(ne,np,total_dat_xyz,total_dat_con,total_dat,mesh_file,var_name)
@@ -992,7 +1171,7 @@
   logical, intent(in) :: ANISOTROPY
 
   ! local parameters
-  double precision :: pert_val,scaling
+  double precision :: pert_val
   integer :: ix,iy,iz,Nx,Ny,Nz
   ! positioning
   double precision :: offset_x,offset_y,offset_z
@@ -1000,11 +1179,24 @@
   double precision :: gamma_interp_x,gamma_interp_y,gamma_interp_z
   double precision :: val1,val2,val3,val4,val5,val6,val7,val8
 
+  ! for white noise
+  real(kind=CUSTOM_REAL),external :: get_random_perturbation_value
+
   ! checks if anything to do
   if (num_target_materials == 0) return
 
   ! check if we apply perturbation (to target materials only; target id 0 means to apply to all materials)
   if (.not. (any(target_material_ids(:) == imaterial_id) .or. USE_ALL_MATERIALS)) return
+
+  ! white noise
+  if (USE_WHITE_NOISE) then
+    ! get random perturbation
+    pert_val = get_random_perturbation_value()
+    ! apply perturbation to model parameters
+    call apply_perturbation(pert_val)
+    ! all done
+    return
+  endif
 
   ! determine spacing and cell for linear interpolation
   offset_x = (xmesh - grid_origin_x) / grid_normalization_factor     ! position offset in mesh (normalized)
@@ -1098,8 +1290,19 @@
   !  print *,'debug: loc ',sngl(xmesh),sngl(ymesh),sngl(zmesh),'ixyz',ix,iy,iz, &
   !          'perturbation ',pert_val,'corners',val1,val2,val3,val4,val5,val6,val7,val8
 
+  ! apply perturbation to model parameters
+  call apply_perturbation(pert_val)
+
+contains
+
+  subroutine apply_perturbation(pert_val)
+  implicit none
+  double precision, intent(in) :: pert_val
+  ! local parameters
+  real(kind=CUSTOM_REAL) :: scaling
+
   ! adds perturbation
-  scaling = 1.d0 + pert_val
+  scaling = real(1.d0 + pert_val,kind=CUSTOM_REAL)
 
   ! apply perturbation to model
   ! define new elastic parameters in the model
@@ -1130,5 +1333,7 @@
     c56 = scaling * c56
     c66 = scaling * c66
   endif
+
+  end subroutine apply_perturbation
 
   end subroutine model_scattering_add_perturbations
