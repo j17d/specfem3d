@@ -100,6 +100,10 @@ end module constants
   integer :: NGNOD
 
   character(len=MAX_STRING_LEN) :: MODEL
+
+  logical :: MOVING_MEDIA
+  character(len=MAX_STRING_LEN) :: VELOCITY_FIELD_FILE
+
   character(len=MAX_STRING_LEN) :: SEP_MODEL_DIRECTORY
 
   ! physical parameters

@@ -173,6 +173,20 @@
       write(*,*)
     endif
 
+    call read_value_logical(MOVING_MEDIA, 'MOVING_MEDIA', ier)
+    if (ier /= 0) then
+      some_parameters_missing_from_Par_file = .true.
+      write(*, '(a)') 'MOVING_MEDIA                   = .false.'
+      write(*,*)
+    endif
+
+    call read_value_string(VELOCITY_FIELD_FILE, 'VELOCITY_FIELD_FILE', ier)
+    if (ier /= 0) then
+      some_parameters_missing_from_Par_file = .true.
+      write(*, '(a)') 'VELOCITY_FIELD_FILE            = ./DATA/velocity_field_file'
+      write(*,*)
+    endif
+
     call read_value_string(TOMOGRAPHY_PATH, 'TOMOGRAPHY_PATH', ier)
     if (ier /= 0) then
       some_parameters_missing_from_Par_file = .true.
@@ -1324,6 +1338,8 @@
   ! mesh
   call bcast_all_singlei(NGNOD)
   call bcast_all_string(MODEL)
+  call bcast_all_singlel(MOVING_MEDIA)
+  call bcast_all_string(VELOCITY_FIELD_FILE)
 
   call bcast_all_string(TOMOGRAPHY_PATH)
   call bcast_all_string(SEP_MODEL_DIRECTORY)
