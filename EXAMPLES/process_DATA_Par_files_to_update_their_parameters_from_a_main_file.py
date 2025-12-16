@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #
 # reads in a Par_file as main (template) and updates parameters and comments in all other Par_files
 # in current directory to have a consistent set of Par_files
