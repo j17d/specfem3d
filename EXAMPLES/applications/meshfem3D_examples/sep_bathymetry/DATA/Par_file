@@ -65,6 +65,11 @@ NGNOD                           = 8
 #   aniso,external,gll,salton_trough,tomo,SEP,coupled,...
 MODEL                           = sep
 
+# flag for moving media (i.e. air, water)
+MOVING_MEDIA                    = .false.
+# path for external media motion velocity models
+VELOCITY_FIELD_FILE             = ./DATA/velocity_field_file
+
 # path for external tomographic models files
 TOMOGRAPHY_PATH                 = ./DATA/tomo_files/
 # if you are using a SEP model (oil-industry format)
